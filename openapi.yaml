@@ -1,0 +1,1796 @@
+openapi: '3.0.3'
+info:
+  title: Career-Copilot API
+  description: AI模拟面试官与智能职业规划平台 - 后端接口文档
+  version: '1.0.0'
+  contact:
+    name: 陶宏阳
+    url: https://github.com/peeker-tao
+
+servers:
+  - url: http://localhost:3001/api/v1
+    description: 本地开发环境
+  - url: https://test-api.career-copilot.com/api/v1
+    description: 测试环境
+  - url: https://api.career-copilot.com/api/v1
+    description: 生产环境
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 在 Authorization 头中传入 Bearer Token
+
+  schemas:
+    # ============================================================
+    # 通用
+    # ============================================================
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: HTTP 状态码
+          example: 200
+        message:
+          type: string
+          description: 提示信息
+          example: success
+        data:
+          type: object
+          description: 业务数据
+      required:
+        - code
+        - message
+        - data
+
+    PaginationParams:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: 页码
+          default: 1
+          minimum: 1
+          example: 1
+        pageSize:
+          type: integer
+          description: 每页条数（最大 50）
+          default: 10
+          maximum: 50
+          example: 10
+
+    PaginationResult:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          example: 100
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: HTTP 状态码
+          example: 400
+        message:
+          type: string
+          description: 错误提示
+          example: 请求参数错误
+        data:
+          type: object
+          description: 错误详情（可选）
+      required:
+        - code
+        - message
+
+    # ============================================================
+    # 认证模块
+    # ============================================================
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+          description: 邮箱，需合法格式
+          example: user@example.com
+        password:
+          type: string
+          minLength: 6
+          description: 密码，不少于 6 位
+          example: abc123456
+        name:
+          type: string
+          minLength: 2
+          maxLength: 20
+          description: 昵称，2-20 字符
+          example: 小明
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: 注册邮箱
+          example: user@example.com
+        password:
+          type: string
+          description: 密码
+          example: abc123456
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: 刷新令牌
+          example: eyJhbG...
+
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 用户 ID
+          example: clx...
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        name:
+          type: string
+          example: 小明
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+          example: https://...
+        education:
+          type: string
+          nullable: true
+          description: 教育背景
+          example: 华中科技大学 软件工程 本科 2024级
+        targetPosition:
+          type: string
+          nullable: true
+          description: 目标岗位
+          example: 后端开发工程师
+        role:
+          type: string
+          enum:
+            - user
+            - admin
+          description: 用户角色
+          example: user
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-06-13T08:00:00.000Z'
+
+    AuthResult:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/UserInfo'
+        accessToken:
+          type: string
+          description: 访问令牌
+          example: eyJhbG...
+        refreshToken:
+          type: string
+          description: 刷新令牌
+          example: eyJhbG...
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 20
+          description: 昵称
+          example: 小明改名字了
+        avatar:
+          type: string
+          format: uri
+          description: 头像 URL
+          example: https://...
+        education:
+          type: string
+          description: 教育背景
+          example: 武汉大学 计算机科学与技术 硕士 2024级
+        targetPosition:
+          type: string
+          description: 目标岗位
+          example: 算法工程师
+
+    # ============================================================
+    # 简历模块
+    # ============================================================
+    ResumeSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          example: clx...
+        title:
+          type: string
+          example: 小明_后端简历.pdf
+        status:
+          type: string
+          enum:
+            - parsing
+            - completed
+            - failed
+          example: completed
+        skills:
+          type: array
+          items:
+            type: string
+          example:
+            - Java
+            - Spring Boot
+            - MySQL
+            - Redis
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-06-13T08:00:00.000Z'
+
+    Education:
+      type: object
+      properties:
+        school:
+          type: string
+          example: 华中科技大学
+        major:
+          type: string
+          example: 软件工程
+        degree:
+          type: string
+          example: 本科
+        period:
+          type: string
+          example: '2022-2026'
+
+    Experience:
+      type: object
+      properties:
+        company:
+          type: string
+          example: XX科技
+        position:
+          type: string
+          example: 后端开发实习生
+        period:
+          type: string
+          example: '2025.06-2025.09'
+        description:
+          type: string
+          example: 负责后端 API 开发与维护
+
+    Project:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 在线商城系统
+        role:
+          type: string
+          example: 后端开发
+        techStack:
+          type: array
+          items:
+            type: string
+          example:
+            - Spring Boot
+            - MySQL
+        description:
+          type: string
+          example: 基于 Spring Boot 的电商后端系统
+
+    ParsedResumeData:
+      type: object
+      properties:
+        basicInfo:
+          type: object
+          properties:
+            name:
+              type: string
+              example: 小明
+            phone:
+              type: string
+              example: 138****1234
+            email:
+              type: string
+              format: email
+              example: user@example.com
+        education:
+          type: array
+          items:
+            $ref: '#/components/schemas/Education'
+        experience:
+          type: array
+          items:
+            $ref: '#/components/schemas/Experience'
+        skills:
+          type: array
+          items:
+            type: string
+          example:
+            - Java
+            - Spring Boot
+            - MySQL
+            - Redis
+            - Git
+            - Docker
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+
+    ResumeDetail:
+      allOf:
+        - $ref: '#/components/schemas/ResumeSummary'
+        - type: object
+          properties:
+            fileUrl:
+              type: string
+              format: uri
+              nullable: true
+              example: https://...
+            parsedData:
+              $ref: '#/components/schemas/ParsedResumeData'
+
+    UpdateResumeRequest:
+      type: object
+      properties:
+        parsedData:
+          type: object
+          properties:
+            skills:
+              type: array
+              items:
+                type: string
+              example:
+                - Java
+                - Spring Boot
+                - MySQL
+                - Redis
+                - RabbitMQ
+
+    # ============================================================
+    # 面试模块
+    # ============================================================
+    CreateInterviewRequest:
+      type: object
+      required:
+        - targetPosition
+        - difficulty
+      properties:
+        resumeId:
+          type: string
+          description: 关联简历 ID（可选，传了则基于简历出题）
+          example: clx...
+        targetPosition:
+          type: string
+          description: 目标岗位
+          example: 后端开发工程师
+        difficulty:
+          type: string
+          enum:
+            - easy
+            - medium
+            - hard
+          description: 面试难度
+          example: medium
+
+    InterviewSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          example: intv_xxx
+        targetPosition:
+          type: string
+          example: 后端开发工程师
+        difficulty:
+          type: string
+          enum:
+            - easy
+            - medium
+            - hard
+          example: medium
+        status:
+          type: string
+          enum:
+            - in_progress
+            - completed
+          example: completed
+        score:
+          type: integer
+          nullable: true
+          example: 78
+        questionCount:
+          type: integer
+          example: 8
+        startedAt:
+          type: string
+          format: date-time
+          example: '2026-06-13T08:00:00.000Z'
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-06-13T08:25:00.000Z'
+
+    InterviewDetail:
+      allOf:
+        - $ref: '#/components/schemas/InterviewSummary'
+
+    CreateInterviewResult:
+      allOf:
+        - $ref: '#/components/schemas/InterviewSummary'
+        - type: object
+          properties:
+            firstQuestion:
+              type: string
+              description: AI 第一个面试题
+              example: 请介绍一下 Java 中的 HashMap 底层实现原理？
+
+    InterviewMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          example: msg_1
+        role:
+          type: string
+          enum:
+            - ai
+            - user
+          description: 消息发送者角色
+          example: ai
+        content:
+          type: string
+          description: 消息内容
+          example: 请介绍一下 Java 中 HashMap 的底层实现原理？
+        questionType:
+          type: string
+          nullable: true
+          enum:
+            - technical
+            - behavioral
+            - project
+          description: 题目类型
+          example: technical
+        feedback:
+          type: string
+          nullable: true
+          description: AI 对回答的即时反馈
+          example: '评分：4/5。对底层结构描述清晰，但扩容机制遗漏。'
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-06-13T08:00:00.000Z'
+
+    SubmitAnswerRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: 用户回答内容
+          example: HashMap 底层是数组+链表+红黑树实现的...
+
+    AiResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: msg_3
+        role:
+          type: string
+          enum:
+            - ai
+          example: ai
+        content:
+          type: string
+          description: AI 的回应内容
+          example: 回答得不错，但我注意到你没有提到负载因子和扩容机制，能否再详细说明一下？
+        feedback:
+          type: string
+          description: AI 评分与反馈
+          example: '评分：4/5。对底层结构描述清晰，但扩容机制遗漏。'
+        isFollowUp:
+          type: boolean
+          description: 是否追问（true=继续追问，false=进入下一题）
+          example: true
+        questionType:
+          type: string
+          enum:
+            - technical
+            - behavioral
+            - project
+          example: technical
+
+    SubmitAnswerResult:
+      type: object
+      properties:
+        userMessageId:
+          type: string
+          example: msg_2
+        aiResponse:
+          $ref: '#/components/schemas/AiResponse'
+
+    AnswerDetail:
+      type: object
+      properties:
+        question:
+          type: string
+          description: 面试问题
+          example: HashMap 实现原理
+        score:
+          type: integer
+          description: 该题得分（1-5）
+          example: 4
+        comment:
+          type: string
+          description: 评语
+          example: 底层结构答得好，扩容机制遗漏
+
+    Suggestion:
+      type: object
+      properties:
+        item:
+          type: string
+          description: 改进建议
+          example: 深入学习 Redis、消息队列等中间件
+        priority:
+          type: string
+          enum:
+            - high
+            - medium
+            - low
+          example: high
+        resources:
+          type: array
+          items:
+            type: string
+          example:
+            - '《Redis 设计与实现》'
+            - MIT 6.824 分布式系统
+
+    InterviewFeedback:
+      type: object
+      properties:
+        interviewId:
+          type: string
+          example: intv_xxx
+        overallScore:
+          type: integer
+          description: 综合评分（百分制）
+          example: 78
+        dimensions:
+          type: object
+          description: 各维度评分
+          additionalProperties:
+            type: object
+            properties:
+              score:
+                type: integer
+                example: 80
+              comment:
+                type: string
+                example: 专业技能扎实，但对分布式相关知识了解不足
+          example:
+            professionalSkill:
+              score: 80
+              comment: 专业技能扎实，但对分布式相关知识了解不足
+            communication:
+              score: 75
+              comment: 表达较清晰，但结构可以更严谨
+            logicalThinking:
+              score: 82
+              comment: 逻辑思维能力强
+            projectExperience:
+              score: 70
+              comment: 项目介绍缺乏亮点和数据支撑
+        strengths:
+          type: array
+          items:
+            type: string
+          example:
+            - Java 基础扎实
+            - 逻辑清晰
+            - 学习态度积极
+        weaknesses:
+          type: array
+          items:
+            type: string
+          example:
+            - 分布式经验不足
+            - 项目深度不够
+            - 缺乏系统设计思维
+        improvementSuggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Suggestion'
+        answerDetails:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnswerDetail'
+
+    # ============================================================
+    # 职业规划模块
+    # ============================================================
+    CreatePlanRequest:
+      type: object
+      required:
+        - targetPosition
+      properties:
+        targetPosition:
+          type: string
+          description: 目标岗位
+          example: 后端开发工程师
+        resumeId:
+          type: string
+          description: 关联简历 ID（与 currentSkills 二选一）
+          example: clx...
+        currentSkills:
+          type: array
+          description: 手动填写的当前技能（与 resumeId 二选一）
+          items:
+            type: string
+          example:
+            - Java
+            - MySQL
+
+    Resource:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Spring Boot 官方文档
+        type:
+          type: string
+          enum:
+            - document
+            - video
+            - book
+            - course
+          example: document
+        url:
+          type: string
+          format: uri
+          example: https://spring.io/guides
+
+    Phase:
+      type: object
+      properties:
+        phase:
+          type: integer
+          description: 阶段序号
+          example: 1
+        title:
+          type: string
+          description: 阶段标题
+          example: 基础巩固（2周）
+        goal:
+          type: string
+          description: 阶段目标
+          example: 熟练掌握 Spring Boot 框架
+        skills:
+          type: array
+          items:
+            type: string
+          example:
+            - Spring Boot
+            - MyBatis
+            - RESTful API
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Resource'
+        estimatedWeeks:
+          type: integer
+          description: 预估周数
+          example: 2
+
+    MarketInsight:
+      type: object
+      properties:
+        averageSalary:
+          type: string
+          description: 平均薪资范围
+          example: 15K-30K
+        demandTrend:
+          type: string
+          description: 需求趋势
+          example: 持续增长
+        topSkills:
+          type: array
+          items:
+            type: string
+          example:
+            - Java
+            - Spring Boot
+            - MySQL
+            - Redis
+            - 微服务
+        experienceDistribution:
+          type: object
+          description: 经验年限分布
+          example:
+            应届: 20%
+            1-3年: 35%
+            3-5年: 30%
+            5年以上: 15%
+
+    CareerPlan:
+      type: object
+      properties:
+        id:
+          type: string
+          example: plan_xxx
+        targetPosition:
+          type: string
+          example: 后端开发工程师
+        currentSkills:
+          type: array
+          items:
+            type: string
+          example:
+            - Java
+            - MySQL
+        gapSkills:
+          type: array
+          items:
+            type: string
+          example:
+            - Spring Boot
+            - Redis
+            - 消息队列
+            - Docker
+            - 微服务
+        roadmap:
+          type: array
+          items:
+            $ref: '#/components/schemas/Phase'
+        marketInsight:
+          $ref: '#/components/schemas/MarketInsight'
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-06-13T08:00:00.000Z'
+
+    CareerPlanSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          example: plan_xxx
+        targetPosition:
+          type: string
+          example: 后端开发工程师
+        progress:
+          type: integer
+          description: 完成进度百分比
+          example: 30
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-06-13T08:00:00.000Z'
+
+    UpdateProgressRequest:
+      type: object
+      required:
+        - phase
+        - progress
+      properties:
+        phase:
+          type: integer
+          description: 阶段序号
+          example: 1
+        progress:
+          type: integer
+          description: 完成进度百分比（0-100）
+          minimum: 0
+          maximum: 100
+          example: 100
+
+    # ============================================================
+    # 仪表盘模块
+    # ============================================================
+    DashboardData:
+      type: object
+      properties:
+        stats:
+          type: object
+          properties:
+            totalInterviews:
+              type: integer
+              example: 15
+            averageScore:
+              type: integer
+              example: 72
+            totalResumes:
+              type: integer
+              example: 3
+            activePlans:
+              type: integer
+              example: 1
+        recentInterviews:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: intv_xxx
+              targetPosition:
+                type: string
+                example: 后端开发工程师
+              score:
+                type: integer
+                example: 78
+              completedAt:
+                type: string
+                format: date-time
+                example: '2026-06-13T08:25:00.000Z'
+        recentPlans:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: plan_xxx
+              targetPosition:
+                type: string
+                example: 后端开发工程师
+              progress:
+                type: integer
+                example: 30
+        scoreTrend:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+                example: '2026-06-01'
+              score:
+                type: integer
+                example: 58
+
+    # ============================================================
+    # WebSocket 消息格式（参考用，非 OpenAPI 标准）
+    # ============================================================
+    WsServerMessage:
+      type: object
+      description: WebSocket 服务端 -> 客户端消息
+      properties:
+        type:
+          type: string
+          enum:
+            - ai_message_chunk
+            - ai_message_done
+          example: ai_message_chunk
+        data:
+          type: object
+          properties:
+            messageId:
+              type: string
+              example: msg_3
+            chunk:
+              type: string
+              description: 流式片段（仅 type=ai_message_chunk 时）
+              example: 回答得不错，但
+            fullContent:
+              type: string
+              description: 完整内容（仅 type=ai_message_done 时）
+              example: 回答得不错，但我注意到你没有提到负载因子和扩容机制，能否再详细说明一下？
+            feedback:
+              type: string
+              description: AI 反馈（仅 type=ai_message_done 时）
+              example: '评分：4/5。对底层结构描述清晰，但扩容机制遗漏。'
+            isFollowUp:
+              type: boolean
+              description: 是否追问（仅 type=ai_message_done 时）
+              example: true
+
+    WsClientMessage:
+      type: object
+      description: WebSocket 客户端 -> 服务端消息
+      properties:
+        type:
+          type: string
+          enum:
+            - user_answer
+          example: user_answer
+        data:
+          type: object
+          properties:
+            content:
+              type: string
+              description: 用户回答内容
+              example: HashMap 底层是数组+链表+红黑树实现的...
+
+paths:
+  # ============================================================
+  # 认证模块
+  # ============================================================
+  /auth/register:
+    post:
+      tags:
+        - 认证管理
+      summary: 用户注册
+      description: 使用邮箱和密码注册新用户，注册成功自动返回 Token
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      code:
+                        type: integer
+                        example: 201
+                      message:
+                        type: string
+                        example: 注册成功
+                      data:
+                        $ref: '#/components/schemas/AuthResult'
+        '400':
+          description: 参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 邮箱已注册
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - 认证管理
+      summary: 用户登录
+      description: 使用邮箱和密码登录
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AuthResult'
+        '401':
+          description: 邮箱或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      tags:
+        - 认证管理
+      summary: 刷新 Token
+      description: 使用 Refresh Token 获取新的 Access Token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token 刷新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          accessToken:
+                            type: string
+                            example: eyJhbG...
+                          refreshToken:
+                            type: string
+                            example: eyJhbG...
+        '401':
+          description: Refresh Token 无效或过期
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/profile:
+    get:
+      tags:
+        - 认证管理
+      summary: 获取用户信息
+      description: 获取当前登录用户的详细信息
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功获取用户信息
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserInfo'
+        '401':
+          description: 未认证或 Token 失效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - 认证管理
+      summary: 修改个人资料
+      description: 修改当前登录用户的个人资料
+      operationId: updateProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: 修改成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserInfo'
+        '401':
+          description: 未认证或 Token 失效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # 简历模块
+  # ============================================================
+  /resumes/upload:
+    post:
+      tags:
+        - 简历管理
+      summary: 上传简历
+      description: 上传 PDF 或 Word 格式的简历文件，系统将异步解析
+      operationId: uploadResume
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 简历文件，支持 .pdf / .docx，≤ 10MB
+                title:
+                  type: string
+                  description: 简历名称（默认使用文件名）
+                  example: 小明_简历_2026
+      responses:
+        '201':
+          description: 上传成功，简历异步解析中
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      code:
+                        type: integer
+                        example: 201
+                      message:
+                        type: string
+                        example: 上传成功，简历解析中
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            example: clx...
+                          title:
+                            type: string
+                            example: 小明_简历_2026.pdf
+                          fileUrl:
+                            type: string
+                            format: uri
+                            example: https://...
+                          status:
+                            type: string
+                            enum:
+                              - parsing
+                            example: parsing
+        '400':
+          description: 参数错误
+        '413':
+          description: 文件大小超限（> 10MB）
+
+  /resumes:
+    get:
+      tags:
+        - 简历管理
+      summary: 获取简历列表
+      description: 获取当前用户的所有简历列表
+      operationId: listResumes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: 页码
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 50
+          description: 每页条数
+      responses:
+        '200':
+          description: 成功获取简历列表
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/ResumeSummary'
+                          pagination:
+                            $ref: '#/components/schemas/PaginationResult'
+
+  /resumes/{id}:
+    get:
+      tags:
+        - 简历管理
+      summary: 获取简历详情
+      description: 获取单份简历的详细信息，包含 LLM 解析后的结构化数据
+      operationId: getResume
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 简历 ID
+          example: clx...
+      responses:
+        '200':
+          description: 成功获取简历详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ResumeDetail'
+        '404':
+          description: 简历不存在
+    put:
+      tags:
+        - 简历管理
+      summary: 编辑简历解析结果
+      description: 手动修正 LLM 解析后的简历数据
+      operationId: updateResume
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 简历 ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateResumeRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ResumeDetail'
+        '404':
+          description: 简历不存在
+    delete:
+      tags:
+        - 简历管理
+      summary: 删除简历
+      description: 删除指定简历
+      operationId: deleteResume
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 简历 ID
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 删除成功
+        '404':
+          description: 简历不存在
+
+  # ============================================================
+  # 面试模块
+  # ============================================================
+  /interviews:
+    post:
+      tags:
+        - 面试管理
+      summary: 创建面试会话
+      description: 创建一个新的 AI 模拟面试会话
+      operationId: createInterview
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInterviewRequest'
+      responses:
+        '201':
+          description: 面试会话创建成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      code:
+                        type: integer
+                        example: 201
+                      message:
+                        type: string
+                        example: 面试会话创建成功
+                      data:
+                        $ref: '#/components/schemas/CreateInterviewResult'
+        '400':
+          description: 参数错误
+    get:
+      tags:
+        - 面试管理
+      summary: 获取面试历史
+      description: 获取当前用户的所有面试记录，支持筛选
+      operationId: listInterviews
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: 页码
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 50
+          description: 每页条数
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - in_progress
+              - completed
+          description: 按状态筛选
+        - name: targetPosition
+          in: query
+          schema:
+            type: string
+          description: 按目标岗位筛选
+      responses:
+        '200':
+          description: 成功获取面试历史
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/InterviewSummary'
+                          pagination:
+                            $ref: '#/components/schemas/PaginationResult'
+
+  /interviews/{id}:
+    get:
+      tags:
+        - 面试管理
+      summary: 获取面试详情
+      description: 获取单次面试的基本信息
+      operationId: getInterview
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 面试会话 ID
+          example: intv_xxx
+      responses:
+        '200':
+          description: 成功获取面试详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/InterviewDetail'
+        '404':
+          description: 面试会话不存在
+
+  /interviews/{id}/messages:
+    get:
+      tags:
+        - 面试管理
+      summary: 获取面试对话记录
+      description: 获取指定面试会话的完整对话消息列表
+      operationId: getInterviewMessages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 面试会话 ID
+      responses:
+        '200':
+          description: 成功获取对话记录
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          messages:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/InterviewMessage'
+        '404':
+          description: 面试会话不存在
+
+  /interviews/{id}/answer:
+    post:
+      tags:
+        - 面试管理
+      summary: 提交回答
+      description: 提交用户对当前面试题的回答，AI 将给出反馈并决定是否追问
+      operationId: submitAnswer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 面试会话 ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitAnswerRequest'
+      responses:
+        '200':
+          description: 成功提交回答，返回 AI 回应
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SubmitAnswerResult'
+        '400':
+          description: 面试已结束或参数错误
+        '404':
+          description: 面试会话不存在
+
+  /interviews/{id}/feedback:
+    post:
+      tags:
+        - 面试管理
+      summary: 获取面试报告
+      description: 面试结束后，生成并获取详细的面试评分与改进建议报告
+      operationId: getInterviewFeedback
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 面试会话 ID（状态须为 completed）
+      responses:
+        '200':
+          description: 成功获取面试报告
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/InterviewFeedback'
+        '400':
+          description: 面试尚未结束
+        '404':
+          description: 面试会话不存在
+
+  # ============================================================
+  # 职业规划模块
+  # ============================================================
+  /career/plan:
+    post:
+      tags:
+        - 职业规划
+      summary: 生成职业规划
+      description: 根据目标岗位和当前技能，分析差距并生成个性化职业发展路径
+      operationId: createCareerPlan
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlanRequest'
+      responses:
+        '201':
+          description: 职业规划生成成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      code:
+                        type: integer
+                        example: 201
+                      message:
+                        type: string
+                        example: 职业规划生成成功
+                      data:
+                        $ref: '#/components/schemas/CareerPlan'
+        '400':
+          description: 参数错误（resumeId 和 currentSkills 都未提供）
+
+  /career/plans:
+    get:
+      tags:
+        - 职业规划
+      summary: 获取职业规划列表
+      description: 获取当前用户的所有职业规划记录
+      operationId: listCareerPlans
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: 页码
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 50
+          description: 每页条数
+      responses:
+        '200':
+          description: 成功获取规划列表
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/CareerPlanSummary'
+                          pagination:
+                            $ref: '#/components/schemas/PaginationResult'
+
+  /career/plans/{id}:
+    get:
+      tags:
+        - 职业规划
+      summary: 获取规划详情
+      description: 获取指定职业规划的完整详情，包含分阶段路线、资源推荐和市场数据
+      operationId: getCareerPlan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 职业规划 ID
+          example: plan_xxx
+      responses:
+        '200':
+          description: 成功获取规划详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CareerPlan'
+        '404':
+          description: 规划不存在
+    delete:
+      tags:
+        - 职业规划
+      summary: 删除职业规划
+      description: 删除指定职业规划记录
+      operationId: deleteCareerPlan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 职业规划 ID
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      message:
+                        type: string
+                        example: 删除成功
+        '404':
+          description: 规划不存在
+
+  /career/plans/{id}/progress:
+    patch:
+      tags:
+        - 职业规划
+      summary: 更新学习进度
+      description: 手动更新某个学习阶段的完成进度
+      operationId: updatePlanProgress
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 职业规划 ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProgressRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CareerPlan'
+
+  /career/market-insight:
+    get:
+      tags:
+        - 职业规划
+      summary: 获取市场数据
+      description: 获取指定岗位的市场数据洞察，包括薪资、需求趋势和技能要求
+      operationId: getMarketInsight
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: position
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 目标岗位
+          example: 后端开发工程师
+      responses:
+        '200':
+          description: 成功获取市场数据
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MarketInsight'
+        '400':
+          description: 缺少 position 参数
+
+  # ============================================================
+  # 仪表盘模块
+  # ============================================================
+  /dashboard:
+    get:
+      tags:
+        - 仪表盘
+      summary: 获取首页概览
+      description: 获取仪表盘首页数据，包含统计概览、最近面试、最近规划和评分趋势
+      operationId: getDashboard
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功获取首页概览
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DashboardData'

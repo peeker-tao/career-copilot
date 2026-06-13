@@ -1,29 +1,58 @@
-# career-copilot
+<div align="center">
 
-具体切入点：解决大学生和求职者缺乏面试经验、不了解岗位要求，难以进行有效职业规划
+# 🚀 Career-Copilot
 
-的问题。
+**AI 驱动的大学生求职面试与职业规划平台**
 
-创新点：AI模拟面试官数字人，能根据目标岗位（如“产品经理”、“算法工程师”），生成高度
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
+![NestJS](https://img.shields.io/badge/NestJS-10-E0234E?logo=nestjs)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-仿真的面试问题，并能根据回答进行追问和反馈。同时，模型能分析用户简历和技能，结合
+</div>
 
-市场数据，推荐个性化的职业发展路径和学习计划。
+## 💡 痛点
 
+大学生求职常陷困境：**零面试经验、简历石沉大海、对未来一片茫然。**
 
+## ✨ 特色功能
 
+- **🤖 AI 模拟面试** — 数字人面试官根据目标岗位自动出题，支持追问 + 评分 + 流式对话
+- **📄 简历智能解析** — 上传 PDF/Word，AI 自动提取技能树，一键关联面试
+- **📊 多维面试报告** — 专业能力、沟通表达、逻辑思维、项目经验四维评估
+- **🎯 职业规划** — 技能差距分析 + 分阶段学习路线 + 市场洞察，告别迷茫
 
+## 🛠️ 技术栈
 
-## 项目负责人
+| 前端 | 后端 | 基础设施 |
+|:----:|:----:|:--------:|
+| React 18 + TypeScript | NestJS + Prisma | PostgreSQL 15 |
+| Ant Design 5 + TailwindCSS | JWT 双 Token 认证 | Redis 7 + Bull 队列 |
+| Zustand + React Router | WebSocket + OpenAI SDK | Docker Compose |
 
-- [陶宏阳](https://github.com/peeker-tao)
+## � 项目负责人
 
-## 团队成员
+| 成员 | 学号 | 班级 | 角色 | GitHub |
+|:----:|:----:|:----:|:----:|:------:|
+| 陶宏阳 | U202417349 | 软件 2402 | 后端 / AI 面试引擎 | [@peeker-tao](https://github.com/peeker-tao) |
 
-- [邓继舟](https://github.com/hezhui845) 软件2402 https://github.com/hezhui845
+## 👥 团队成员
 
-- [赵原一](https://github.com/sixteen06) 软件2402 https://github.com/sixteen06
+| 成员 | 学号 | 班级 | 角色 | GitHub |
+|:----:|:----:|:----:|:----:|:------:|
+| 邓继舟 | U202417338 | 软件 2402 | 前端 / 简历面试模块 | [@hezhui845](https://github.com/hezhui845) |
+| 赵原一 | U202417358 | 软件 2402 | 后端 / 数据库与部署 | [@sixteen06](https://github.com/sixteen06) |
+| 李烨 | U202417342 | 软件 2402 | 前端 / 仪表盘与职业规划 | [@lyxyz5223](https://github.com/lyxyz5223) |
 
-- [李烨](https://github.com/lyxyz5223) 软件2402 https://github.com/lyxyz5223
+## 🚦 快速开始
 
-- [陶宏阳](https://github.com/peeker-tao) 软件2402 https://github.com/peeker-tao
+```bash
+# 后端
+cd backend && npm install && npx prisma migrate dev && npm run start:dev
+
+# 前端  
+cd frontend && npm install && npm run dev
+```
+
+> 📖 详细文档：[架构](./project_architecture.md) · [API](./api_documentation.md) · [数据库](./database_design.md)
