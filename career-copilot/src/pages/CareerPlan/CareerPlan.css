@@ -1,0 +1,551 @@
+/* 职业规划页 */
+.career-plan-page {
+  padding: 24px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+/* 页面头部 */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.page-title {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.5px;
+}
+
+.page-desc {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.market-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.market-link:hover {
+  opacity: 0.8;
+}
+
+/* 双栏布局 */
+.page-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-subtitle {
+  font-size: 14px;
+  color: var(--text);
+  margin: -12px 0 20px 0;
+}
+
+.plans-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 规划卡片 */
+.plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.plan-card {
+  display: block;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.plan-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+  border-color: var(--accent-border);
+}
+
+.plan-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.plan-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.plan-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 2px 0;
+}
+
+.plan-card-date {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.plan-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.plan-action-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.plan-action-btn.view:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.plan-action-btn.delete:hover {
+  border-color: #ff4d4f;
+  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.08);
+}
+
+.plan-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 进度条 */
+.plan-card-progress {
+  margin-top: 14px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.progress-value {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), #a78bfa);
+  transition: width 0.6s ease;
+}
+
+/* 技能标签 */
+.plan-card-skills {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.skill-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 4px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.skill-tag.removable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.skill-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.skill-remove:hover {
+  opacity: 1;
+}
+
+/* 生成新规划区域 */
+.generate-section {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.generate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-h);
+  background: var(--bg);
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.form-input::placeholder {
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--text);
+  margin: 4px 0 0 0;
+}
+
+/* 自动补全 */
+.autocomplete-wrapper {
+  position: relative;
+}
+
+.suggestions-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 4px;
+  padding: 4px 0;
+  list-style: none;
+  z-index: 100;
+  box-shadow: var(--shadow);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  padding: 8px 14px;
+  font-size: 14px;
+  color: var(--text-h);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.suggestion-item:hover {
+  background: var(--accent-bg);
+}
+
+/* 输入方式切换 */
+.method-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.method-tab {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.method-tab:hover {
+  border-color: var(--accent-border);
+}
+
+.method-tab.active {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* 技能输入 */
+.skills-input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skills-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.skills-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.skill-input {
+  flex: 1;
+}
+
+.btn-secondary {
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+/* 上传区域 */
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upload-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 28px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+
+.upload-dropzone:hover {
+  border-color: var(--accent-border);
+}
+
+.upload-dropzone p {
+  font-size: 14px;
+  color: var(--text-h);
+  margin: 0;
+}
+
+/* 生成按钮 */
+.btn-generate {
+  width: 100%;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-generate:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-generate:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-generate:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 空状态 / 加载 */
+.empty-state-cp {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.empty-state-cp p {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.loading-skeleton-cp {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.skeleton-item-cp {
+  background: linear-gradient(90deg, var(--border) 25%, var(--code-bg) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 暗色模式 */
+@media (prefers-color-scheme: dark) {
+  .plan-action-btn.view:hover {
+    background: var(--accent-bg);
+  }
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .career-plan-page {
+    padding: 16px;
+  }
+  .page-layout {
+    grid-template-columns: 1fr;
+  }
+  .page-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  .method-tabs {
+    flex-direction: column;
+  }
+}
