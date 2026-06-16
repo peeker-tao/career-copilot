@@ -33,17 +33,17 @@
 
 ## � 项目负责人
 
-| 成员 | 学号 | 班级 | 角色 | GitHub |
-|:----:|:----:|:----:|:----:|:------:|
-| 陶宏阳 | U202417349 | 软件 2402 | 后端 / AI 面试引擎 | [@peeker-tao](https://github.com/peeker-tao) |
+| 成员 | 班级 | 角色 | GitHub |
+|:----:|:----:|:----:|:------:|
+| 陶宏阳 | 软件 2402 | 后端 / AI 面试引擎 | [@peeker-tao](https://github.com/peeker-tao) |
 
 ## 👥 团队成员
 
-| 成员 | 学号 | 班级 | 角色 | GitHub |
-|:----:|:----:|:----:|:----:|:------:|
-| 邓继舟 | U202417338 | 软件 2402 | 前端 / 简历面试模块 | [@hezhui845](https://github.com/hezhui845) |
-| 赵原一 | U202417358 | 软件 2402 | 后端 / 数据库与部署 | [@sixteen06](https://github.com/sixteen06) |
-| 李烨 | U202417342 | 软件 2402 | 前端 / 仪表盘与职业规划 | [@lyxyz5223](https://github.com/lyxyz5223) |
+| 成员 | 班级 | 角色 | GitHub |
+|:----:|:----:|:----:|:------:|
+| 邓继舟 | 软件 2402 | 前端 / 简历面试模块 | [@hezhui845](https://github.com/hezhui845) |
+| 赵原一 | 软件 2402 | 后端 / 数据库与部署 | [@sixteen06](https://github.com/sixteen06) |
+| 李烨 | 软件 2402 | 前端 / 仪表盘与职业规划 | [@lyxyz5223](https://github.com/lyxyz5223) |
 
 ## 🚦 快速开始
 
