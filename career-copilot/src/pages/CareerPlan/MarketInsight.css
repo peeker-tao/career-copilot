@@ -1,0 +1,83 @@
+/* 市场洞察页 */
+.market-page {
+  padding: 24px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.market-topbar {
+  margin-bottom: 16px;
+}
+
+.market-header {
+  margin-bottom: 24px;
+}
+
+/* 搜索栏 */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 24px;
+  transition: border-color 0.2s;
+}
+
+.search-bar:focus-within {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: var(--text-h);
+  background: transparent;
+  font-family: inherit;
+}
+
+.search-input::placeholder {
+  color: var(--text);
+  opacity: 0.6;
+}
+
+/* 图表网格 */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.charts-grid .large {
+  grid-column: 1 / -1;
+}
+
+.chart-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.chart-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 16px 0;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .market-page {
+    padding: 16px;
+  }
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
