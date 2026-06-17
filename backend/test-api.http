@@ -1,0 +1,351 @@
+### ===========================================
+### Career-Copilot API 测试
+### 支持两种测试方式：
+###
+### 方式一：REST Client（本文件）
+###   - 安装 VS Code 插件: REST Client (humao.rest-client)
+###   - 点击每个请求上方的 "Send Request" 按钮
+###
+### 方式二：Swagger UI（网页）
+###   - 打开 http://localhost:3002/api-docs
+###   - 先调 POST /api/auth/login → 复制 accessToken
+###   - 点右上角 "Authorize" → 输入 "Bearer <token>" → Authorize
+###   - ✅ 之后刷新页面 token 也会保留，无需重复输入
+###   - ⚠️ accessToken 有效期 15 分钟，过期需重新登录获取
+### ===========================================
+
+@baseUrl = http://localhost:3002/api
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbXFnMXA2amQwMDAwc3Bwbm43dGxzZGpqIiwiZW1haWwiOiJ0ZXN0MUBleGFtcGxlLmNvbSIsImlhdCI6MTc4MTU3ODI2NCwiZXhwIjoxNzgyMTgzMDY0fQ.9weVIHjo6hxlmE2zwXNjcAli1rLPy7w29r5OrHVmmPM
+@userId = <从登录返回的 user.id 复制到这里>
+@planId = <从创建规划返回的 id 复制到这里>
+@resumeId = <先调 3.1 上传简历 → 从返回的 data.id 复制到这里>
+
+### ===========================================
+# 1. 健康检查
+### ===========================================
+
+GET http://localhost:3002
+Content-Type: application/json
+
+### ===========================================
+# 2. 认证模块
+### ===========================================
+
+### 2.1 注册
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "test1@example.com",
+  "password": "Test123456",
+  "name": "测试用户"
+}
+
+### 2.2 登录（保存返回的 accessToken）
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Test123456"
+}
+
+### 2.3 刷新 Token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbXFnMG1qa3AwMDAwMWY3MDR5enZ5bDJuIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNzgxNTgwNDEwLCJleHAiOjE3ODIxODUyMTB9.mkRBJi_-uJpsYsFvLrkLFHRmgRe31Dy_MYJX8Jgmw4I"
+}
+
+### 2.4 获取用户信息（需登录）
+GET {{baseUrl}}/auth/profile
+Authorization: Bearer {{token}}
+
+### 2.5 修改个人资料
+PATCH {{baseUrl}}/auth/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "新名字",
+  "education": "本科-计算机科学与技术",
+  "targetPosition": "前端开发工程师"
+}
+
+### 2.6 获取全部用户
+GET {{baseUrl}}/users
+Authorization: Bearer {{token}}
+
+### 2.7 获取指定用户（传 id 查询参数）
+GET {{baseUrl}}/users?id={{userId}}
+Authorization: Bearer {{token}}
+
+### ===========================================
+# 3. 简历模块
+### ===========================================
+
+### 3.1 上传简历
+POST {{baseUrl}}/resumes/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----boundary
+
+------boundary
+Content-Disposition: form-data; name="file"; filename="resume.pdf"
+Content-Type: application/pdf
+
+< ./test-resume.pdf
+------boundary--
+
+### 3.2 简历列表
+GET {{baseUrl}}/resumes?page=1&pageSize=10
+Authorization: Bearer {{token}}
+
+### 3.3 简历详情
+GET {{baseUrl}}/resumes/{{resumeId}}
+Authorization: Bearer {{token}}
+
+### 3.4 编辑简历
+# 支持修改的字段（任选一个或多个）:
+#   title              - 简历标题
+#   parsedData         - 完整的解析数据对象（替换整块）
+#   skills             - 技能标签数组
+#   status             - 状态（parsing / completed / failed）
+PUT {{baseUrl}}/resumes/{{resumeId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "修改后的简历名称",
+  "skills": ["Java", "Spring Boot", "MySQL", "Redis"],
+  "parsedData": {
+    "basicInfo": { "name": "张三", "phone": "13800138000" },
+    "skills": ["Java", "Spring Boot"],
+    "education": [
+      { "school": "北京大学", "major": "计算机", "degree": "本科" }
+    ],
+    "experience": [],
+    "projects": [],
+    "summary": "3年Java开发经验"
+  }
+}
+
+# 如果只想补齐 skills 字段，可以只传:
+# PUT {{baseUrl}}/resumes/{{resumeId}}
+# Authorization: Bearer {{token}}
+# Content-Type: application/json
+# 
+# {
+#   "skills": ["Java", "Spring Boot", "MySQL"]
+# }
+
+### 3.5 删除简历
+DELETE {{baseUrl}}/resumes/{{resumeId}}
+Authorization: Bearer {{token}}
+
+### ===========================================
+# 4. AI 模块
+### ===========================================
+
+### 4.1 简历解析（需要先配置 LLM API Key）
+POST {{baseUrl}}/ai/resume/parse
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "text": "姓名：张三\n电话：13800138000\n邮箱：zhangsan@example.com\n\n教育经历：\n北京大学 - 计算机科学与技术 - 本科 - 2018.09 - 2022.06\n\n工作经历：\n字节跳动 - 前端开发工程师 - 2022.07 - 至今\n负责公司核心业务的前端架构设计与开发\n\n技能：\nJavaScript, TypeScript, React, Vue.js, Node.js"
+}
+
+### 4.2 生成面试题
+POST {{baseUrl}}/ai/interview/question
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "position": "前端开发工程师",
+  "difficulty": "mid",
+  "count": 3,
+  "skills": ["React", "TypeScript", "Vue"],
+  "industry": "互联网"
+}
+
+### 4.3 评估回答
+POST {{baseUrl}}/ai/interview/evaluate
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "question": "请解释 React 中 useState 和 useReducer 的区别以及各自的适用场景",
+  "answer": "useState 适用于简单的状态管理，比如布尔值、字符串等单一值。useReducer 适用于复杂的状态逻辑，比如包含多个子值的对象状态，或者下一个状态依赖于前一个状态的场景。useReducer 还可以配合 Context 实现全局状态管理。",
+  "expectedAnswer": "useState 适合单一、简单的状态值；useReducer 适合复杂状态逻辑、多个关联状态、或需要重用状态更新逻辑的场景",
+  "position": "前端开发工程师",
+  "difficulty": "mid"
+}
+
+### 4.4 生成面试报告
+POST {{baseUrl}}/ai/interview/report
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "messages": [
+    {
+      "question": "请介绍你的项目经验",
+      "answer": "我参与过电商平台的前端开发，使用 React+TypeScript 实现",
+      "score": 75
+    },
+    {
+      "question": "React 虚拟 DOM 的原理是什么",
+      "answer": "虚拟 DOM 是真实 DOM 的 JS 对象表示，通过 diff 算法比较差异，批量更新真实 DOM",
+      "score": 80
+    }
+  ]
+}
+
+### 4.5 生成职业规划
+POST {{baseUrl}}/ai/career/plan
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currentSkills": ["JavaScript", "HTML", "CSS", "Vue"],
+  "targetPosition": "高级前端开发工程师",
+  "experience": "1年前端开发经验",
+  "education": "本科-计算机科学与技术",
+  "goals": "希望在2年内成长为高级前端工程师"
+}
+
+### ===========================================
+# 5. 面试模块
+### ===========================================
+
+### 5.1 创建面试
+POST {{baseUrl}}/interviews
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "targetPosition": "前端开发工程师",
+  "difficulty": "mid",
+  "resumeId": 1
+}
+
+### 5.2 面试列表
+GET {{baseUrl}}/interviews?page=1&pageSize=10
+Authorization: Bearer {{token}}
+
+### 5.3 面试详情
+@interviewId = 你的面试ID
+GET {{baseUrl}}/interviews/{{interviewId}}
+Authorization: Bearer {{token}}
+
+### 5.4 面试对话记录
+GET {{baseUrl}}/interviews/{{interviewId}}/messages
+Authorization: Bearer {{token}}
+
+### 5.5 提交回答
+POST {{baseUrl}}/interviews/{{interviewId}}/answer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "content": "闭包是指有权访问另一个函数作用域中变量的函数，常用于数据私有化和函数工厂"
+}
+
+### 5.6 手动结束面试
+POST {{baseUrl}}/interviews/{{interviewId}}/complete
+Authorization: Bearer {{token}}
+
+### 5.7 生成面试反馈（需先完成面试）
+POST {{baseUrl}}/interviews/{{interviewId}}/feedback
+Authorization: Bearer {{token}}
+
+### ===========================================
+# 6. 职业规划
+### ===========================================
+
+### 6.1 创建职业规划（AI 生成差距分析 + 学习路线 + 市场洞察）
+POST {{baseUrl}}/career/plan
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currentSkills": ["JavaScript", "HTML", "CSS", "Vue", "Git"],
+  "targetPosition": "全栈开发工程师"
+}
+
+### 6.2 职业规划列表
+GET {{baseUrl}}/career/plans
+Authorization: Bearer {{token}}
+
+### 6.3 规划详情
+GET {{baseUrl}}/career/plans/{{planId}}
+Authorization: Bearer {{token}}
+
+### 6.4 市场洞察数据
+GET {{baseUrl}}/career/market-insight?position=全栈开发工程师
+Authorization: Bearer {{token}}
+
+### ===========================================
+# 7. WebSocket 实时面试（T-012）
+# 
+# ⚠️ REST Client 不支持 WebSocket 测试！
+# 请使用以下方法之一：
+# 
+# 方法一：浏览器控制台
+#   1. 打开 F12 开发者工具 → Console
+#   2. 粘贴以下代码：
+#   
+#   const ws = new WebSocket('ws://localhost:3002/ws/interview?token={{token}}');
+#   ws.onmessage = (e) => console.log('收到:', JSON.parse(e.data));
+#   ws.onopen = () => {
+#     console.log('已连接');
+#     ws.send(JSON.stringify({
+#       interviewId: '你的面试ID',
+#       content: '闭包是指有权访问另一个函数作用域中变量的函数'
+#     }));
+#   };
+# 
+# 方法二：安装 wscat 工具
+#   npm install -g wscat
+#   wscat -c "ws://localhost:3002/ws/interview?token={{token}}"
+#   连接后输入 JSON 消息：
+#   {"interviewId":"你的面试ID","content":"你的回答"}
+# 
+# 方法三：使用 WebSocket 测试网站
+#   访问 https://www.websocket.org/echo.html
+#   URL: ws://localhost:3002/ws/interview?token={{token}}
+# ===========================================
+### WebSocket 面试消息协议
+
+### 7.1 客户端 → 服务端 (user_answer)
+# {
+#   "interviewId": "xxx",
+#   "content": "你的回答内容"
+# }
+
+### 7.2 服务端 → 客户端 (ai_message_chunk)
+# {
+#   "messageId": "uuid",
+#   "chunk": "流式片段文本"
+# }
+
+### 7.3 服务端 → 客户端 (ai_message_done)
+# {
+#   "messageId": "uuid",
+#   "fullContent": "完整回复",
+#   "feedback": "评语",
+#   "score": 85,
+#   "strengths": ["优点1"],
+#   "weaknesses": ["不足1"],
+#   "isFollowUp": false,
+#   "nextAction": "nextQuestion",
+#   "nextQuestion": "下一题...",
+#   "followUpContent": null
+# }
+
+### 7.4 服务端 → 客户端 (error)
+# {
+#   "code": 401,
+#   "message": "未提供认证令牌"
+# }

@@ -45,10 +45,6 @@ logs/
 *.pid
 
 
-# Uploads (generated files)
-uploads/
-/public/uploads/
-
 
 # Docker
 .docker/
@@ -76,15 +72,8 @@ Desktop.ini
 tsconfig.tsbuildinfo
 
 
-# Project-specific
-/data
-/backend/uploads/
-/frontend/.env.local
 
-
-**/.yarn/*
-
-**/.yarn/install-state.gz
-
-backend/
 .VSCodeCounter/
+
+
+node_modules/
