@@ -12,6 +12,7 @@ import {
   ApiOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
+import { EmptyState } from '../../components/common';
 import './InterviewRoom.css';
 
 
@@ -224,10 +225,12 @@ function ChatMessages({messages, aiStreamingId}) {
   return (
     <div className="chat-messages">
       {messages.length === 0 && (
-        <div className="chat-empty">
-          <RobotOutlined style={{fontSize: 40, color: 'var(--border)'}} />
-          <p>正在准备面试题目...</p>
-        </div>
+        <EmptyState
+          icon={RobotOutlined}
+          title="正在准备面试题目..."
+          size="small"
+          style={{ paddingTop: 80 }}
+        />
       )}
       {messages.map((msg) => (
         <MessageBubble
@@ -446,13 +449,12 @@ const InterviewRoomPage = () => {
   if (!interview) {
     return (
       <div className="room-page">
-        <div className="room-error">
-          <ExclamationCircleOutlined style={{fontSize: 48, color: 'var(--text)'}} />
-          <p>面试不存在或已被删除</p>
-          <Link to="/interview" className="back-link">
-            <ArrowLeftOutlined /> 返回面试准备
-          </Link>
-        </div>
+        <EmptyState
+          icon={ExclamationCircleOutlined}
+          title="面试不存在或已被删除"
+          actionText="返回面试准备"
+          onAction={() => navigate('/interview')}
+        />
       </div>
     );
   }

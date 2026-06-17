@@ -6,7 +6,8 @@ import {
   MessageOutlined,
   CompassOutlined,
 } from '@ant-design/icons'
-import { Home, About, User, CareerPlanPage, CareerPlanDetailPage, MarketInsightPage, InterviewRoomPage } from './pages'
+import { Home, About, User, CareerPlanPage, CareerPlanDetailPage, MarketInsightPage, InterviewRoomPage, InterviewHistoryPage } from './pages'
+import { ErrorBoundary } from './components/common'
 import './App.css'
 
 function App() {
@@ -41,18 +42,20 @@ function App() {
         </div>
       </nav>
       <main className="app-main">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/user" element={<User />} />
-          <Route path="/user/:id" element={<User />} />
-          <Route path="/profile" element={<User />} />
-          <Route path="/career-plan" element={<CareerPlanPage />} />
-          <Route path="/career-plan/market-insight" element={<MarketInsightPage />} />
-          <Route path="/career-plan/:id" element={<CareerPlanDetailPage />} />
-          <Route path="/interview" element={<InterviewRoomPage />} />
-          <Route path="/interview/:id" element={<InterviewRoomPage />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/user" element={<User />} />
+            <Route path="/user/:id" element={<User />} />
+            <Route path="/profile" element={<User />} />
+            <Route path="/career-plan" element={<CareerPlanPage />} />
+            <Route path="/career-plan/market-insight" element={<MarketInsightPage />} />
+            <Route path="/career-plan/:id" element={<CareerPlanDetailPage />} />
+            <Route path="/interview" element={<InterviewHistoryPage />} />
+            <Route path="/interview/:id" element={<InterviewRoomPage />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </>
   )

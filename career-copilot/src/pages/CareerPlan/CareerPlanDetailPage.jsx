@@ -9,6 +9,7 @@ import {
   AimOutlined,
   RightOutlined,
 } from '@ant-design/icons'
+import { Loading, EmptyState, ConfirmModal } from '../../components/common'
 import './CareerPlanDetail.css'
 
 /* Mock 数据 */
@@ -141,6 +142,7 @@ const CareerPlanDetailPage = () => {
   const [loading, setLoading] = useState(true)
   const [plan, setPlan] = useState(null)
   const [progress, setProgress] = useState(0)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
     // 模拟 GET /career/plans/:id
@@ -168,10 +170,7 @@ const CareerPlanDetailPage = () => {
   if (loading) {
     return (
       <div className="detail-page">
-        <div className="loading-skeleton-cp">
-          <div className="skeleton-item-cp" style={{ height: 40, width: '40%' }} />
-          <div className="skeleton-item-cp" style={{ height: 200, width: '100%', marginTop: 24 }} />
-        </div>
+        <Loading skeleton style={{ padding: '24px 0' }} />
       </div>
     )
   }
@@ -179,12 +178,11 @@ const CareerPlanDetailPage = () => {
   if (!plan) {
     return (
       <div className="detail-page">
-        <div className="empty-state-cp">
-          <p>规划不存在或已被删除</p>
-          <Link to="/career-plan" className="market-link" style={{ marginTop: 16, display: 'inline-flex' }}>
-            ← 返回职业规划
-          </Link>
-        </div>
+        <EmptyState
+          title="规划不存在或已被删除"
+          actionText="返回职业规划"
+          onAction={() => navigate('/career-plan')}
+        />
       </div>
     )
   }
@@ -203,9 +201,7 @@ const CareerPlanDetailPage = () => {
           <button
             className="plan-action-btn delete"
             title="删除"
-            onClick={() => {
-              if (window.confirm('确认删除此规划？')) navigate('/career-plan')
-            }}
+            onClick={() => setShowDeleteConfirm(true)}
           >
             <DeleteOutlined />
           </button>
@@ -325,6 +321,19 @@ const CareerPlanDetailPage = () => {
           </Link>
         </div>
       </div>
+
+      <ConfirmModal
+        open={showDeleteConfirm}
+        title="确认删除"
+        message="删除后无法恢复，确定要删除此规划吗？"
+        type="danger"
+        confirmText="删除"
+        onConfirm={() => {
+          setShowDeleteConfirm(false)
+          navigate('/career-plan')
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   )
 }

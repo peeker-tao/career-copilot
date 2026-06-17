@@ -7,32 +7,7 @@
   text-align: left;
 }
 
-/* 加载 / 错误状态 */
-.room-loading,
-.room-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 40px;
-  gap: 16px;
-}
-
-.room-error p {
-  font-size: 15px;
-  color: var(--text);
-}
-
-.room-error .back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--accent);
-  text-decoration: none;
-  font-size: 14px;
-}
-
+/* 加载骨架屏 */
 .loading-header-skeleton {
   height: 56px;
   width: 100%;
@@ -201,20 +176,6 @@
   flex-direction: column;
   gap: 16px;
   scroll-behavior: smooth;
-}
-
-.chat-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 12px;
-  color: var(--text);
-}
-
-.chat-empty p {
-  font-size: 15px;
 }
 
 /* 消息行 */

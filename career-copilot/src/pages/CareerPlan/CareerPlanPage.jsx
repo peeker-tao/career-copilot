@@ -10,8 +10,8 @@ import {
   TagsOutlined,
   UploadOutlined,
   LoadingOutlined,
-  InboxOutlined,
 } from '@ant-design/icons'
+import { Loading, EmptyState, ConfirmModal } from '../../components/common'
 import './CareerPlan.css'
 
 /* Mock 数据 */
@@ -58,19 +58,13 @@ const POSITION_SUGGESTIONS = [
 ]
 
 /* 子组件：现有规划卡片列表 */
-function PlanCard({ plan, onDelete }) {
+function PlanCard({ plan, onDelete, onDeleteRequest }) {
   const [deleting, setDeleting] = useState(false)
 
   const handleDelete = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!window.confirm(`确认删除「${plan.targetPosition}」的职业规划？`)) return
-    setDeleting(true)
-    // 模拟删除请求
-    setTimeout(() => {
-      onDelete(plan.id)
-      setDeleting(false)
-    }, 500)
+    onDeleteRequest?.(plan)
   }
 
   return (
@@ -101,9 +95,8 @@ function PlanCard({ plan, onDelete }) {
             className="plan-action-btn delete"
             title="删除规划"
             onClick={handleDelete}
-            disabled={deleting}
           >
-            {deleting ? <LoadingOutlined /> : <DeleteOutlined />}
+            <DeleteOutlined />
           </button>
         </div>
       </div>
@@ -350,6 +343,7 @@ function GeneratePlanForm({ onGenerated }) {
 const CareerPlanPage = () => {
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   // 初始加载（loading 初始为 true，无需在 effect 内同步 setLoading）
   useEffect(() => {
@@ -365,6 +359,7 @@ const CareerPlanPage = () => {
 
   const handleDelete = (id) => {
     setPlans((prev) => prev.filter((p) => p.id !== id))
+    setDeleteTarget(null)
   }
 
   const handleGenerated = () => {
@@ -397,34 +392,12 @@ const CareerPlanPage = () => {
           </h2>
 
           {loading ? (
-            <div className="loading-skeleton-cp">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="skeleton-card">
-                  <div
-                    className="skeleton-item-cp"
-                    style={{ height: 20, width: '60%' }}
-                  />
-                  <div
-                    className="skeleton-item-cp"
-                    style={{ height: 14, width: '40%', marginTop: 8 }}
-                  />
-                  <div
-                    className="skeleton-item-cp"
-                    style={{
-                      height: 8,
-                      width: '100%',
-                      marginTop: 16,
-                      borderRadius: 4,
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
+            <Loading skeleton />
           ) : plans.length === 0 ? (
-            <div className="empty-state-cp">
-              <InboxOutlined style={{ fontSize: 48, color: 'var(--border)' }} />
-              <p>还没有职业规划，去右侧生成一个吧！</p>
-            </div>
+            <EmptyState
+              title="还没有职业规划"
+              description="去右侧生成你的第一个职业规划吧！"
+            />
           ) : (
             <div className="plans-list">
               {plans.map((plan) => (
@@ -432,6 +405,7 @@ const CareerPlanPage = () => {
                   key={plan.id}
                   plan={plan}
                   onDelete={handleDelete}
+                  onDeleteRequest={(p) => setDeleteTarget(p)}
                 />
               ))}
             </div>
@@ -443,6 +417,16 @@ const CareerPlanPage = () => {
           <GeneratePlanForm onGenerated={handleGenerated} />
         </div>
       </div>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="确认删除"
+        message={deleteTarget ? `确认删除「${deleteTarget.targetPosition}」的职业规划？删除后无法恢复。` : ''}
+        type="danger"
+        confirmText="删除"
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }

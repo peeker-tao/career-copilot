@@ -14,11 +14,12 @@ import {
   AimOutlined,
   BookOutlined,
   LoadingOutlined,
-  ExclamationCircleOutlined,
   MessageOutlined,
   FileTextOutlined,
   CompassOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons'
+import { Loading, EmptyState, ConfirmModal } from '../components/common'
 import './User.css'
 
 /* Mock 数据 */
@@ -256,14 +257,9 @@ function ProfileForm({ user, onSave }) {
 }
 
 /* 子组件：账号安全 */
-function AccountSecurity() {
-  const navigate = useNavigate()
-
+function AccountSecurity({ onLogoutRequest }) {
   const handleLogout = () => {
-    if (window.confirm('确认退出登录？')) {
-      // 模拟退出
-      navigate('/login')
-    }
+    onLogoutRequest?.()
   }
 
   return (
@@ -301,8 +297,10 @@ function AccountSecurity() {
 
 /* 主组件 */
 const User = () => {
+  const navigate = useNavigate()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   useEffect(() => {
     // 模拟 GET /auth/profile
@@ -328,17 +326,11 @@ const User = () => {
   if (loading) {
     return (
       <div className="profile-page">
-        <div className="loading-skeleton-pf">
-          <div className="skeleton-row">
-            <div className="skeleton-avatar" />
-            <div>
-              <div className="skeleton-item-pf" style={{ width: 160, height: 20 }} />
-              <div className="skeleton-item-pf" style={{ width: 200, height: 14, marginTop: 8 }} />
-            </div>
-          </div>
-          <div className="skeleton-item-pf" style={{ width: '100%', height: 80, marginTop: 20 }} />
-          <div className="skeleton-item-pf" style={{ width: '100%', height: 260, marginTop: 20 }} />
-        </div>
+        <Loading
+          skeleton
+          tip="加载中..."
+          style={{ padding: '24px 0' }}
+        />
       </div>
     )
   }
@@ -346,10 +338,12 @@ const User = () => {
   if (!user) {
     return (
       <div className="profile-page">
-        <div className="empty-state-pf">
-          <ExclamationCircleOutlined style={{ fontSize: 48, color: 'var(--border)' }} />
-          <p>加载用户信息失败</p>
-        </div>
+        <EmptyState
+          title="加载用户信息失败"
+          description="请检查网络连接后重试"
+          actionText="重新加载"
+          onAction={() => window.location.reload()}
+        />
       </div>
     )
   }
@@ -400,9 +394,22 @@ const User = () => {
           <h2 className="card-title">
             <SafetyCertificateOutlined /> 账号安全
           </h2>
-          <AccountSecurity />
+          <AccountSecurity onLogoutRequest={() => setShowLogoutConfirm(true)} />
         </div>
       </div>
+
+      <ConfirmModal
+        open={showLogoutConfirm}
+        title="确认退出登录"
+        message="退出后将需要重新登录"
+        type="warning"
+        confirmText="退出登录"
+        onConfirm={() => {
+          setShowLogoutConfirm(false)
+          navigate('/login')
+        }}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </div>
   )
 }

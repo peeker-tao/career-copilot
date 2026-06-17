@@ -432,52 +432,6 @@
   color: #fff;
 }
 
-/* 骨架屏 */
-.loading-skeleton-pf {
-  padding: 24px 32px;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.skeleton-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.skeleton-avatar {
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  background: linear-gradient(90deg, var(--border) 25%, var(--code-bg) 50%, var(--border) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  flex-shrink: 0;
-}
-
-.skeleton-item-pf {
-  background: linear-gradient(90deg, var(--border) 25%, var(--code-bg) 50%, var(--border) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 6px;
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-.empty-state-pf {
-  text-align: center;
-  padding: 80px 20px;
-  color: var(--text);
-}
-
-.empty-state-pf p {
-  margin-top: 12px;
-  font-size: 15px;
-}
-
 /* 暗色模式 */
 @media (prefers-color-scheme: dark) {
   .avatar-placeholder,
