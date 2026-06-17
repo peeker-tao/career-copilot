@@ -3,5 +3,18 @@ import About from './About'
 import User from './User'
 import { CareerPlanPage, CareerPlanDetailPage, MarketInsightPage } from './CareerPlan'
 import { InterviewRoomPage, InterviewHistoryPage } from './Interview'
+import { ResumeDetailPage, ResumeListPage, ResumeUploadPage } from './Resume'
 
-export { Home, About, User, CareerPlanPage, CareerPlanDetailPage, MarketInsightPage, InterviewRoomPage, InterviewHistoryPage }
+export {
+    Home,
+    About,
+    User,
+    CareerPlanPage,
+    CareerPlanDetailPage,
+    MarketInsightPage,
+    InterviewRoomPage,
+    InterviewHistoryPage,
+    ResumeDetailPage,
+    ResumeListPage,
+    ResumeUploadPage
+}

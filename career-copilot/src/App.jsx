@@ -6,7 +6,19 @@ import {
   MessageOutlined,
   CompassOutlined,
 } from '@ant-design/icons'
-import { Home, About, User, CareerPlanPage, CareerPlanDetailPage, MarketInsightPage, InterviewRoomPage, InterviewHistoryPage } from './pages'
+import {
+  Home,
+  About,
+  User,
+  CareerPlanPage,
+  CareerPlanDetailPage,
+  MarketInsightPage,
+  InterviewRoomPage,
+  InterviewHistoryPage,
+  ResumeDetailPage,
+  ResumeListPage,
+  ResumeUploadPage,
+} from './pages'
 import { ErrorBoundary } from './components/common'
 import './App.css'
 
@@ -54,6 +66,9 @@ function App() {
             <Route path="/career-plan/:id" element={<CareerPlanDetailPage />} />
             <Route path="/interview" element={<InterviewHistoryPage />} />
             <Route path="/interview/:id" element={<InterviewRoomPage />} />
+            <Route path="/resume" element={<ResumeListPage />} />
+            <Route path="/resume/:id" element={<ResumeDetailPage />} />
+            <Route path="/resume/upload" element={<ResumeUploadPage />} />
           </Routes>
         </ErrorBoundary>
       </main>
