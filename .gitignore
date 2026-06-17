@@ -82,3 +82,6 @@ tsconfig.tsbuildinfo
 /frontend/.env.local
 
 
+**/.yarn/*
+
+career-copilot/.yarn/install-state.gz
