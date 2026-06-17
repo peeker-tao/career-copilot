@@ -8,7 +8,7 @@ info:
     url: https://github.com/peeker-tao
 
 servers:
-  - url: http://localhost:3001/api/v1
+  - url: http://localhost:3002/api
     description: 本地开发环境
   - url: https://test-api.career-copilot.com/api/v1
     description: 测试环境
@@ -676,15 +676,20 @@ components:
         type:
           type: string
           enum:
-            - document
             - video
             - book
+            - project
             - course
-          example: document
+            - article
+          example: course
         url:
           type: string
           format: uri
           example: https://spring.io/guides
+        description:
+          type: string
+          description: 推荐理由
+          example: Spring 官方出品的系统学习指南
 
     Phase:
       type: object
@@ -720,6 +725,7 @@ components:
 
     MarketInsight:
       type: object
+      description: 由 AI 生成的市场洞察数据
       properties:
         averageSalary:
           type: string
@@ -733,6 +739,7 @@ components:
           type: array
           items:
             type: string
+          description: 核心技能要求（按重要性排序）
           example:
             - Java
             - Spring Boot
@@ -742,11 +749,23 @@ components:
         experienceDistribution:
           type: object
           description: 经验年限分布
-          example:
-            应届: 20%
-            1-3年: 35%
-            3-5年: 30%
-            5年以上: 15%
+          properties:
+            entry:
+              type: string
+              description: 应届生占比
+              example: '20%'
+            junior:
+              type: string
+              description: 1-3年占比
+              example: '35%'
+            mid:
+              type: string
+              description: 3-5年占比
+              example: '30%'
+            senior:
+              type: string
+              description: 5年以上占比
+              example: '15%'
 
     CareerPlan:
       type: object

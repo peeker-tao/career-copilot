@@ -635,7 +635,12 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
       "averageSalary": "15K-30K",
       "demandTrend": "持续增长",
       "topSkills": ["Java", "Spring Boot", "MySQL", "Redis", "微服务"],
-      "experienceDistribution": { "应届": "20%", "1-3年": "35%", "3-5年": "30%", "5年以上": "15%" }
+      "experienceDistribution": {
+        "entry": "20%",
+        "junior": "35%",
+        "mid": "30%",
+        "senior": "15%"
+      }
     },
     "createdAt": "2026-06-13T08:00:00.000Z"
   }
@@ -670,7 +675,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 **响应 `200`：** 同 POST 创建返回的完整数据结构
 
-### DELETE `/career/plans/:id` — 删除规划
+### DELETE `/career/plans/:id` — 删除规划（待实现）
 
 **响应 `200`：**
 
@@ -681,7 +686,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 }
 ```
 
-### PATCH `/career/plans/:id/progress` — 更新学习进度
+### PATCH `/career/plans/:id/progress` — 更新学习进度（待实现）
 
 **请求体：**
 
@@ -692,7 +697,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 }
 ```
 
-### GET `/career/market-insight` — 获取市场数据
+### GET `/career/market-insight` — 获取市场洞察数据
 
 **查询参数：**
 
@@ -700,7 +705,24 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 |------|------|:----:|------|
 | `position` | string | ✅ | 目标岗位 |
 
-**响应 `200`：** 同职业规划中的 `marketInsight` 结构
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "averageSalary": "15K-30K",
+    "demandTrend": "持续增长",
+    "topSkills": ["Java", "Spring Boot", "MySQL", "Redis", "微服务"],
+    "experienceDistribution": {
+      "entry": "20%",
+      "junior": "35%",
+      "mid": "30%",
+      "senior": "15%"
+    }
+  }
+}
 
 ---
 

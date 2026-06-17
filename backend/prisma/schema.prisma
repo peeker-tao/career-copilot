@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  name          String
+  avatar        String?
+  education     String?
+  targetPosition String?  @map("target_position")
+  role          String    @default("user")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  resumes       Resume[]
+  interviews    Interview[]
+  careerPlans   CareerPlan[]
+
+  @@map("users")
+}
+
+model Resume {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  title       String
+  fileUrl     String?   @map("file_url")
+  parsedData  Json?     @map("parsed_data")
+  skills      String[]
+  status      String    @default("parsing")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interviews  Interview[]
+
+  @@index([userId, createdAt])
+  @@map("resumes")
+}
+
+model Interview {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  resumeId        String?   @map("resume_id")
+  targetPosition  String    @map("target_position")
+  difficulty      String    @default("medium")
+  status          String    @default("in_progress")
+  questionCount   Int       @default(0) @map("question_count")
+  score           Int?
+  startedAt       DateTime  @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  overallFeedback Json?     @map("overall_feedback")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume          Resume?   @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  messages        InterviewMessage[]
+
+  @@index([userId, status, startedAt])
+  @@index([targetPosition])
+  @@map("interviews")
+}
+
+model InterviewMessage {
+  id          String    @id @default(cuid())
+  interviewId String    @map("interview_id")
+  role        String
+  content     String
+  questionType String?  @map("question_type")
+  feedback    String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@index([interviewId, createdAt])
+  @@map("interview_messages")
+}
+
+model CareerPlan {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  targetPosition  String    @map("target_position")
+  currentSkills   String[]  @map("current_skills")
+  gapSkills       String[]  @map("gap_skills")
+  roadmap         Json
+  marketInsight   Json?     @map("market_insight")
+  progress        Int       @default(0)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("career_plans")
+}

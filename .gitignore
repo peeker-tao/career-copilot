@@ -93,3 +93,12 @@ tsconfig.tsbuildinfo
 /data
 /backend/uploads/
 /frontend/.env.local
+
+# =====================
+# Other
+# =====================
+我的任务.md
+
+backend/generated
+/datasets
+.conda
