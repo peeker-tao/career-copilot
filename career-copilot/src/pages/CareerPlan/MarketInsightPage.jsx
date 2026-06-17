@@ -5,6 +5,7 @@ import {
   ArrowLeftOutlined,
   SearchOutlined,
 } from '@ant-design/icons'
+import { Loading } from '../../components/common'
 import './MarketInsight.css'
 
 /* Mock 数据 */
@@ -271,9 +272,7 @@ const MarketInsightPage = () => {
         <div className="chart-card large">
           <h3 className="chart-title">薪资范围（K/月）</h3>
           {loading ? (
-            <div className="loading-skeleton-cp" style={{ height: 240 }}>
-              <div className="skeleton-item-cp" style={{ width: '100%', height: '100%' }} />
-            </div>
+            <Loading skeleton={{ rows: 1, itemHeight: 280 }} style={{ height: 280 }} />
           ) : (
             <ReactECharts option={salaryOption} style={{ height: 280 }} />
           )}
@@ -282,9 +281,7 @@ const MarketInsightPage = () => {
         <div className="chart-card large">
           <h3 className="chart-title">需求趋势</h3>
           {loading ? (
-            <div className="loading-skeleton-cp" style={{ height: 240 }}>
-              <div className="skeleton-item-cp" style={{ width: '100%', height: '100%' }} />
-            </div>
+            <Loading skeleton={{ rows: 1, itemHeight: 260 }} style={{ height: 260 }} />
           ) : (
             <ReactECharts option={trendOption} style={{ height: 260 }} />
           )}
@@ -293,9 +290,7 @@ const MarketInsightPage = () => {
         <div className="chart-card">
           <h3 className="chart-title">Top 10 技能需求排行</h3>
           {loading ? (
-            <div className="loading-skeleton-cp" style={{ height: 300 }}>
-              <div className="skeleton-item-cp" style={{ width: '100%', height: '100%' }} />
-            </div>
+            <Loading skeleton={{ rows: 1, itemHeight: 320 }} style={{ height: 320 }} />
           ) : (
             <ReactECharts option={topSkillsOption} style={{ height: 320 }} />
           )}
@@ -304,9 +299,7 @@ const MarketInsightPage = () => {
         <div className="chart-card">
           <h3 className="chart-title">经验年限分布</h3>
           {loading ? (
-            <div className="loading-skeleton-cp" style={{ height: 240 }}>
-              <div className="skeleton-item-cp" style={{ width: '100%', height: '100%' }} />
-            </div>
+            <Loading skeleton={{ rows: 1, itemHeight: 280 }} style={{ height: 280 }} />
           ) : (
             <ReactECharts option={expPieOption} style={{ height: 280 }} />
           )}

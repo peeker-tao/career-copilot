@@ -155,23 +155,32 @@ function ScoreChart({ data, loading }) {
         backgroundColor: 'var(--bg)',
         borderColor: 'var(--border)',
         textStyle: { color: 'var(--text-h)', fontSize: 12 },
-        formatter: '第 {c} 次面试<br/>评分: <strong>{c} 分</strong>',
+        formatter: '第 {b} 次面试<br/>评分: <strong>{c} 分</strong>',
       },
       grid: {
-        left: 40,
-        right: 16,
-        top: 20,
-        bottom: 24,
+        left: 44,
+        right: 18,
+        top: 32,
+        bottom: 36,
       },
       xAxis: {
         type: 'category',
-        data: data.map((_, i) => `第${i + 1}次`),
+        name: '面试（次）',
+        nameLocation: 'center',
+        nameGap: 24,
+        nameTextStyle: { color: 'var(--text)', fontSize: 11, fontWeight: 500 },
+        data: data.map((_, i) => `${i + 1}`),
         axisLine: { lineStyle: { color: 'var(--border)' } },
         axisTick: { show: false },
         axisLabel: { color: 'var(--text)', fontSize: 11 },
       },
       yAxis: {
         type: 'value',
+        name: '评分（分）',
+        nameLocation: 'end',
+        nameGap: 18,
+        nameRotate: 0,
+        nameTextStyle: { color: 'var(--text)', fontSize: 11, fontWeight: 500, padding: [0, 0, 4, 0] },
         min: 0,
         max: 100,
         splitLine: {
@@ -210,13 +219,16 @@ function ScoreChart({ data, loading }) {
           },
           markLine: {
             silent: true,
+            symbol: 'none',
             data: [
               {
                 yAxis: 60,
                 label: {
                   formatter: '及格线',
-                  color: 'var(--text)',
-                  fontSize: 11,
+                  color: '#ff4d4f',
+                  fontSize: 12,
+                  position: 'insideEndTop',
+                  distance: [4, -4],
                 },
                 lineStyle: {
                   color: '#ff4d4f',

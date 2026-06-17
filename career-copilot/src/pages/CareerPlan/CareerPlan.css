@@ -483,46 +483,6 @@
   cursor: not-allowed;
 }
 
-/* 空状态 / 加载 */
-.empty-state-cp {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px dashed var(--border);
-  border-radius: 12px;
-}
-
-.empty-state-cp p {
-  margin-top: 12px;
-  font-size: 14px;
-}
-
-.loading-skeleton-cp {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.skeleton-card {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 18px 20px;
-}
-
-.skeleton-item-cp {
-  background: linear-gradient(90deg, var(--border) 25%, var(--code-bg) 50%, var(--border) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 6px;
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
 /* 暗色模式 */
 @media (prefers-color-scheme: dark) {
   .plan-action-btn.view:hover {
