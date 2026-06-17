@@ -39,7 +39,7 @@
 
 ```env
 LLM_PROVIDER=deepseek
-DEEPSEEK_API_KEY=sk-adf2d1486f924b9ba75da484c65fab05
+DEEPSEEK_API_KEY=私发给你
 DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
 DEEPSEEK_MODEL=deepseek-chat
 ```
