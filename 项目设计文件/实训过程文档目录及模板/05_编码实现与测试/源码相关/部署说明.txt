@@ -1,0 +1,21 @@
+1、开发平台和环境：操作系统环境Windows XP；开发平台VS.NET 2008；数据库SQL Server 2005；Web服务器xxx等。
+
+2、项目导入，导入源代码文件夹中xxx文件等。
+
+3、安装“相关组件”文件夹中PhysX_9.10.0513_SystemSoftware.exe组件、yyy组件、...n组件。
+
+4、PhysX_9.10.0513_SystemSoftware.exe组件安装和配置
+在源代码开发环境中配置xxx组件，方法：
+project-->....
+
+5、yyy组件安装和配置
+在源代码开发环境中配置yyy组件，方法：
+project-->....
+
+...n组件
+
+6、数据库配置
+导入数据库脚本，用户名为xxx和密码为yyy，数据库名为kkk等。
+
+7、系统运行
+运行xxx文件，即可启动项目，初始用户名aa和密码bbb，即可登录系统。

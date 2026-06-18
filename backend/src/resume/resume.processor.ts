@@ -45,11 +45,11 @@ export class ResumeProcessor extends WorkerHost {
       // 3. LLM 结构化提取
       const parsedData = await this.resumeParser.parseWithLLM(text);
 
-      // 4. 更新数据库
+      // 4. 更新数据库 — Prisma 5 支持直接传入对象
       await this.prisma.resume.update({
         where: { id: resumeId },
         data: {
-          parsedData: JSON.parse(JSON.stringify(parsedData)),
+          parsedData: parsedData as any,
           skills: parsedData.skills || [],
           status: 'completed',
         },

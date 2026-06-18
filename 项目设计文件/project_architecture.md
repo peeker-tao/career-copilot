@@ -277,22 +277,37 @@ career-copilot/
 │   │   ├── resume/              # 简历模块
 │   │   │   ├── resume.controller.ts
 │   │   │   ├── resume.service.ts
-│   │   │   └── resume.parser.ts # 简历解析服务
+│   │   │   ├── resume.parser.ts        # 简历解析引擎
+│   │   │   └── resume.processor.ts     # BullMQ 队列消费者（异步解析）
 │   │   ├── interview/           # 面试模块（核心）
 │   │   │   ├── interview.controller.ts
 │   │   │   ├── interview.service.ts
-│   │   │   ├── interview.gateway.ts  # WebSocket
-│   │   │   ├── ai-interview.service.ts # AI 面试逻辑
+│   │   │   ├── interview.gateway.ts       # WebSocket
+│   │   │   ├── interview.utils.ts         # 面试动作标准化
+│   │   │   ├── interview-report.service.ts# 面试报告生成
+│   │   │   ├── ai-interview.service.ts    # AI 面试逻辑
 │   │   │   └── dto/
 │   │   ├── career/              # 职业规划模块
 │   │   │   ├── career.controller.ts
 │   │   │   ├── career.service.ts
-│   │   │   └── career.planner.ts
+│   │   │   ├── career.planner.ts
+│   │   │   └── market-insight.service.ts  # 市场洞察
 │   │   ├── ai/                  # AI 统一入口
+│   │   │   ├── ai.module.ts
 │   │   │   ├── ai.service.ts
-│   │   │   ├── llm.provider.ts  # LLM 适配器
-│   │   │   └── voice.service.ts # 语音服务
+│   │   │   ├── ai.controller.ts       # 5 个 AI 端点
+│   │   │   ├── llm.provider.ts       # LLM 适配器
+│   │   │   ├── dto/
+│   │   │   ├── providers/            # LLM Provider 实现
+│   │   │   └── prompts/              # 5 个 Prompt 模板
+│   │   ├── queue/               # 消息队列
+│   │   │   ├── queue.module.ts       # BullMQ 配置
+│   │   │   └── queue.service.ts      # 作业调度
+│   │   ├── redis/               # Redis 缓存
+│   │   │   ├── redis.module.ts       # Redis 连接
+│   │   │   └── redis.service.ts      # 缓存方法
 │   │   ├── common/              # 公共模块
+│   │   ├── types/               # 全局类型定义
 │   │   ├── app.module.ts
 │   │   └── main.ts
 │   ├── docker-compose.yml       # PostgreSQL + Redis
@@ -321,27 +336,29 @@ career-copilot/
 | POST | `/api/auth/login` | 登录 |
 | POST | `/api/auth/refresh` | 刷新 Token |
 | GET  | `/api/auth/profile` | 获取用户信息 |
+| PATCH | `/api/auth/profile` | 修改个人资料 |
 
 ### 简历模块
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/resumes/upload` | 上传简历文件 |
-| GET  | `/api/resumes` | 获取简历列表 |
+| POST | `/api/resumes/upload` | 上传简历文件（异步解析） |
+| GET  | `/api/resumes` | 获取简历列表（分页） |
 | GET  | `/api/resumes/:id` | 获取简历详情（含解析数据） |
+| PUT  | `/api/resumes/:id` | 编辑简历 |
 | DELETE | `/api/resumes/:id` | 删除简历 |
 
 ### 面试模块
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/interviews` | 创建面试会话 |
-| GET  | `/api/interviews` | 获取面试历史 |
+| POST | `/api/interviews` | 创建面试会话（AI 自动出题） |
+| GET  | `/api/interviews` | 获取面试历史（分页+筛选） |
 | GET  | `/api/interviews/:id` | 获取面试详情 |
 | GET  | `/api/interviews/:id/messages` | 获取对话历史 |
-| POST | `/api/interviews/:id/answer` | 提交回答 |
+| POST | `/api/interviews/:id/answer` | 提交回答（AI 评估+追问/下一题） |
 | POST | `/api/interviews/:id/feedback` | 获取面试反馈报告 |
-| WS   | `/ws/interview/:id` | WebSocket 实时对话 |
+| WS   | `/ws/interview` | WebSocket 实时对话（流式） |
 
 ### 职业规划模块
 
@@ -350,7 +367,18 @@ career-copilot/
 | POST | `/api/career/plan` | 生成职业规划 |
 | GET  | `/api/career/plans` | 获取规划列表 |
 | GET  | `/api/career/plans/:id` | 获取规划详情 |
-| GET  | `/api/career/market-insight` | 获取岗位市场数据 |
+| DELETE | `/api/career/plans/:id` | 删除规划 |
+| POST | `/api/career/market-insight` | 获取岗位市场数据 |
+
+### AI 统一服务层
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/ai/resume/parse` | 简历文本 → 结构化 JSON |
+| POST | `/api/ai/interview/question` | 根据岗位生成面试题 |
+| POST | `/api/ai/interview/evaluate` | 评估用户回答 |
+| POST | `/api/ai/interview/report` | 面试对话 → 综合评价报告 |
+| POST | `/api/ai/career/plan` | 技能分析 → 职业规划 + 学习路线 |
 
 ---
 

@@ -29,15 +29,15 @@ export class CareerService {
       `✅ 职业规划 AI 生成完成: gapSkills=${planResult.gapSkills.length} 项, roadmap=${planResult.roadmap.length} 阶段`,
     );
 
-    // 2. 持久化到数据库
+    // 2. 持久化到数据库 — Prisma 5 支持直接传入 JSON 对象
     const plan = await this.prisma.careerPlan.create({
       data: {
         userId,
         targetPosition: data.targetPosition,
         currentSkills: data.currentSkills || [],
         gapSkills: planResult.gapSkills,
-        roadmap: JSON.parse(JSON.stringify(planResult.roadmap)),
-        marketInsight: JSON.parse(JSON.stringify(planResult.marketInsight)),
+        roadmap: planResult.roadmap as any,
+        marketInsight: planResult.marketInsight as any,
         progress: 0,
       },
     });
@@ -62,5 +62,17 @@ export class CareerService {
     }
 
     return plan;
+  }
+
+  async deletePlan(id: string, userId: string) {
+    // 先验证规划存在且属于当前用户
+    await this.getPlan(id, userId);
+
+    // 删除规划
+    await this.prisma.careerPlan.delete({
+      where: { id },
+    });
+
+    this.logger.log(`🗑️ 职业规划已删除: planId=${id}, userId=${userId}`);
   }
 }

@@ -8,6 +8,7 @@ import { PrismaService } from '../common/prisma.service';
 import { AiService } from '../ai/ai.service';
 import { AiInterviewService, InterviewContext } from './ai-interview.service';
 import { InterviewReportService } from './interview-report.service';
+import { normalizeNextAction } from './interview.utils';
 
 @Injectable()
 export class InterviewService {
@@ -217,15 +218,8 @@ export class InterviewService {
       };
     }
 
-    // 5. 根据 nextAction 处理后续（容错：大小写不敏感 + 常见变体）
-    const normalizeAction = (a: string): string => {
-      const v = (a || '').toLowerCase().replace(/[_-]/g, '');
-      if (v === 'followup') return 'followUp';
-      if (v === 'nextquestion') return 'nextQuestion';
-      if (v === 'complete') return 'complete';
-      return 'nextQuestion'; // 默认进入下一题
-    };
-    const action = normalizeAction(evaluation.nextAction || '');
+    // 5. 根据 nextAction 处理后续（使用共享归一化函数）
+    const action = normalizeNextAction(evaluation.nextAction || '');
 
     let nextQuestion: { content: string; questionType: string } | undefined;
     let isComplete = false;

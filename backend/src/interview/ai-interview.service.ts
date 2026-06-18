@@ -6,6 +6,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiService } from '../ai/ai.service';
 import { buildInterviewSystemPrompt } from '../ai/prompts/interview.system';
+import { normalizeNextAction } from './interview.utils';
 
 export interface InterviewContext {
   position: string;
@@ -98,16 +99,7 @@ export class AiInterviewService {
     const result = await this.aiService.callLLM(systemPrompt, userPrompt);
 
     // 容错归一化 nextAction（大小写 / 下划线 / 连字符变体）
-    const rawAction = (result.nextAction as string) || '';
-    const normalized =
-      (
-        {
-          followup: 'followUp',
-          follow_up: 'followUp',
-          nextquestion: 'nextQuestion',
-          next_question: 'nextQuestion',
-        } as Record<string, string>
-      )[rawAction.toLowerCase().replace(/[_-]/g, '')] || 'nextQuestion';
+    const normalized = normalizeNextAction(result.nextAction as string);
 
     return {
       score: typeof result.score === 'number' ? result.score : 70,

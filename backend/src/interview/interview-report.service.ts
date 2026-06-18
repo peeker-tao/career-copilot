@@ -114,7 +114,7 @@ export class InterviewReportService {
     await this.prisma.interview.update({
       where: { id: interviewId },
       data: {
-        overallFeedback: JSON.parse(JSON.stringify(fullReport)),
+        overallFeedback: fullReport as any,
         score: fullReport.overallScore,
       },
     });
