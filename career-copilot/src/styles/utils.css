@@ -1,0 +1,87 @@
+/* ===== 通用工具类 ===== */
+
+/* 字体颜色 */
+.text-heading { color: var(--text-h); }
+.text-body { color: var(--text); }
+.text-accent { color: var(--accent); }
+.text-success { color: #22c55e; }
+.text-warning { color: #eab308; }
+.text-danger { color: #ff4d4f; }
+
+/* 字体大小 */
+.fs-12 { font-size: 12px; }
+.fs-13 { font-size: 13px; }
+.fs-14 { font-size: 14px; }
+
+/* 外边距 */
+.mr-6 { margin-right: 6px; }
+.mr-8 { margin-right: 8px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-12 { margin-bottom: 12px; }
+.mb-16 { margin-bottom: 16px; }
+
+/* 内边距 */
+.pad-24-0 { padding: 24px 0; }
+.pad-8-0 { padding: 8px 0; }
+.pad-40 { padding: 40px; }
+
+/* 隐藏 input file */
+.hidden-input { display: none; }
+
+/* 按钮加载图标间距 */
+.btn-icon { margin-right: 8px; }
+
+/* Chart 容器 */
+.chart-full { height: 100%; width: 100%; }
+
+/* 空状态提示 */
+.empty-text { font-size: 13px; color: var(--text); padding: 8px 0; }
+
+/* 分隔符 */
+.separator { margin: 0 8px; opacity: 0.3; }
+
+/* ===== Layout 布局 ===== */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.gap-8 { gap: 8px; }
+.gap-10 { gap: 10px; }
+.flex-1 { flex: 1; }
+.flex-wrap { flex-wrap: wrap; }
+
+/* ===== 字体大小补充 ===== */
+.fs-10 { font-size: 10px; }
+.fs-15 { font-size: 15px; }
+.fs-16 { font-size: 16px; }
+.fs-18 { font-size: 18px; }
+.fs-20 { font-size: 20px; }
+.fs-24 { font-size: 24px; }
+.fs-28 { font-size: 28px; }
+.fs-32 { font-size: 32px; }
+.fs-40 { font-size: 40px; }
+.fs-48 { font-size: 48px; }
+
+/* ===== 外边距补充 ===== */
+.m-0 { margin: 0; }
+.mt-2 { margin-top: 2px; }
+.mt-8 { margin-top: 8px; }
+.mb-4 { margin-bottom: 4px; }
+.mb-20 { margin-bottom: 20px; }
+.mr-4 { margin-right: 4px; }
+.ml-auto { margin-left: auto; }
+
+/* ===== 内边距补充 ===== */
+.p-0 { padding: 0; }
+.pt-80 { padding-top: 80px; }
+
+/* ===== 展示/文本对齐 ===== */
+.inline-block { display: inline-block; }
+.text-center { text-align: center; }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+/* ===== 字体粗细 ===== */
+.fw-600 { font-weight: 600; }
