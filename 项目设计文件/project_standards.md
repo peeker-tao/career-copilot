@@ -169,6 +169,8 @@ export class RegisterDto {
 
 - **错误处理**: 统一使用 NestJS 异常过滤器，不直接在 controller 中 try-catch
 - **路由命名**: RESTful 风格，复数名词
+- **配置管理**: 所有敏感配置（JWT_SECRET、REDIS_URL、API Key 等）必须通过 `ConfigService` 注入，禁止使用 `process.env` 直接读取或硬编码默认值
+- **JSON 类型安全**: Prisma JSON 字段写入时使用 `as unknown as Prisma.InputJsonValue` 断言，禁止使用 `JSON.parse(JSON.stringify(obj))` 作为类型转换手段
 
 ---
 
@@ -237,6 +239,8 @@ src/ai/prompts/
 
 - API Key 存储在 `.env` 文件中，不提交到代码仓库
 - `.env.example` 提供模板，标注所需的环境变量
+- 所有配置通过 `ConfigService` 注入，禁止 `process.env` 硬编码
+- 关键配置（JWT_SECRET、REDIS_URL）须在启动时校验，缺失则直接抛出异常
 
 ```
 # .env.example
@@ -324,6 +328,7 @@ pnpm prisma:generate        # 生成 Prisma Client
 pnpm prisma:migrate         # 执行数据库迁移
 pnpm prisma:seed            # 填充测试数据
 pnpm test                   # 运行测试
+pnpm nest:build             # 编译 NestJS（类型检查）
 
 # 前端
 pnpm dev                    # 启动开发模式

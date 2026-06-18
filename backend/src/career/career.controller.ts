@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -58,5 +59,14 @@ export class CareerController {
   })
   getMarketInsight(@Query('position') position: string) {
     return this.marketInsightService.getInsight(position);
+  }
+
+  @Delete('plans/:id')
+  @ApiOperation({
+    summary: '删除职业规划',
+    description: '删除指定的职业规划记录',
+  })
+  deletePlan(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.careerService.deletePlan(id, userId);
   }
 }

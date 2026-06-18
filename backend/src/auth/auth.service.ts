@@ -3,17 +3,23 @@ import {
   ConflictException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+
+/** 对外暴露的安全用户类型（不含密码等敏感字段） */
+type SafeUser = Omit<Prisma.UserGetPayload<{}>, 'passwordHash'>;
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -75,10 +81,8 @@ export class AuthService {
 
   async refreshTokens(refreshToken: string) {
     try {
-      // 校验 refreshToken
-      const payload = this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_SECRET || 'your-jwt-secret-key-change-in-production',
-      });
+      // 校验 refreshToken — secret 由 JwtModule 全局配置提供
+      const payload = this.jwtService.verify(refreshToken);
 
       // 生成新的 Token 对
       return this.generateTokens(payload.sub, payload.email);
@@ -97,7 +101,15 @@ export class AuthService {
     return this.sanitizeUser(user);
   }
 
-  async updateProfile(userId: string, data: Partial<{ name: string; avatar: string; education: string; targetPosition: string }>) {
+  async updateProfile(
+    userId: string,
+    data: Partial<{
+      name: string;
+      avatar: string;
+      education: string;
+      targetPosition: string;
+    }>,
+  ) {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data,
@@ -107,16 +119,18 @@ export class AuthService {
 
   private async generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
+    const refreshExpiresIn = this.configService.get<string>(
+      'JWT_REFRESH_EXPIRES',
+      '7d',
+    );
 
     const [accessToken, refreshToken] = await Promise.all([
+      // accessToken 使用 JwtModule 全局配置（secret + expiresIn）
+      this.jwtService.signAsync(payload),
+      // refreshToken 需要更长的过期时间，单独指定
       this.jwtService.signAsync(payload, {
-        secret: process.env.JWT_SECRET || 'your-jwt-secret-key-change-in-production',
-        expiresIn: (process.env.JWT_ACCESS_EXPIRES || '15m') as any,
-      }),
-      this.jwtService.signAsync(payload, {
-        secret: process.env.JWT_SECRET || 'your-jwt-secret-key-change-in-production',
-        expiresIn: (process.env.JWT_REFRESH_EXPIRES || '7d') as any,
-      }),
+        expiresIn: refreshExpiresIn as any,
+      } as any),
     ]);
 
     return {
@@ -125,7 +139,8 @@ export class AuthService {
     };
   }
 
-  private sanitizeUser(user: any) {
+  private sanitizeUser(user: Prisma.UserGetPayload<{}>): SafeUser {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...result } = user;
     return result;
   }

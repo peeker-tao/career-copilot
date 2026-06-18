@@ -71,11 +71,8 @@ export class InterviewGateway
         return;
       }
 
-      // 验证 JWT
-      const payload = this.jwtService.verify(token, {
-        secret:
-          process.env.JWT_SECRET || 'your-jwt-secret-key-change-in-production',
-      });
+      // 验证 JWT — secret 由 JwtModule 全局配置提供
+      const payload = this.jwtService.verify(token);
 
       (client as AuthenticatedSocket).userId = payload.sub;
       (client as AuthenticatedSocket).userEmail = payload.email;

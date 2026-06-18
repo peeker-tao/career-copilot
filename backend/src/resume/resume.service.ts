@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { ResumeParser } from './resume.parser';
+import { QueueService } from '../queue/queue.service';
 import { UpdateResumeDto } from './dto/update-resume.dto';
 import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class ResumeService {
@@ -17,6 +17,7 @@ export class ResumeService {
   constructor(
     private prisma: PrismaService,
     private resumeParser: ResumeParser,
+    private queueService: QueueService,
   ) {}
 
   async upload(userId: string, file: Express.Multer.File) {
@@ -36,7 +37,7 @@ export class ResumeService {
       throw new BadRequestException('仅支持 PDF 和 DOCX 格式');
     }
 
-    // 创建简历记录（初始状态）
+    // 创建简历记录（初始状态：parsing）
     const resume = await this.prisma.resume.create({
       data: {
         userId,
@@ -46,48 +47,12 @@ export class ResumeService {
       },
     });
 
-    try {
-      // 同步解析：提取文本 + LLM 结构化提取
-      this.logger.log(`🔄 开始解析简历: resumeId=${resume.id}`);
-      if (!resume.fileUrl) {
-        throw new Error('简历文件路径为空');
-      }
-      const text = await this.resumeParser.extractText(resume.fileUrl);
-      const parsedData = await this.resumeParser.parseWithLLM(text);
+    // 将解析任务提交到 BullMQ 队列，异步执行
+    // HTTP 请求立即返回，不阻塞线程
+    await this.queueService.addResumeParsingJob(resume.id);
 
-      // 更新数据库
-      const updated = await this.prisma.resume.update({
-        where: { id: resume.id },
-        data: {
-          parsedData: JSON.parse(JSON.stringify(parsedData)),
-          skills: parsedData.skills || [],
-          status: 'completed',
-        },
-      });
-
-      this.logger.log(
-        `✅ 简历解析完成: resumeId=${resume.id}, skills=${parsedData.skills.length} 项`,
-      );
-      return updated;
-    } catch (error) {
-      this.logger.error(
-        `❌ 简历解析失败: resumeId=${resume.id}`,
-        error instanceof Error ? error.message : String(error),
-      );
-
-      // 更新失败状态
-      await this.prisma.resume
-        .update({
-          where: { id: resume.id },
-          data: { status: 'failed' },
-        })
-        .catch((e) => {
-          this.logger.error(`更新失败状态出错: ${e.message}`);
-        });
-
-      // 仍然返回简历记录，但 status 为 failed
-      return this.prisma.resume.findUnique({ where: { id: resume.id } });
-    }
+    this.logger.log(`📤 简历解析任务已提交: resumeId=${resume.id}`);
+    return resume;
   }
 
   async findAll(
@@ -97,7 +62,7 @@ export class ResumeService {
     const { page = 1, limit = 10, status } = options;
     const skip = (page - 1) * limit;
 
-    const where: any = { userId };
+    const where: { userId: string; status?: string } = { userId };
     if (status) {
       where.status = status;
     }

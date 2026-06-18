@@ -22,11 +22,23 @@ export class UserService {
   }
 
   async findById(id: string) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar: true,
+        education: true,
+        targetPosition: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
     if (!user) {
       throw new NotFoundException('用户不存在');
     }
-    const { passwordHash, ...result } = user;
-    return result;
+    return user;
   }
 }

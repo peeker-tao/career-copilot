@@ -232,7 +232,8 @@ Authorization: Bearer <access_token>
 }
 ```
 
-> 简历解析为异步任务。前端轮询 `GET /resumes/:id` 直到 `status` 变为 `completed`。
+> 简历解析为异步任务（通过 BullMQ 队列执行）。HTTP 请求立即返回，不阻塞线程。
+> 前端轮询 `GET /resumes/:id` 直到 `status` 变为 `completed` 或 `failed`。
 
 ### GET `/resumes` — 获取简历列表
 
@@ -675,7 +676,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 **响应 `200`：** 同 POST 创建返回的完整数据结构
 
-### DELETE `/career/plans/:id` — 删除规划（待实现）
+### DELETE `/career/plans/:id` — 删除规划
 
 **响应 `200`：**
 
