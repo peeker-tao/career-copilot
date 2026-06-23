@@ -54,4 +54,52 @@ export class RedisService extends Redis implements OnModuleDestroy {
   async cacheDel(key: string): Promise<void> {
     await this.del(key);
   }
+
+  // ----------------------- session helpers -----------------------
+  async setSession(key: string, value: unknown, ttlSeconds = 3600) {
+    await this.cacheSet(`session:${key}`, value, ttlSeconds);
+  }
+
+  async getSession<T = unknown>(key: string): Promise<T | null> {
+    return this.cacheGet<T>(`session:${key}`);
+  }
+
+  async delSession(key: string) {
+    await this.cacheDel(`session:${key}`);
+  }
+
+  // ----------------------- blacklist helpers -----------------------
+  async blacklistToken(token: string, ttlSeconds: number) {
+    if (!token) return;
+    const key = `blacklist:${token}`;
+    // store a placeholder value with TTL
+    await this.set(key, '1', 'EX', Math.max(1, Math.floor(ttlSeconds)));
+  }
+
+  async isBlacklisted(token: string): Promise<boolean> {
+    if (!token) return false;
+    const key = `blacklist:${token}`;
+    const v = await this.get(key);
+    return v !== null;
+  }
+
+  async removeFromBlacklist(token: string) {
+    if (!token) return;
+    await this.del(`blacklist:${token}`);
+  }
+
+  // ----------------------- simple fixed-window rate limiter -----------------------
+  async rateLimit(key: string, windowSeconds = 60, limit = 60) {
+    const redisKey = `rate:${key}`;
+    const current = await this.incr(redisKey);
+    if (current === 1) {
+      await this.expire(redisKey, windowSeconds);
+    }
+    const remaining = Math.max(0, limit - current);
+    return {
+      allowed: current <= limit,
+      remaining,
+      reset: await this.ttl(redisKey),
+    };
+  }
 }
