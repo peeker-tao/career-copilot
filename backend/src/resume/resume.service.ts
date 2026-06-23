@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { ResumeParser } from './resume.parser';
-import { QueueService } from '../queue/queue.service';
 import { UpdateResumeDto } from './dto/update-resume.dto';
 import * as fs from 'fs';
 
@@ -17,7 +16,6 @@ export class ResumeService {
   constructor(
     private prisma: PrismaService,
     private resumeParser: ResumeParser,
-    private queueService: QueueService,
   ) {}
 
   async upload(userId: string, file: Express.Multer.File) {
@@ -47,12 +45,44 @@ export class ResumeService {
       },
     });
 
-    // 将解析任务提交到 BullMQ 队列，异步执行
-    // HTTP 请求立即返回，不阻塞线程
-    await this.queueService.addResumeParsingJob(resume.id);
+    this.logger.log(`📄 开始同步解析简历: resumeId=${resume.id}`);
 
-    this.logger.log(`📤 简历解析任务已提交: resumeId=${resume.id}`);
-    return resume;
+    try {
+      // 1. 提取文件文本
+      const text = await this.resumeParser.extractText(file.path);
+      this.logger.log(`📝 文本提取完成: ${text.length} 字符`);
+
+      // 2. LLM 结构化解析
+      const parsedData = await this.resumeParser.parseWithLLM(text);
+      this.logger.log(`🤖 LLM 解析完成: skills=${parsedData.skills.length} 项`);
+
+      // 3. 更新数据库
+      const updated = await this.prisma.resume.update({
+        where: { id: resume.id },
+        data: {
+          parsedData: parsedData as any,
+          skills: parsedData.skills || [],
+          status: 'completed',
+        },
+      });
+
+      this.logger.log(`✅ 简历解析完成: resumeId=${resume.id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(
+        `❌ 简历解析失败: resumeId=${resume.id}`,
+        error instanceof Error ? error.message : String(error),
+      );
+
+      await this.prisma.resume.update({
+        where: { id: resume.id },
+        data: { status: 'failed' },
+      });
+
+      throw new BadRequestException(
+        `简历解析失败: ${error instanceof Error ? error.message : '未知错误'}`,
+      );
+    }
   }
 
   async findAll(
