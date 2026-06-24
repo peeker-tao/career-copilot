@@ -5,11 +5,12 @@ import { Link } from 'react-router-dom'
 export interface InputAreaProps {
   disabled?: boolean
   isFinished?: boolean
+  interviewId?: string
   onSend: (text: string) => void
   onEnd: () => void
 }
 
-export default function InputArea({ disabled, isFinished, onSend, onEnd }: InputAreaProps) {
+export default function InputArea({ disabled, isFinished, interviewId, onSend, onEnd }: InputAreaProps) {
   const [text, setText] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -39,7 +40,7 @@ export default function InputArea({ disabled, isFinished, onSend, onEnd }: Input
         <div className="finished-banner">
           <CheckCircleOutlined className="text-success fs-18" />
           <span>面试已结束</span>
-          <Link to="/interview/1/report" className="btn-report">
+          <Link to={`/interview/${interviewId || '1'}/report`} className="btn-report">
             查看报告
           </Link>
         </div>

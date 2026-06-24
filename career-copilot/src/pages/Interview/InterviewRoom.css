@@ -469,3 +469,161 @@
     padding: 10px 16px 14px;
   }
 }
+
+/* 新建面试设置页面 */
+.setup-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  overflow-y: auto;
+}
+
+.setup-card {
+  width: 100%;
+  max-width: 500px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px 32px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.setup-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 8px 0;
+}
+
+.setup-desc {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0 0 28px 0;
+  line-height: 1.5;
+}
+
+.setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.setup-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.setup-input {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-h);
+  background: var(--bg);
+  font-family: inherit;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.setup-input:focus {
+  outline: none;
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.setup-input::placeholder {
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.setup-difficulties {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.setup-difficulty-btn {
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--code-bg);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.setup-difficulty-btn:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.setup-difficulty-btn.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.setup-error {
+  font-size: 13px;
+  color: #ff4d4f;
+  margin: 8px 0 16px 0;
+  padding: 8px 12px;
+  background: rgba(255, 77, 79, 0.08);
+  border: 1px solid rgba(255, 77, 79, 0.2);
+  border-radius: 6px;
+}
+
+.btn-start-setup {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.btn-start-setup:hover:not(:disabled) {
+  opacity: 0.9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.btn-start-setup:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-start-setup:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .setup-card {
+    padding: 32px 20px;
+    border-radius: 8px;
+  }
+
+  .setup-title {
+    font-size: 20px;
+  }
+
+  .setup-desc {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .setup-field {
+    margin-bottom: 20px;
+  }
+}
