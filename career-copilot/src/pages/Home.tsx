@@ -58,8 +58,10 @@ const Home: React.FC = () => {
   // 当 storeInterviews 更新时，计算 scoreTrend 和 interviews
   useEffect(() => {
     if (storeInterviews.length > 0) {
-      // 计算评分趋势（所有面试成绩）
-      const scores = storeInterviews.map((i) => i.score ?? 0)
+      // 计算评分趋势（后端按 startedAt desc 排序，需反转使第1次=最早）
+      const scores = storeInterviews
+        .map((i) => i.score ?? 0)
+        .reverse()
       setScoreTrend(scores)
 
       // 取最近5条记录用于首页展示
