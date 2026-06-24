@@ -75,4 +75,50 @@ export class CareerService {
 
     this.logger.log(`🗑️ 职业规划已删除: planId=${id}, userId=${userId}`);
   }
+
+  async updateProgress(
+    id: string,
+    userId: string,
+    data: { phase: number; progress: number },
+  ) {
+    // 1. 验证规划存在且属于当前用户
+    const plan = await this.getPlan(id, userId);
+
+    // 2. 验证进度范围
+    if (data.progress < 0 || data.progress > 100) {
+      throw new Error('进度必须在 0-100 之间');
+    }
+
+    // 3. 更新指定阶段的进度
+    const roadmap = plan.roadmap as any[];
+    if (!roadmap || !roadmap[data.phase]) {
+      throw new NotFoundException(`阶段 ${data.phase} 不存在`);
+    }
+
+    roadmap[data.phase].progress = data.progress;
+
+    // 4. 计算整体进度（所有阶段的平均进度）
+    const totalProgress = roadmap.reduce(
+      (sum, phase) => sum + (phase.progress || 0),
+      0,
+    );
+    const averageProgress = Math.round(totalProgress / roadmap.length);
+
+    // 5. 更新数据库
+    const updatedPlan = await this.prisma.careerPlan.update({
+      where: { id },
+      data: {
+        roadmap: roadmap as any,
+        progress: averageProgress,
+      },
+    });
+
+    this.logger.log(
+      `📊 职业规划进度已更新: planId=${id}, phase=${data.phase}, progress=${data.progress}%, overall=${averageProgress}%`,
+    );
+
+    return updatedPlan;
+  }
 }
+
+

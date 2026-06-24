@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Delete,
+  Patch,
   Param,
   Body,
   UseGuards,
@@ -17,6 +18,7 @@ import {
 import { CareerService } from './career.service';
 import { MarketInsightService } from './market-insight.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
+import { UpdateProgressDto } from './dto/update-progress.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -68,5 +70,18 @@ export class CareerController {
   })
   deletePlan(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.careerService.deletePlan(id, userId);
+  }
+
+  @Patch('plans/:id/progress')
+  @ApiOperation({
+    summary: '更新学习进度',
+    description: '手动更新某个学习阶段的完成进度，并自动计算整体进度',
+  })
+  updateProgress(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateProgressDto,
+  ) {
+    return this.careerService.updateProgress(id, userId, dto);
   }
 }
