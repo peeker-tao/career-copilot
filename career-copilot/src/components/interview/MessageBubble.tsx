@@ -30,14 +30,14 @@ export default function MessageBubble({ message, isStreaming }: MessageBubblePro
         )}
         <div className="message-content">
           {displayContent.split('\n').map((line, i) => (
-            <p key={i}>{line || '\u00A0'}</p>
+            <p key={i}>{line || '\u00A0'}</p> /*\u00A0可以防止单词或数字在换行时被分隔*/
           ))}
           {isStreaming && !isComplete && (
             <span className="streaming-cursor">|</span>
           )}
         </div>
         <div className="message-footer">
-          {isAI && message.rating != null && <StarRating rating={message.rating} />}
+          {isAI && message.rating != null && <StarRating rating={message.rating / 20} />}
           <span className="message-time">{formattedTime}</span>
         </div>
       </div>

@@ -3,49 +3,40 @@ import { Link } from 'react-router-dom'
 import { RightOutlined } from '@ant-design/icons'
 import { Greeting, StatsCards, QuickActions, HomeInterviewList } from '@/components/home'
 import Loading from '@/components/common/Loading'
+import { useAuthStore } from '@/store/useAuthStore'
+import { useInterviewStore } from '@/store/useInterviewStore'
+import type { UserStats } from '@/types/auth'
 
 const ScoreChart = lazy(() => import('@/components/home/ScoreChart'))
 
 import './Home.css'
 
-const MOCK_STATS = {
-  totalInterviews: 12,
-  avgScore: 86.5,
-  resumeCount: 3,
-  activePlans: 2,
+/** HomeInterviewList 组件期望的记录格式 */
+interface HomeInterviewRecord {
+  id: number
+  position: string
+  difficulty: string
+  score: number
+  date: string
 }
-
-const MOCK_SCORE_TREND = [72, 78, 65, 85, 82, 90, 88]
-
-const MOCK_INTERVIEWS = [
-  { id: 1, position: '前端开发工程师', difficulty: 'medium', score: 85, date: '2026-06-15' },
-  { id: 2, position: '后端开发工程师', difficulty: 'hard', score: 92, date: '2026-06-10' },
-  { id: 3, position: '算法工程师', difficulty: 'easy', score: 78, date: '2026-06-05' },
-  { id: 4, position: '产品经理', difficulty: 'medium', score: 70, date: '2026-05-28' },
-  { id: 5, position: '全栈开发工程师', difficulty: 'hard', score: 88, date: '2026-05-20' },
-]
 
 const Home: React.FC = () => {
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<typeof MOCK_STATS | null>(null)
+  const [stats, setStats] = useState<UserStats | null>(null)
   const [scoreTrend, setScoreTrend] = useState<number[]>([])
-  const [interviews, setInterviews] = useState<typeof MOCK_INTERVIEWS>([])
+  const [interviews, setInterviews] = useState<HomeInterviewRecord[]>([])
 
+  const fetchStats = useAuthStore((s) => s.fetchStats)
+  const authStats = useAuthStore((s) => s.stats)
+  const fetchInterviews = useInterviewStore((s) => s.fetchInterviews)
+  const storeInterviews = useInterviewStore((s) => s.interviews)
+
+  // 初始加载数据
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
       try {
-        const [statsData, trendData, interviewsData] = await Promise.all([
-          new Promise<typeof MOCK_STATS>((resolve) => setTimeout(() => resolve(MOCK_STATS), 400)),
-          new Promise<number[]>((resolve) => setTimeout(() => resolve(MOCK_SCORE_TREND), 500)),
-          new Promise<typeof MOCK_INTERVIEWS>((resolve) => setTimeout(() => resolve(MOCK_INTERVIEWS), 450)),
-        ])
-
-        setStats(statsData)
-        setScoreTrend(trendData)
-        setInterviews(interviewsData.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        ))
+        await Promise.all([fetchStats(), fetchInterviews()])
       } catch (err) {
         console.error('加载仪表盘数据失败:', err)
       } finally {
@@ -54,7 +45,37 @@ const Home: React.FC = () => {
     }
 
     loadData()
-  }, [])
+  }, []) // 仅在组件挂载时执行一次
+
+  // 当 authStats 更新时，更新本地 stats
+  useEffect(() => {
+    if (authStats) {
+      setStats(authStats)
+    }
+  }, [authStats])
+
+  // 当 storeInterviews 更新时，计算 scoreTrend 和 interviews
+  useEffect(() => {
+    if (storeInterviews.length > 0) {
+      // 计算评分趋势（所有面试成绩）
+      const scores = storeInterviews.map((i) => i.score ?? 0)
+      setScoreTrend(scores)
+
+      // 取最近5条记录用于首页展示
+      setInterviews(
+        storeInterviews.slice(0, 5).map((i) => ({
+          id: parseInt(i.id, 36) % 10000,
+          position: i.targetPosition,
+          difficulty: i.difficulty,
+          score: i.score ?? 0,
+          date: i.startedAt ? i.startedAt.slice(0, 10) : '',
+        }))
+      )
+    } else {
+      setScoreTrend([])
+      setInterviews([])
+    }
+  }, [storeInterviews])
 
   return (
     <div className="dashboard">

@@ -3,7 +3,7 @@ import type { ApiResponse } from '@/types/api'
 import type { ResumeSummary, ResumeDetail } from '@/types/resume'
 import { MOCK_RESUMES, MOCK_RESUME_DETAIL } from '@/mock'
 
-const useMock = import.meta.env.DEV
+const useMock = import.meta.env.USE_MOCK
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** 获取简历列表 */
@@ -12,7 +12,14 @@ export async function getResumes(): Promise<ApiResponse<ResumeSummary[]>> {
     await delay(400)
     return { code: 200, message: 'success', data: MOCK_RESUMES }
   }
-  return apiClient.get('/resumes')
+  // 后端返回 {list: ResumeSummary[], pagination: PaginationResult} 或直接返回数组
+  const response: any = await apiClient.get('/resumes')
+  const list = Array.isArray(response.data) ? response.data : (response.data?.list || [])
+  return {
+    code: response.code,
+    message: response.message,
+    data: Array.isArray(list) ? list : [],
+  }
 }
 
 /** 获取简历详情 */
@@ -62,6 +69,15 @@ export async function deleteResume(id: string): Promise<ApiResponse<null>> {
   return apiClient.delete(`/resumes/${id}`)
 }
 
+/** 更新简历解析结果 */
+export async function updateResume(id: string, data: Partial<ResumeDetail>): Promise<ApiResponse<ResumeDetail>> {
+  if (useMock) {
+    await delay(300)
+    return { code: 200, message: '更新成功', data: { ...MOCK_RESUME_DETAIL, id, ...data } }
+  }
+  return apiClient.put(`/resumes/${id}`, { parsedData: data.parsedData })
+}
+
 /** 重新解析简历 */
 export async function reparseResume(id: string): Promise<ApiResponse<ResumeDetail>> {
   if (useMock) {
@@ -69,8 +85,9 @@ export async function reparseResume(id: string): Promise<ApiResponse<ResumeDetai
     return {
       code: 200,
       message: '重新解析成功',
-      data: MOCK_RESUME_DETAIL,
+      data: { ...MOCK_RESUME_DETAIL, id },
     }
   }
-  return apiClient.post(`/resumes/${id}/reparse`)
+  // TODO: 后端无 POST /resumes/:id/reparse 端点，可通过 PUT /resumes/:id 触发重新解析
+  throw new Error('重新解析接口暂不可用，请配置 USE_MOCK=true 使用模拟数据')
 }

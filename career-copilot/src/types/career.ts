@@ -32,7 +32,7 @@ export interface CareerPlanSummary {
   targetPosition: string
   progress: number
   createdAt: string
-  skills: string[]
+  skills?: string[]
 }
 
 /** 薪资范围 */

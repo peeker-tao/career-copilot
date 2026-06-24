@@ -6,7 +6,7 @@ export interface PlanCardPlan {
   targetPosition: string
   progress: number
   createdAt: string
-  skills: string[]
+  skills?: string[]
 }
 
 export interface PlanCardProps {
@@ -68,14 +68,16 @@ export default function PlanCard({ plan, onDeleteRequest }: PlanCardProps) {
         </div>
       </div>
 
-      <div className="plan-card-skills">
-        <TagsOutlined className="mr-6" />
-        {plan.skills.map((skill) => (
-          <span key={skill} className="skill-tag">
-            {skill}
-          </span>
-        ))}
-      </div>
+      {plan.skills && plan.skills.length > 0 && (
+        <div className="plan-card-skills">
+          <TagsOutlined className="mr-6" />
+          {plan.skills.map((skill) => (
+            <span key={skill} className="skill-tag">
+              {skill}
+            </span>
+          ))}
+        </div>
+      )}
     </Link>
   )
 }

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import ReactECharts from 'echarts-for-react'
+import { MessageOutlined } from '@ant-design/icons'
 
 export interface ScoreChartProps {
   data: number[]
@@ -107,6 +108,17 @@ const ScoreChart: React.FC<ScoreChartProps> = ({ data, loading }) => {
     return (
       <div className="chart-wrapper loading-skeleton p-0">
         <div className="skeleton-item" style={{ width: '100%', height: '100%' }} />
+      </div>
+    )
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="chart-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+        <div style={{ textAlign: 'center', color: 'var(--text)' }}>
+          <MessageOutlined style={{ fontSize: 48, opacity: 0.3, marginBottom: 16 }} />
+          <p>暂无面试记录，快去开始第一次面试吧！</p>
+        </div>
       </div>
     )
   }

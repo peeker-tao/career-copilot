@@ -1,40 +1,115 @@
 import axios from 'axios'
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    __skipAuthRedirect?: boolean
+  }
+}
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || '/api/v1',
+  baseURL: import.meta.env.BACKEND_API_URL || '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// 请求拦截器 - 自动注入 token
+console.log('API Client initialized with base URL:', apiClient.defaults.baseURL)
+
+// 刷新令牌状态
+let isRefreshing = false
+let pendingQueue: Array<{
+  resolve: (token: string) => void
+  reject: (err: unknown) => void
+}> = []
+
+function processQueue(err: unknown, token: string | null) {
+  pendingQueue.forEach((p) => {
+    if (err) p.reject(err)
+    else p.resolve(token!)
+  })
+  pendingQueue = []
+}
+
+/** 尝试用 refreshToken 换取新令牌 */
+async function doRefresh(): Promise<string> {
+  const refreshToken = localStorage.getItem('refreshToken')
+  if (!refreshToken) throw new Error('No refresh token')
+
+  const res = await axios.post(
+    `${apiClient.defaults.baseURL}/auth/refresh`,
+    { refreshToken },
+    { headers: { 'Content-Type': 'application/json' } },
+  )
+  const data = res.data.data ?? res.data
+  localStorage.setItem('accessToken', data.accessToken)
+  localStorage.setItem('refreshToken', data.refreshToken)
+  return data.accessToken
+}
+
+// 请求拦截器
 apiClient.interceptors.request.use(
   (config) => {
-    const token =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('accessToken')
-        : null
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 )
 
-// 响应拦截器 - 统一错误处理
+// 响应拦截器（含自动刷新）
 apiClient.interceptors.response.use(
   (response) => response.data,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    const originalRequest = error.config
+
+    // 非 401、或已经是刷新请求、或标记了跳过 → 直接拒绝
+    if (
+      error.response?.status !== 401 ||
+      originalRequest?.__skipAuthRedirect ||
+      originalRequest?._retry
+    ) {
+      const message = error.response?.data?.message || error.message || '网络错误'
+      return Promise.reject(new Error(message))
+    }
+
+    // 已有一个刷新在进行中 → 排队等它完成
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        pendingQueue.push({
+          resolve: (token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            resolve(apiClient(originalRequest))
+          },
+          reject,
+        })
+      })
+    }
+
+    // 开始刷新
+    isRefreshing = true
+    originalRequest._retry = true
+
+    try {
+      const newToken = await doRefresh()
+      processQueue(null, newToken)
+      originalRequest.headers.Authorization = `Bearer ${newToken}`
+      return apiClient(originalRequest)
+    } catch (refreshErr) {
+      processQueue(refreshErr, null)
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
-      window.location.href = '/login'
+      if (!originalRequest?.__skipAuthRedirect) {
+        window.location.href = '/login'
+      }
+      const message = error.response?.data?.message || error.message || '网络错误'
+      return Promise.reject(new Error(message))
+    } finally {
+      isRefreshing = false
     }
-    const message = error.response?.data?.message || error.message || '网络错误'
-    return Promise.reject(new Error(message))
-  }
+  },
 )
 
 export default apiClient

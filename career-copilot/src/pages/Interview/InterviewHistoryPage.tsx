@@ -7,58 +7,50 @@ import {
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '@/components/common'
 import { HistoryStats, HistoryCard } from '@/components/interview'
+import { useInterviewStore } from '@/store/useInterviewStore'
+import type { Interview } from '@/types/interview'
 import './InterviewHistory.css'
 
-interface InterviewRecord {
-  id: string
-  position: string
-  difficulty: string
-  score?: number | null
-  date: string
-  rounds: number
-  duration: string
-  status: string
+/** 将后端 Interview 映射为 HistoryCard 所需格式 */
+function toHistoryItem(i: Interview) {
+  return {
+    id: i.id,
+    position: i.targetPosition,
+    difficulty: i.difficulty,
+    score: i.score ?? null,
+    date: i.startedAt ? i.startedAt.slice(0, 10) : '-',
+    rounds: (i as any).questionCount ?? i.rounds ?? 0,
+    // 后端返回 questionCount（Prisma 字段），前端用 rounds 接收
+    duration: i.duration || '-',
+    status: ((i as any).status === 'cancelled' ? 'interrupted' : (i as any).status) as string,
+  }
 }
-
-const MOCK_INTERVIEWS: InterviewRecord[] = [
-  { id: '1', position: '前端开发工程师', difficulty: 'medium', score: 85, date: '2026-06-15', rounds: 8, duration: '28分钟', status: 'completed' },
-  { id: '2', position: '后端开发工程师', difficulty: 'hard', score: 92, date: '2026-06-10', rounds: 8, duration: '32分钟', status: 'completed' },
-  { id: '3', position: '算法工程师', difficulty: 'easy', score: 78, date: '2026-06-05', rounds: 6, duration: '22分钟', status: 'completed' },
-  { id: '4', position: '产品经理', difficulty: 'medium', score: 70, date: '2026-05-28', rounds: 8, duration: '30分钟', status: 'completed' },
-  { id: '5', position: '全栈开发工程师', difficulty: 'hard', score: 88, date: '2026-05-20', rounds: 8, duration: '35分钟', status: 'completed' },
-  { id: '6', position: '数据分析师', difficulty: 'medium', score: null, date: '2026-06-12', rounds: 3, duration: '12分钟', status: 'interrupted' },
-  { id: '7', position: 'DevOps 工程师', difficulty: 'hard', score: null, date: '2026-06-18', rounds: 0, duration: '-', status: 'pending' },
-]
 
 export default function InterviewHistoryPage() {
   const navigate = useNavigate()
-  const [interviews, setInterviews] = useState<InterviewRecord[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
+  const interviews = useInterviewStore((s) => s.interviews)
+  const loading = useInterviewStore((s) => s.loading)
+  const error = useInterviewStore((s) => s.error)
+  const fetchInterviews = useInterviewStore((s) => s.fetchInterviews)
+  const deleteInterview = useInterviewStore((s) => s.deleteInterview)
+
   useEffect(() => {
-    let mounted = true
-    setTimeout(() => {
-      if (!mounted) return
-      try {
-        setInterviews([...MOCK_INTERVIEWS])
-      } catch {
-        if (mounted) setError('加载面试记录失败')
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }, 400)
-    return () => { mounted = false }
-  }, [])
+    fetchInterviews()
+  }, [fetchInterviews])
+
+  const historyItems = interviews.map(toHistoryItem)
 
   const handleDelete = (id: string) => {
     setDeleteTarget(id)
   }
 
-  const confirmDelete = () => {
-    setInterviews((prev) => prev.filter((i) => i.id !== deleteTarget))
-    setDeleteTarget(null)
+  const confirmDelete = async () => {
+    if (deleteTarget) {
+      await deleteInterview(deleteTarget)
+      setDeleteTarget(null)
+    }
   }
 
   if (loading) {
@@ -98,13 +90,13 @@ export default function InterviewHistoryPage() {
         </button>
       </div>
 
-      <HistoryStats interviews={interviews} />
+      <HistoryStats interviews={historyItems} />
 
       <div className="history-toolbar">
-        <span className="toolbar-count">共 {interviews.length} 条记录</span>
+        <span className="toolbar-count">共 {historyItems.length} 条记录</span>
       </div>
 
-      {interviews.length === 0 ? (
+      {historyItems.length === 0 ? (
         <EmptyState
           icon={<MessageOutlined />}
           title="暂无面试记录"
@@ -114,7 +106,7 @@ export default function InterviewHistoryPage() {
         />
       ) : (
         <div className="history-list">
-          {interviews.map((item) => (
+          {historyItems.map((item) => (
             <HistoryCard
               key={item.id}
               interview={item}

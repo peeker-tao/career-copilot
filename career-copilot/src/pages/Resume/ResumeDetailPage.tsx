@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   FileTextOutlined,
@@ -16,167 +16,109 @@ import {
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '@/components/common'
 import { EditModal, SkillRadar } from '@/components/resume'
+import { useResumeStore } from '@/store/useResumeStore'
+import type { ParsedResumeData } from '@/types/resume'
 import './Resume.css'
 
-interface BasicInfo {
-  name?: string
-  phone?: string
-  email?: string
+/** 从 skills 字符串数组生成 SkillRadar 所需的 {name, score} 格式 */
+function makeSkillScores(skills: string[]): Array<{ name: string; score: number }> {
+  return skills.map((name, i) => ({
+    name,
+    score: Math.round(95 - i * (30 / Math.max(skills.length - 1, 1))),
+  }))
 }
-
-interface Education {
-  school: string
-  major: string
-  degree: string
-  period: string
-}
-
-interface Experience {
-  company: string
-  position: string
-  period: string
-  description: string
-}
-
-interface Project {
-  name: string
-  role: string
-  techStack: string[]
-  description: string
-}
-
-interface ParsedData {
-  basicInfo?: BasicInfo
-  education?: Education[]
-  experience?: Experience[]
-  projects?: Project[]
-  skills?: string[]
-}
-
-interface ResumeDetail {
-  id: string
-  title: string
-  status: string
-  fileUrl: string
-  createdAt: string
-  parsedData?: ParsedData
-}
-
-interface SkillScore {
-  name: string
-  score: number
-}
-
-const MOCK_RESUME_DETAIL: ResumeDetail = {
-  id: '1',
-  title: '小明_后端简历_2026.pdf',
-  status: 'completed',
-  fileUrl: '#',
-  createdAt: '2026-06-15T10:30:00Z',
-  parsedData: {
-    basicInfo: {
-      name: '小明',
-      phone: '138****1234',
-      email: 'xiaoming@example.com',
-    },
-    education: [
-      { school: '华中科技大学', major: '软件工程', degree: '本科', period: '2022-2026' },
-    ],
-    experience: [
-      {
-        company: 'XX科技',
-        position: '后端开发实习生',
-        period: '2025.06-2025.09',
-        description: '负责公司核心业务后端 API 开发与维护，使用 Spring Boot 框架实现了订单管理、用户认证等模块，日均处理请求 10万+。参与了数据库表结构设计与优化，将慢查询响应时间降低了 60%。',
-      },
-    ],
-    skills: ['Java', 'Spring Boot', 'MySQL', 'Redis', 'Docker', 'Git', 'RabbitMQ', 'Linux'],
-    projects: [
-      {
-        name: '在线商城系统',
-        role: '后端开发',
-        techStack: ['Spring Boot', 'MySQL', 'Redis'],
-        description: '独立开发了订单、支付、库存等核心微服务模块，使用 Redis 缓存热点数据，QPS 提升 3 倍。',
-      },
-      {
-        name: '即时通讯中间件',
-        role: '核心开发者',
-        techStack: ['Netty', 'RabbitMQ', 'MongoDB'],
-        description: '基于 Netty 实现了高性能消息推送服务，支持万人同时在线，消息延迟 < 100ms。',
-      },
-    ],
-  },
-}
-
-const MOCK_SKILL_SCORES: SkillScore[] = [
-  { name: 'Java', score: 85 },
-  { name: 'Spring Boot', score: 80 },
-  { name: 'MySQL', score: 75 },
-  { name: 'Redis', score: 70 },
-  { name: 'Docker', score: 65 },
-  { name: 'Git', score: 80 },
-]
 
 const ResumeDetailPage = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [resume, setResume] = useState<ResumeDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const resume = useResumeStore((s) => s.currentResume)
+  const loading = useResumeStore((s) => s.loading)
+  const storeError = useResumeStore((s) => s.error)
+  const fetchResumeById = useResumeStore((s) => s.fetchResumeById)
+  const deleteResume = useResumeStore((s) => s.deleteResume)
+  const updateResume = useResumeStore((s) => s.updateResume)
+  const reparseResume = useResumeStore((s) => s.reparseResume)
+
   const [showEdit, setShowEdit] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [reparsing, setReparsing] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
+  // 首次加载
   useEffect(() => {
-    let mounted = true
-    setTimeout(() => {
-      if (!mounted) return
-      try {
-        const data = { ...MOCK_RESUME_DETAIL, id: id ?? MOCK_RESUME_DETAIL.id }
-        setResume(data)
-        setLoading(false)
-      } catch {
-        if (mounted) setError('加载简历失败')
-        setLoading(false)
+    if (id) fetchResumeById(id)
+    return () => { useResumeStore.getState().resetCurrent() }
+  }, [id, fetchResumeById])
+
+  // 解析中轮询（仅依赖 id，不自残重建间隔）
+  useEffect(() => {
+    if (!id) return
+
+    timerRef.current = setInterval(() => {
+      const cur = useResumeStore.getState().currentResume
+      if (!cur || cur.status !== 'parsing') {
+        if (timerRef.current) clearInterval(timerRef.current)
+        return
       }
-    }, 500)
-    return () => { mounted = false }
-  }, [id])
-
-  useEffect(() => {
-    if (resume?.status !== 'parsing') return
-    const timer = setInterval(() => {
-      setResume((prev) =>
-        prev?.status === 'parsing'
-          ? { ...prev, status: 'completed', parsedData: MOCK_RESUME_DETAIL.parsedData }
-          : prev
-      )
+      fetchResumeById(id)
     }, 3000)
-    return () => clearInterval(timer)
-  }, [resume?.status])
 
-  const handleSaveEdit = useCallback((parsedData: ParsedData) => {
-    setResume((prev) => prev ? { ...prev, parsedData } : prev)
-    setShowEdit(false)
-  }, [])
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [id, fetchResumeById])
+
+  const handleSaveEdit = useCallback(async (data: { basicInfo?: { name?: string; phone?: string; email?: string }; skills?: string[] }) => {
+    if (!id) return
+    const cur = useResumeStore.getState().currentResume
+    const existingParsed = cur?.parsedData
+    setEditError(null)
+    try {
+      const merged: ParsedResumeData = {
+        basicInfo: {
+          name: data.basicInfo?.name ?? existingParsed?.basicInfo?.name ?? '',
+          phone: data.basicInfo?.phone ?? existingParsed?.basicInfo?.phone ?? '',
+          email: data.basicInfo?.email ?? existingParsed?.basicInfo?.email ?? '',
+        },
+        education: existingParsed?.education ?? [],
+        experience: existingParsed?.experience ?? [],
+        projects: existingParsed?.projects ?? [],
+        skills: data.skills ?? existingParsed?.skills ?? [],
+      }
+      await updateResume(id, { parsedData: merged } as any)
+      setShowEdit(false)
+    } catch (err) {
+      setEditError((err as Error).message || '保存失败')
+    }
+  }, [id, updateResume])
 
   const handleReparse = useCallback(async () => {
+    if (!id) return
     setReparsing(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setResume((prev) => prev ? { ...prev, status: 'completed' } : prev)
-    setReparsing(false)
-  }, [])
+    try {
+      await reparseResume(id)
+    } catch {
+      // reparseResume 抛 TODO 错误，静默处理
+    } finally {
+      setReparsing(false)
+    }
+  }, [id, reparseResume])
 
   const handleDelete = () => {
     setShowDelete(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
+    if (!id) return
     setShowDelete(false)
+    await deleteResume(id)
     navigate('/resume', { replace: true })
   }
 
-  if (loading) {
+  // 首次加载中
+  if (loading && !resume) {
     return (
       <div className="detail-page">
         <Loading skeleton={{ rows: 6 }} className="pad-24-0" />
@@ -184,13 +126,14 @@ const ResumeDetailPage = () => {
     )
   }
 
-  if (error || !resume) {
+  // 加载失败
+  if ((storeError && !resume) || (!loading && !resume)) {
     return (
       <div className="detail-page">
         <EmptyState
           icon={<ExclamationCircleOutlined />}
           title="简历不存在或加载失败"
-          description={error || '请检查简历 ID 是否正确'}
+          description={storeError || '请检查简历 ID 是否正确'}
           actionText="返回列表"
           onAction={() => navigate('/resume')}
         />
@@ -198,8 +141,12 @@ const ResumeDetailPage = () => {
     )
   }
 
-  const p = resume.parsedData || {} as ParsedData
+  if (!resume) return null
 
+  const parsed = resume.parsedData || ({} as ParsedResumeData)
+  const skillScores = makeSkillScores(resume.skills || [])
+
+  // 解析中状态
   if (resume.status === 'parsing') {
     return (
       <div className="detail-page">
@@ -265,35 +212,37 @@ const ResumeDetailPage = () => {
           </h3>
           <div className="info-row">
             <span className="info-label">姓名</span>
-            <span className="info-value">{p.basicInfo?.name || '-'}</span>
+            <span className="info-value">{parsed.basicInfo?.name || '-'}</span>
           </div>
           <div className="info-row">
             <span className="info-label">电话</span>
-            <span className="info-value">{p.basicInfo?.phone || '-'}</span>
+            <span className="info-value">{parsed.basicInfo?.phone || '-'}</span>
           </div>
           <div className="info-row">
             <span className="info-label">邮箱</span>
-            <span className="info-value">{p.basicInfo?.email || '-'}</span>
+            <span className="info-value">{parsed.basicInfo?.email || '-'}</span>
           </div>
         </div>
 
-        <div className="detail-section">
-          <h3 className="detail-section-title">
-            <CodeOutlined className="section-icon" /> 技能评估
-          </h3>
-          <div className="radar-wrapper">
-            <SkillRadar skills={MOCK_SKILL_SCORES} />
+        {skillScores.length > 0 && (
+          <div className="detail-section">
+            <h3 className="detail-section-title">
+              <CodeOutlined className="section-icon" /> 技能评估
+            </h3>
+            <div className="radar-wrapper">
+              <SkillRadar skills={skillScores} />
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="detail-section full">
           <h3 className="detail-section-title">
             <BookOutlined className="section-icon" /> 教育背景
           </h3>
-          {(p.education || []).length === 0 ? (
+          {(parsed.education || []).length === 0 ? (
             <div style={{ fontSize: 13, color: 'var(--text)', padding: '8px 0' }}>暂无教育背景信息</div>
           ) : (
-            p.education!.map((edu, i) => (
+            parsed.education!.map((edu, i) => (
               <div key={i} className="timeline-item">
                 <div className="timeline-title">{edu.school}</div>
                 <div className="timeline-sub">
@@ -308,10 +257,10 @@ const ResumeDetailPage = () => {
           <h3 className="detail-section-title">
             <BuildOutlined className="section-icon" /> 工作经历
           </h3>
-          {(p.experience || []).length === 0 ? (
+          {(parsed.experience || []).length === 0 ? (
             <div style={{ fontSize: 13, color: 'var(--text)', padding: '8px 0' }}>暂无工作经历信息</div>
           ) : (
-            p.experience!.map((exp, i) => (
+            parsed.experience!.map((exp, i) => (
               <div key={i} className="timeline-item">
                 <div className="timeline-title">{exp.company} · {exp.position}</div>
                 <div className="timeline-sub">{exp.period}</div>
@@ -325,10 +274,10 @@ const ResumeDetailPage = () => {
           <h3 className="detail-section-title">
             <ProjectOutlined className="section-icon" /> 项目经验
           </h3>
-          {(p.projects || []).length === 0 ? (
+          {(parsed.projects || []).length === 0 ? (
             <div className="empty-text">暂无项目经验</div>
           ) : (
-            p.projects!.map((proj, i) => (
+            parsed.projects!.map((proj, i) => (
               <div key={i} className="timeline-item">
                 <div className="timeline-title">{proj.name}</div>
                 <div className="timeline-sub">
@@ -344,11 +293,11 @@ const ResumeDetailPage = () => {
           <h3 className="detail-section-title">
             <CodeOutlined className="section-icon" /> 技能标签
           </h3>
-          {(p.skills || []).length === 0 ? (
+          {(parsed.skills || []).length === 0 ? (
             <div className="empty-text">暂无技能标签</div>
           ) : (
             <div className="skills-cloud">
-              {p.skills!.map((skill) => (
+              {parsed.skills!.map((skill) => (
                 <span key={skill} className="skill-tag">{skill}</span>
               ))}
             </div>
@@ -358,10 +307,14 @@ const ResumeDetailPage = () => {
 
       {showEdit && (
         <EditModal
-          parsedData={p}
+          parsedData={parsed}
           onSave={handleSaveEdit}
           onClose={() => setShowEdit(false)}
         />
+      )}
+
+      {editError && (
+        <div className="toast-error">{editError}</div>
       )}
 
       <ConfirmModal

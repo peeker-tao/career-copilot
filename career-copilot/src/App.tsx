@@ -1,10 +1,11 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import Login from './pages/Login'
 import Home from './pages/Home'
 import Loading from './components/common/Loading'
+import { useAuthStore } from './store/useAuthStore'
 
 const About = lazy(() => import('./pages/About'))
 const User = lazy(() => import('./pages/User'))
@@ -22,6 +23,15 @@ import './App.css'
 import './styles/utils.css'
 
 const App: React.FC = () => {
+  const { fetchProfile, user, isAuthenticated } = useAuthStore()
+  const shouldFetch = isAuthenticated && !user
+
+  useEffect(() => {
+    if (shouldFetch) {
+      fetchProfile()
+    }
+  }, [shouldFetch, fetchProfile])
+
   return (
     <Suspense fallback={<Loading />}>
       <Routes>

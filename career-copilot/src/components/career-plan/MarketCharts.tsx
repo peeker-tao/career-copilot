@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { Loading } from '@/components/common'
+import { MOCK_SALARY, MOCK_TREND, MOCK_TOP_SKILLS, MOCK_EXPERIENCE } from '@/mock'
+import type { MarketInsight } from '@/types/career'
 
 // echarts tooltip formatter 参数类型
 interface TooltipParam {
@@ -10,45 +12,18 @@ interface TooltipParam {
   seriesName?: string
 }
 
-const MOCK_SALARY = [
-  { position: '后端开发工程师', min: 15, max: 35 },
-  { position: '前端开发工程师', min: 12, max: 30 },
-  { position: '全栈开发工程师', min: 18, max: 40 },
-  { position: '算法工程师', min: 25, max: 60 },
-  { position: '数据分析师', min: 10, max: 25 },
-  { position: '产品经理', min: 12, max: 30 },
-  { position: '测试工程师', min: 8, max: 20 },
-  { position: 'DevOps 工程师', min: 15, max: 35 },
-]
-
-const MOCK_TREND = [65, 72, 78, 82, 85, 88, 92, 95, 93, 97, 100, 98]
-
-const MOCK_TOP_SKILLS = [
-  { name: 'Java', count: 95 },
-  { name: 'Spring Boot', count: 88 },
-  { name: 'MySQL', count: 82 },
-  { name: 'Redis', count: 76 },
-  { name: 'Docker', count: 70 },
-  { name: 'Kubernetes', count: 62 },
-  { name: '消息队列', count: 58 },
-  { name: '微服务架构', count: 55 },
-  { name: 'Linux', count: 50 },
-  { name: 'Git', count: 45 },
-]
-
-const MOCK_EXPERIENCE = [
-  { name: '应届（<1年）', value: 25 },
-  { name: '1-3 年', value: 35 },
-  { name: '3-5 年', value: 22 },
-  { name: '5-10 年', value: 13 },
-  { name: '10 年以上', value: 5 },
-]
-
 export interface MarketChartsProps {
   loading: boolean
+  data?: MarketInsight | null
 }
 
-export default function MarketCharts({ loading }: MarketChartsProps) {
+export default function MarketCharts({ loading, data }: MarketChartsProps) {
+  // data sources: props.data > mock fallback
+  const salary = data?.salary || MOCK_SALARY
+  const trend = data?.trend || MOCK_TREND
+  const topSkills = data?.topSkills || MOCK_TOP_SKILLS
+  const expDistribution = data?.experienceDistribution || MOCK_EXPERIENCE
+
   const salaryOption = useMemo(
     () => ({
       tooltip: {
@@ -69,14 +44,14 @@ export default function MarketCharts({ loading }: MarketChartsProps) {
       },
       yAxis: {
         type: 'category' as const,
-        data: MOCK_SALARY.map((s) => s.position),
+        data: salary.map((s) => s.position),
         axisLine: { lineStyle: { color: 'var(--border)' } },
         axisLabel: { color: 'var(--text)', fontSize: 11 },
       },
       series: [
         {
           type: 'bar' as const,
-          data: MOCK_SALARY.map((s) => [s.min, s.max]),
+          data: salary.map((s) => [s.min, s.max]),
           barWidth: 12,
           itemStyle: {
             color: {
@@ -92,7 +67,7 @@ export default function MarketCharts({ loading }: MarketChartsProps) {
         },
       ],
     }),
-    []
+    [salary]
   )
 
   const trendOption = useMemo(
@@ -118,7 +93,7 @@ export default function MarketCharts({ loading }: MarketChartsProps) {
       series: [
         {
           type: 'line' as const,
-          data: MOCK_TREND,
+          data: trend,
           smooth: true,
           symbol: 'circle',
           symbolSize: 6,
@@ -136,7 +111,7 @@ export default function MarketCharts({ loading }: MarketChartsProps) {
         },
       ],
     }),
-    []
+    [trend]
   )
 
   const topSkillsOption = useMemo(
@@ -160,14 +135,14 @@ export default function MarketCharts({ loading }: MarketChartsProps) {
       },
       yAxis: {
         type: 'category' as const,
-        data: MOCK_TOP_SKILLS.map((s) => s.name).reverse(),
+        data: [...topSkills].map((s) => s.name).reverse(),
         axisLine: { lineStyle: { color: 'var(--border)' } },
         axisLabel: { color: 'var(--text)', fontSize: 11 },
       },
       series: [
         {
           type: 'bar' as const,
-          data: MOCK_TOP_SKILLS.map((s) => s.count).reverse(),
+          data: [...topSkills].map((s) => s.count).reverse(),
           barWidth: 14,
           itemStyle: {
             color: {
@@ -189,7 +164,7 @@ export default function MarketCharts({ loading }: MarketChartsProps) {
         },
       ],
     }),
-    []
+    [topSkills]
   )
 
   const expPieOption = useMemo(
@@ -215,7 +190,7 @@ export default function MarketCharts({ loading }: MarketChartsProps) {
           emphasis: {
             label: { show: true, fontSize: 14, fontWeight: 'bold' as const },
           },
-          data: MOCK_EXPERIENCE.map((item) => ({
+          data: expDistribution.map((item) => ({
             name: item.name,
             value: item.value,
           })),
@@ -228,7 +203,7 @@ export default function MarketCharts({ loading }: MarketChartsProps) {
         },
       ],
     }),
-    []
+    [expDistribution]
   )
 
   return (

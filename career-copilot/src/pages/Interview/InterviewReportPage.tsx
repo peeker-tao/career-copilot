@@ -3,33 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeftOutlined, TrophyOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { Loading, EmptyState } from '@/components/common'
 import type { InterviewReport } from '@/types/interview'
+import { getInterviewReport } from '@/api/interviews'
 import './InterviewReport.css'
-
-const MOCK_REPORT: InterviewReport = {
-  overallScore: 85,
-  strengths: [
-    '对 Java 基础知识和集合框架理解深入',
-    '算法与数据结构基础扎实',
-    '沟通表达清晰，逻辑性强',
-  ],
-  weaknesses: [
-    '分布式系统实践经验不足',
-    '对微服务架构的理解需要加强',
-  ],
-  suggestions: [
-    '建议深入学习 Spring Cloud 微服务架构',
-    '参与开源项目积累分布式系统经验',
-    '多练习系统设计类题目',
-  ],
-  skillScores: [
-    { name: 'Java', score: 90 },
-    { name: 'Spring Boot', score: 85 },
-    { name: 'MySQL', score: 80 },
-    { name: 'Redis', score: 75 },
-    { name: '分布式', score: 60 },
-    { name: '系统设计', score: 65 },
-  ],
-}
 
 const getScoreLevel = (score: number): { label: string; color: string } => {
   if (score >= 90) return { label: '优秀', color: '#22c55e' }
@@ -43,15 +18,31 @@ export default function InterviewReportPage() {
   const navigate = useNavigate()
   const [report, setReport] = useState<InterviewReport | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
-    setTimeout(() => {
-      if (!mounted) return
-      setReport(MOCK_REPORT)
-      setLoading(false)
-    }, 800)
+    const fetchReport = async () => {
+      if (!id) {
+        setError('缺少面试 ID')
+        setLoading(false)
+        return
+      }
+      try {
+        const res = await getInterviewReport(id)
+        if (!mounted) return
+        if (res.code !== 200 && res.code !== 201) {
+          throw new Error(res.message || '获取报告失败')
+        }
+        setReport(res.data)
+      } catch (err) {
+        if (!mounted) return
+        setError((err as Error).message || '获取报告失败')
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    fetchReport()
     return () => { mounted = false }
   }, [id])
 

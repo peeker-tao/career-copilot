@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 import { UploadDropzone, UploadProgress } from '@/components/resume'
+import { useResumeStore } from '@/store/useResumeStore'
 import './Resume.css'
 
 const ALLOWED_TYPES = [
@@ -15,9 +16,11 @@ const ResumeUploadPage = () => {
   const navigate = useNavigate()
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [progress, setProgress] = useState(0)
   const [uploadedId, setUploadedId] = useState<string | null>(null)
+
+  const uploadResume = useResumeStore((s) => s.uploadResume)
+  const uploading = useResumeStore((s) => s.uploading)
+  const progress = useResumeStore((s) => s.uploadProgress)
 
   const validateFile = useCallback((f: File) => {
     const ext = f.name.toLowerCase().slice(f.name.lastIndexOf('.'))
@@ -44,39 +47,21 @@ const ResumeUploadPage = () => {
 
   const handleUpload = useCallback(async () => {
     if (!file) return
-    setUploading(true)
-    setProgress(0)
-
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + Math.random() * 15 + 5
-        return next >= 100 ? 100 : Math.min(next, 95)
-      })
-    }, 300)
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 2500))
-      clearInterval(interval)
-      setProgress(100)
-
-      const newId = Date.now().toString()
+    setError(null)
+    const newId = await uploadResume(file)
+    if (newId) {
       setUploadedId(newId)
-
-      setTimeout(() => {
-        navigate(`/resume/${newId}`)
-      }, 800)
-    } catch {
-      clearInterval(interval)
-      setError('上传失败，请重试')
-      setUploading(false)
+      setTimeout(() => navigate(`/resume/${newId}`), 800)
+    } else {
+      // 上传失败——读取 store 中的最新错误（闭包安全）
+      const store = useResumeStore.getState()
+      setError(store.error || '上传失败，请重试')
     }
-  }, [file, navigate])
+  }, [file, navigate, uploadResume])
 
   const resetUpload = () => {
     setFile(null)
     setError(null)
-    setProgress(0)
-    setUploading(false)
     setUploadedId(null)
   }
 

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TagsOutlined, UploadOutlined, PlusOutlined, LoadingOutlined } from '@ant-design/icons'
+import { generateCareerPlan } from '@/api/career'
 
 const POSITION_SUGGESTIONS = [
   '后端开发工程师',
@@ -21,7 +22,7 @@ const POSITION_SUGGESTIONS = [
 ]
 
 export interface GeneratePlanFormProps {
-  onGenerated: () => void
+  onGenerated: (targetPosition: string, skills: string[]) => void
 }
 
 export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps) {
@@ -76,15 +77,22 @@ export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps)
 
     setGenerating(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 3000))
-      const newPlanId = String(Date.now())
-      onGenerated()
-      navigate(`/career-plan/${newPlanId}`)
-    } catch (err) {
-      console.error('生成规划失败:', err)
+      const response = await generateCareerPlan({
+        targetPosition: position.trim(),
+        skills: skills,
+      })
+      if (response.code !== 200 && response.code !== 201) {
+        throw new Error(response.message || 'Failed to generate career plan')
+      }
+      const newPlan = response.data
+      onGenerated(position.trim(), skills)
+      navigate(`/career-plan/${newPlan.id}`)
+    } catch (error) {
+      console.error('Error generating career plan:', error)
     } finally {
       setGenerating(false)
     }
+
   }
 
   const canGenerate = position.trim() && (inputMethod === 'manual' || fileName)
@@ -187,6 +195,7 @@ export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps)
                 </p>
                 <p className="form-hint">支持 PDF、DOCX 格式，最大 10MB</p>
                 <input
+                  title="resume-upload"
                   type="file"
                   accept=".pdf,.docx"
                   className="hidden-input"

@@ -33,8 +33,12 @@ export default function HistoryCard({ interview, onDelete }: HistoryCardProps) {
   const diff = DIFFICULTY_MAP[interview.difficulty] || { label: '未知', cls: 'medium' }
   const statusInfo = STATUS_MAP[interview.status] || { label: '未知', cls: '' }
 
+  const targetPath = interview.status === 'completed'
+    ? `/interview/${interview.id}/report`
+    : `/interview/${interview.id}`
+
   return (
-    <Link to={`/interview/${interview.id}`} className="history-card">
+    <Link to={targetPath} className="history-card">
       <div className="history-card-left">
         <div className="history-card-icon">
           <CodeOutlined />

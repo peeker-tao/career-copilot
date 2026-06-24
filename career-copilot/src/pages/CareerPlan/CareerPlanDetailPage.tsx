@@ -8,94 +8,50 @@ import {
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '../../components/common'
 import { StageCard, SkillGapPanel } from '../../components/career-plan'
+import type { CareerPlan, StudyStage } from '@/types/career'
+import { getCareerPlanById, deleteCareerPlan } from '@/api/career'
+import './CareerPlan.css'
 import './CareerPlanDetail.css'
 
-const MOCK_DETAIL = {
-  id: '1',
-  targetPosition: '后端开发工程师',
-  progress: 45,
-  createdAt: '2026-06-13',
-  possessedSkills: ['Java', 'Spring Boot', 'MySQL', 'Git', 'Linux'],
-  targetSkills: ['Redis', '消息队列', '微服务架构', 'Docker', 'Kubernetes'],
-  stages: [
-    {
-      id: 's1',
-      title: '阶段一：基础巩固',
-      duration: '2 周',
-      goal: '熟练掌握 Spring Boot 开发框架',
-      resources: [
-        { name: 'Spring Boot 官方文档', type: '文档', url: '#' },
-        { name: '尚硅谷 Spring Boot 教程', type: '视频', url: '#' },
-        { name: '《Spring Boot 实战》', type: '书籍', url: '#' },
-      ],
-      learned: false,
-    },
-    {
-      id: 's2',
-      title: '阶段二：中间件进阶',
-      duration: '3 周',
-      goal: '掌握 Redis、消息队列等主流中间件',
-      resources: [
-        { name: '《Redis 设计与实现》', type: '书籍', url: '#' },
-        { name: 'Kafka 官方文档', type: '文档', url: '#' },
-        { name: 'RabbitMQ 实战教程', type: '视频', url: '#' },
-      ],
-      learned: false,
-    },
-    {
-      id: 's3',
-      title: '阶段三：微服务与云原生',
-      duration: '4 周',
-      goal: '掌握微服务架构设计和容器化部署',
-      resources: [
-        { name: 'Docker 从入门到实践', type: '文档', url: '#' },
-        { name: 'Kubernetes 官方教程', type: '文档', url: '#' },
-        { name: 'Spring Cloud Alibaba 教程', type: '视频', url: '#' },
-        { name: '《微服务架构设计模式》', type: '书籍', url: '#' },
-      ],
-      learned: false,
-    },
-  ],
-}
 
-interface Stage {
-  id: string
-  title: string
-  duration: string
-  goal: string
-  resources: Array<{ name: string; type: string; url: string }>
-  learned: boolean
-}
-
-interface PlanDetail {
-  id: string
-  targetPosition: string
-  progress: number
-  createdAt: string
-  possessedSkills: string[]
-  targetSkills: string[]
-  stages: Stage[]
-}
 
 const CareerPlanDetailPage = () => {
-  const { id } = useParams<{ id: string }>()
+  const { id = '' } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
-  const [plan, setPlan] = useState<PlanDetail | null>(null)
+  const [plan, setPlan] = useState<CareerPlan | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
-    setTimeout(() => {
-      setPlan({ ...MOCK_DETAIL, id: id ?? MOCK_DETAIL.id })
-      setProgress(MOCK_DETAIL.progress)
-      setLoading(false)
-    }, 400)
+    const fetchCareerPlan = async () => {
+      try {
+        const response = await getCareerPlanById(id)
+        if (response.code !== 200) {
+          throw new Error(response.message || 'Failed to fetch career plan')
+        }
+        const careerPlan = response.data
+        setPlan(careerPlan)
+        setError(null)
+        setProgress(careerPlan.progress)
+      } catch (err) {
+        console.error('Failed to fetch career plan detail:', err)
+        const errorMessage = err instanceof Error ? err.message : '加载规划失败，请重试'
+        setError(errorMessage)
+        setPlan(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCareerPlan()
   }, [id])
 
   const handleToggleLearn = (stageId: string) => {
     setPlan((prev) => {
-      if (!prev) return null
+      if (!prev) return prev
       return {
         ...prev,
         stages: prev.stages.map((s) =>
@@ -105,15 +61,29 @@ const CareerPlanDetailPage = () => {
     })
   }
 
-  const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value, 10)
-    setProgress(val)
-  }
+  // handleProgressChange 保留以备将来接入 PATCH 接口
+  // const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const val = parseInt(e.target.value, 10)
+  //   setProgress(val)
+  // }
 
   if (loading) {
     return (
       <div className="detail-page">
         <Loading skeleton className="pad-24-0" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="detail-page">
+        <EmptyState
+          title="加载失败"
+          description={error}
+          actionText="返回职业规划"
+          onAction={() => navigate('/career-plan')}
+        />
       </div>
     )
   }
@@ -183,7 +153,7 @@ const CareerPlanDetailPage = () => {
         <div className="stages-column">
           <h2 className="section-title">📚 分阶段学习路线</h2>
           <div className="stages-list">
-            {plan.stages.map((stage: Stage, i: number) => (
+            {plan.stages.map((stage: StudyStage, i: number) => (
               <StageCard
                 key={stage.id}
                 stage={stage}
@@ -209,10 +179,18 @@ const CareerPlanDetailPage = () => {
         message="删除后无法恢复，确定要删除此规划吗？"
         type="danger"
         confirmText="删除"
-        onConfirm={() => {
+        onConfirm={async () => {
+          setDeleting(true)
+          try {
+            await deleteCareerPlan(id)
+          } catch (err) {
+            console.error('删除规划失败:', err)
+          }
+          setDeleting(false)
           setShowDeleteConfirm(false)
           navigate('/career-plan')
         }}
+        loading={deleting}
         onCancel={() => setShowDeleteConfirm(false)}
       />
     </div>
