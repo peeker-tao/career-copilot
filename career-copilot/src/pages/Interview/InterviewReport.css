@@ -184,6 +184,7 @@
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+  text-align: center;
   transition: opacity 0.2s;
 }
 
@@ -200,8 +201,7 @@
   color: var(--text-h);
   font-size: 15px;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+  cursor: pointer;  text-align: center;  transition: all 0.2s;
 }
 
 .btn-secondary:hover {
