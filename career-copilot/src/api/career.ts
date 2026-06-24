@@ -13,9 +13,9 @@ export async function getCareerPlans(): Promise<ApiResponse<CareerPlanSummary[]>
     await delay(400)
     return { code: 200, message: 'success', data: MOCK_PLAN_SUMMARIES }
   }
-  // 后端返回 {list: CareerPlanSummary[], pagination: PaginationResult}，且 CareerPlanSummary 无 skills 字段
-  const response : any = await apiClient.get('/career/plans')
-  const list = response.data.list || []
+  // 后端 getPlans 直接返回数组，ResponseInterceptor 包裹为 {code, data: [...]}
+  const response: any = await apiClient.get('/career/plans')
+  const list = Array.isArray(response.data) ? response.data : (response.data?.items || response.data?.list || [])
   return {
     code: response.code,
     message: response.message,

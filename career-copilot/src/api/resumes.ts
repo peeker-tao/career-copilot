@@ -12,9 +12,11 @@ export async function getResumes(): Promise<ApiResponse<ResumeSummary[]>> {
     await delay(400)
     return { code: 200, message: 'success', data: MOCK_RESUMES }
   }
-  // 后端返回 {list: ResumeSummary[], pagination: PaginationResult} 或直接返回数组
+  // 后端 NestJS ResponseInterceptor → {code, message, data: {items, total, page, limit, totalPages}}
   const response: any = await apiClient.get('/resumes')
-  const list = Array.isArray(response.data) ? response.data : (response.data?.list || [])
+  const list = Array.isArray(response.data)
+    ? response.data
+    : (response.data?.items || response.data?.list || [])
   return {
     code: response.code,
     message: response.message,
