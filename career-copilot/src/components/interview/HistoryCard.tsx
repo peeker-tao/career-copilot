@@ -33,9 +33,8 @@ export default function HistoryCard({ interview, onDelete }: HistoryCardProps) {
   const diff = DIFFICULTY_MAP[interview.difficulty] || { label: '未知', cls: 'medium' }
   const statusInfo = STATUS_MAP[interview.status] || { label: '未知', cls: '' }
 
-  const targetPath = interview.status === 'completed'
-    ? `/interview/${interview.id}/report`
-    : `/interview/${interview.id}`
+  // 统一进入面试房间，由房间内的 InputArea 根据状态决定是否允许继续答题
+  const targetPath = `/interview/${interview.id}`
 
   return (
     <Link to={targetPath} className="history-card">

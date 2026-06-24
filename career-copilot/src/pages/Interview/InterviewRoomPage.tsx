@@ -218,6 +218,11 @@ export default function InterviewRoomPage() {
           </span>
         </div>
         <div className="topbar-right">
+          {isFinished && (
+            <Link to={`/interview/${id}/report`} className="topbar-report-link">
+              查看报告
+            </Link>
+          )}
           <span className={`connection-status ${wsConnected ? 'connected' : 'disconnected'}`} title={wsConnected ? 'WebSocket 已连接' : 'WebSocket 未连接'}>
             <ApiOutlined />
           </span>

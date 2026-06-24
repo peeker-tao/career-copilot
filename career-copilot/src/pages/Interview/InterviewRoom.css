@@ -133,6 +133,21 @@
   flex-shrink: 0;
 }
 
+.topbar-report-link {
+  font-size: 13px;
+  color: var(--primary, #1677ff);
+  text-decoration: none;
+  padding: 4px 12px;
+  border: 1px solid var(--primary, #1677ff);
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.topbar-report-link:hover {
+  background: var(--primary, #1677ff);
+  color: #fff;
+}
+
 .connection-status {
   font-size: 16px;
   transition: color 0.3s;

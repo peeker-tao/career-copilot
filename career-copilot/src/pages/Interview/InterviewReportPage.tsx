@@ -153,7 +153,10 @@ export default function InterviewReportPage() {
       </div>
 
       <div className="report-actions">
-        <button className="btn-primary" onClick={() => navigate('/interview')}>
+        <button className="btn-primary" onClick={() => navigate(`/interview/${id}`)}>
+          查看聊天记录
+        </button>
+        <button className="btn-secondary" onClick={() => navigate('/interview')}>
           再来一次
         </button>
         <button className="btn-secondary" onClick={() => navigate('/career-plan')}>
