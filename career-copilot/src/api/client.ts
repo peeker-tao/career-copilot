@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { toast } from '@/store/useToastStore'
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -8,7 +9,7 @@ declare module 'axios' {
 
 const apiClient = axios.create({
   baseURL: import.meta.env.BACKEND_API_URL || '/api',
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -65,6 +66,12 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
+    // 网络错误（无响应）→ 显示气泡提示
+    if (!error.response) {
+      toast.error('网络连接失败，请检查网络后重试')
+      return Promise.reject(new Error('网络连接失败'))
+    }
+
     // 非 401、或已经是刷新请求、或标记了跳过 → 直接拒绝
     if (
       error.response?.status !== 401 ||
@@ -72,6 +79,14 @@ apiClient.interceptors.response.use(
       originalRequest?._retry
     ) {
       const message = error.response?.data?.message || error.message || '网络错误'
+      // 不显示 400 业务错误的 toast（由各页面自行展示），但显示 5xx 等
+      if (error.response.status >= 500) {
+        toast.error(message || '服务器异常，请稍后重试')
+      } else if (error.response.status === 403) {
+        toast.warning('没有权限执行此操作')
+      } else if (error.response.status === 404) {
+        toast.warning('请求的资源不存在')
+      }
       return Promise.reject(new Error(message))
     }
 
@@ -101,11 +116,14 @@ apiClient.interceptors.response.use(
       processQueue(refreshErr, null)
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
-      if (!originalRequest?.__skipAuthRedirect) {
-        window.location.href = '/login'
-      }
-      const message = error.response?.data?.message || error.message || '网络错误'
-      return Promise.reject(new Error(message))
+      toast.warning('登录已过期，请重新登录')
+      // 短暂延迟让用户看到提示再跳转
+      setTimeout(() => {
+        if (!originalRequest?.__skipAuthRedirect) {
+          window.location.href = '/login'
+        }
+      }, 1500)
+      return Promise.reject(new Error('登录已过期'))
     } finally {
       isRefreshing = false
     }

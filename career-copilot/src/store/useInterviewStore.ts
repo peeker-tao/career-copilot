@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Interview, InterviewMessage } from '@/types/interview'
 import type { SubmitAnswerResult } from '@/types/interview'
 import * as interviewApi from '@/api/interviews'
+import { toast } from '@/store/useToastStore'
 
 interface InterviewState {
   // State
@@ -166,7 +167,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
     try {
       await interviewApi.completeInterview(interviewId)
     } catch (err) {
-      console.warn('标记面试完成失败:', err)
+      toast.error('标记面试完成失败: ' + (err as Error).message)
     }
   },
 

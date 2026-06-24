@@ -5,6 +5,7 @@ import { Greeting, StatsCards, QuickActions, HomeInterviewList } from '@/compone
 import Loading from '@/components/common/Loading'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useInterviewStore } from '@/store/useInterviewStore'
+import { toast } from '@/store/useToastStore'
 import type { UserStats } from '@/types/auth'
 
 const ScoreChart = lazy(() => import('@/components/home/ScoreChart'))
@@ -38,7 +39,7 @@ const Home: React.FC = () => {
       try {
         await Promise.all([fetchStats(), fetchInterviews()])
       } catch (err) {
-        console.error('加载仪表盘数据失败:', err)
+        toast.error('加载仪表盘数据失败: ' + (err as Error).message)
       } finally {
         setLoading(false)
       }

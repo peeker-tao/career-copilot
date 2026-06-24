@@ -4,6 +4,7 @@ import { RightOutlined } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '../../components/common'
 import { PlanCard, GeneratePlanForm } from '../../components/career-plan'
 import { getCareerPlans } from '@/api/career'
+import { toast } from '@/store/useToastStore'
 import './CareerPlan.css'
 
 const CareerPlanPage = () => {
@@ -23,7 +24,7 @@ const CareerPlanPage = () => {
           console.log('Fetched career plans:', response)
           setPlans(response.data)
         } catch (error) {
-          console.error('Error fetching career plans:', error)
+          toast.error('获取职业规划列表失败: ' + (error as Error).message)
         } finally {
           setLoading(false)
         }
@@ -48,7 +49,7 @@ const CareerPlanPage = () => {
         const newPlan = response.data
         setPlans(newPlan)
       } catch (error) {
-        console.error('Error fetching career plan:', error)
+        toast.error('获取职业规划列表失败: ' + (error as Error).message)
       } finally {
         setLoading(false)
       }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons'
 import { MarketCharts } from '../../components/career-plan'
 import { getMarketInsight } from '@/api/career'
+import { toast } from '@/store/useToastStore'
 import type { MarketInsight } from '@/types/career'
 import './MarketInsight.css'
 import './CareerPlanDetail.css'
@@ -14,17 +15,17 @@ const MarketInsightPage = () => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    setLoading(true)
     // Debounce 800ms to avoid too many API calls while typing
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(async () => {
+      setLoading(true)
       try {
         const res = await getMarketInsight(position)
         if (res.code === 200) {
           setData(res.data)
         }
       } catch (err) {
-        console.error('获取市场洞察失败:', err)
+        toast.error('获取市场洞察失败: ' + (err as Error).message)
       } finally {
         setLoading(false)
       }

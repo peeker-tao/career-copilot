@@ -17,6 +17,7 @@ import {
 import { Loading, EmptyState, ConfirmModal } from '@/components/common'
 import { EditModal, SkillRadar } from '@/components/resume'
 import { useResumeStore } from '@/store/useResumeStore'
+import { toast } from '@/store/useToastStore'
 import type { ParsedResumeData } from '@/types/resume'
 import './Resume.css'
 
@@ -100,7 +101,8 @@ const ResumeDetailPage = () => {
     try {
       await reparseResume(id)
     } catch {
-      // reparseResume 抛 TODO 错误，静默处理
+      // reparseResume 后端暂未实现时静默处理
+      toast.error('重新解析简历失败，功能暂不可用')
     } finally {
       setReparsing(false)
     }

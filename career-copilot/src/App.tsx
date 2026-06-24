@@ -5,6 +5,7 @@ import ProtectedRoute from './components/common/ProtectedRoute'
 import Login from './pages/Login'
 import Home from './pages/Home'
 import Loading from './components/common/Loading'
+import { ToastContainer } from './components/common'
 import { useAuthStore } from './store/useAuthStore'
 
 const About = lazy(() => import('./pages/About'))
@@ -62,6 +63,7 @@ const App: React.FC = () => {
           <Route path="/resume/upload" element={<ResumeUploadPage />} />
         </Route>
       </Routes>
+      <ToastContainer />
     </Suspense>
   )
 }

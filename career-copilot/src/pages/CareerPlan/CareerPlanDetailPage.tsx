@@ -10,6 +10,7 @@ import { Loading, EmptyState, ConfirmModal } from '../../components/common'
 import { StageCard, SkillGapPanel } from '../../components/career-plan'
 import type { CareerPlan, StudyStage } from '@/types/career'
 import { getCareerPlanById, deleteCareerPlan } from '@/api/career'
+import { toast } from '@/store/useToastStore'
 import './CareerPlan.css'
 import './CareerPlanDetail.css'
 
@@ -184,7 +185,7 @@ const CareerPlanDetailPage = () => {
           try {
             await deleteCareerPlan(id)
           } catch (err) {
-            console.error('删除规划失败:', err)
+            toast.error('删除规划失败: ' + (err as Error).message)
           }
           setDeleting(false)
           setShowDeleteConfirm(false)

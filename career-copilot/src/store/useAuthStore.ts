@@ -75,6 +75,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ stats: res.data })
     } catch {
       // Stats 加载失败不阻塞 UI
+      set({ stats: null })
     }
   },
 

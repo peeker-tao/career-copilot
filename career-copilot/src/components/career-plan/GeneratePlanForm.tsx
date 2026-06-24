@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TagsOutlined, UploadOutlined, PlusOutlined, LoadingOutlined } from '@ant-design/icons'
 import { generateCareerPlan } from '@/api/career'
+import { toast } from '@/store/useToastStore'
 
 const POSITION_SUGGESTIONS = [
   '后端开发工程师',
@@ -88,7 +89,8 @@ export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps)
       onGenerated(position.trim(), skills)
       navigate(`/career-plan/${newPlan.id}`)
     } catch (error) {
-      console.error('Error generating career plan:', error)
+      const msg = (error as Error).message || '生成失败，请重试'
+      toast.error(msg)
     } finally {
       setGenerating(false)
     }
