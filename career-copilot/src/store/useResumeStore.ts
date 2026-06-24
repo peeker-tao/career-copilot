@@ -16,6 +16,7 @@ interface ResumeState {
   fetchResumeById: (id: string) => Promise<void>
   uploadResume: (file: File) => Promise<string | null>
   deleteResume: (id: string) => Promise<void>
+  updateResume: (id: string, data: Partial<ResumeDetail>) => Promise<void>
   reparseResume: (id: string) => Promise<void>
   setDefaultResume: (id: string) => void
   clearError: () => void
@@ -34,7 +35,8 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       const res = await resumeApi.getResumes()
-      set({ resumes: res.data, loading: false })
+      const resumes = Array.isArray(res.data) ? res.data : []
+      set({ resumes, loading: false })
     } catch (err) {
       set({ error: (err as Error).message, loading: false })
     }
@@ -86,6 +88,16 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
       set({ loading: false })
       // 重新获取详情
       get().fetchResumeById(id)
+    } catch (err) {
+      set({ error: (err as Error).message, loading: false })
+    }
+  },
+
+  updateResume: async (id, data) => {
+    set({ loading: true, error: null })
+    try {
+      const res = await resumeApi.updateResume(id, data)
+      set({ currentResume: res.data, loading: false })
     } catch (err) {
       set({ error: (err as Error).message, loading: false })
     }

@@ -18,6 +18,7 @@ export interface Interview {
   duration: string
   startedAt: string
   completedAt?: string
+  questionCount?: number
   totalRounds?: number
   currentRound?: number
 }
@@ -45,4 +46,20 @@ export interface InterviewReport {
   weaknesses: string[]
   suggestions: string[]
   skillScores: Array<{ name: string; score: number }>
+}
+
+/** 提交回答的结果 */
+export interface SubmitAnswerResult {
+  evaluation: {
+    score: number
+    feedback: string
+    strengths: string[]
+    weaknesses: string[]
+  }
+  nextQuestion?: {
+    content: string
+    questionType?: string
+  }
+  isComplete: boolean
+  summary?: string
 }

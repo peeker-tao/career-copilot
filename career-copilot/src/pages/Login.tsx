@@ -56,7 +56,6 @@ const Login: React.FC = () => {
       } else {
         await register(email, password, name)
       }
-      navigate(from, { replace: true })
     } catch {
       // Error is set in store, displayed via `error` state
     }

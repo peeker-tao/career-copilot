@@ -3,43 +3,30 @@ import { Link } from 'react-router-dom'
 import { RightOutlined } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '../../components/common'
 import { PlanCard, GeneratePlanForm } from '../../components/career-plan'
+import { getCareerPlans } from '@/api/career'
 import './CareerPlan.css'
 
-const MOCK_PLANS = [
-  {
-    id: '1',
-    targetPosition: '后端开发工程师',
-    progress: 45,
-    createdAt: '2026-06-13',
-    skills: ['Java', 'Spring Boot', 'MySQL', 'Git'],
-  },
-  {
-    id: '2',
-    targetPosition: '前端开发工程师',
-    progress: 20,
-    createdAt: '2026-06-10',
-    skills: ['JavaScript', 'React', 'CSS'],
-  },
-  {
-    id: '3',
-    targetPosition: '全栈开发工程师',
-    progress: 60,
-    createdAt: '2026-05-28',
-    skills: ['Java', 'React', 'Node.js', 'Docker', 'PostgreSQL'],
-  },
-]
-
 const CareerPlanPage = () => {
-  const [plans, setPlans] = useState<Array<{ id: string; targetPosition: string; progress: number; createdAt: string; skills: string[] }>>([])
+  const [plans, setPlans] = useState<Array<{ id: string; targetPosition: string; progress: number; createdAt: string; skills?: string[] }>>([])
   const [loading, setLoading] = useState(true)
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; targetPosition: string; progress: number; createdAt: string; skills: string[] } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; targetPosition: string; progress: number; createdAt: string; skills?: string[] } | null>(null)
 
   useEffect(() => {
     let mounted = true
-    setTimeout(() => {
+    setTimeout(async () => {
       if (mounted) {
-        setPlans([...MOCK_PLANS])
-        setLoading(false)
+        try {
+          const response = await getCareerPlans()
+          if (response.code !== 200 && response.code !== 201) {
+            throw new Error(response.message || 'Failed to fetch career plans')
+          }
+          console.log('Fetched career plans:', response)
+          setPlans(response.data)
+        } catch (error) {
+          console.error('Error fetching career plans:', error)
+        } finally {
+          setLoading(false)
+        }
       }
     }, 400)
     return () => { mounted = false }
@@ -52,9 +39,19 @@ const CareerPlanPage = () => {
 
   const handleGenerated = () => {
     setLoading(true)
-    setTimeout(() => {
-      setPlans([...MOCK_PLANS])
-      setLoading(false)
+    setTimeout(async () => {
+      try {
+        const response = await getCareerPlans()
+        if (response.code !== 200 && response.code !== 201) {
+          throw new Error(response.message || 'Failed to generate career plan')
+        }
+        const newPlan = response.data
+        setPlans(newPlan)
+      } catch (error) {
+        console.error('Error fetching career plan:', error)
+      } finally {
+        setLoading(false)
+      }
     }, 400)
   }
 

@@ -12,64 +12,53 @@ import type { UserData } from '@/components/user'
 import './User.css'
 import { useAuthStore } from '@/store/useAuthStore'
 
-const MOCK_USER = {
-  id: '1',
-  avatar: '',
-  nickname: '求职者',
-  email: 'user@example.com',
-  phone: '138****8888',
-  education: '华中科技大学 · 软件工程 · 本科',
-  targetPosition: '后端开发工程师',
-  bio: '热爱编程，正在为梦想努力 💪',
-  createdAt: '2026-01-15',
-}
-
-const MOCK_STATS = {
-  totalInterviews: 12,
-  avgScore: 86.5,
-  resumeCount: 3,
-  activePlans: 2,
-}
-
 const User: React.FC = () => {
   const navigate = useNavigate()
-  const [user, setUser] = useState<(typeof MOCK_USER) | null>(null)
-  const [loading, setLoading] = useState(true)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const { logout } = useAuthStore()
+  const { logout, fetchProfile, fetchStats, updateProfile } = useAuthStore()
+  const userInfo = useAuthStore((s) => s.user)
+  const stats = useAuthStore((s) => s.stats)
+  const loading = useAuthStore((s) => s.loading)
+  const profileLoading = !userInfo
+
+  /** 将 UserInfo 映射为 UserData（ProfileForm 需要的格式） */
+  const userData: UserData | null = userInfo
+    ? {
+        nickname: userInfo.name,
+        email: userInfo.email,
+        phone: '',
+        education: userInfo.education || '',
+        targetPosition: userInfo.targetPosition || '',
+        bio: '',
+      }
+    : null
 
   useEffect(() => {
-    let mounted = true
-    setTimeout(() => {
-      if (mounted) {
-        setUser({ ...MOCK_USER })
-        setLoading(false)
-      }
-    }, 400)
-    return () => { mounted = false }
-  }, [])
+    fetchProfile()
+    fetchStats()
+  }, [fetchProfile, fetchStats])
 
-  const handleAvatarUpload = (url: string) => {
-    setUser((prev) => prev ? { ...prev, avatar: url } : prev)
+  const handleAvatarUpload = (_url: string) => {
+    // Avatar upload API 暂未实现, TODO
   }
 
-  const handleSave = (form: UserData) => {
-    setUser((prev) => prev ? { ...prev, ...form } : prev)
+  const handleSave = async (form: UserData) => {
+    await updateProfile({
+      name: form.nickname,
+      education: form.education,
+      targetPosition: form.targetPosition,
+    })
   }
 
-  if (loading) {
+  if (profileLoading) {
     return (
       <div className="profile-page">
-        <Loading
-          skeleton
-          tip="加载中..."
-          className="pad-24-0"
-        />
+        <Loading skeleton tip="加载中..." className="pad-24-0" />
       </div>
     )
   }
 
-  if (!user) {
+  if (!userData) {
     return (
       <div className="profile-page">
         <EmptyState
@@ -88,34 +77,34 @@ const User: React.FC = () => {
 
       <div className="profile-header">
         <AvatarUpload
-          avatar={user.avatar}
-          nickname={user.nickname}
+          avatar={userInfo?.avatar || ''}
+          nickname={userInfo?.name || ''}
           onUpload={handleAvatarUpload}
         />
         <div className="profile-header-info">
-          <h2 className="profile-nickname">{user.nickname}</h2>
+          <h2 className="profile-nickname">{userInfo?.name}</h2>
           <div className="profile-meta">
             <span>
-              <MailOutlined /> {user.email}
+              <MailOutlined /> {userInfo?.email}
             </span>
             <span className="meta-divider">|</span>
             <span>
-              <AimOutlined /> {user.targetPosition}
+              <AimOutlined /> {userInfo?.targetPosition || '未设置'}
             </span>
           </div>
-          <div className="profile-bio">{user.bio}</div>
-          <div className="profile-joined">注册时间：{user.createdAt}</div>
+          <div className="profile-bio">{userInfo?.education || ''}</div>
+          <div className="profile-joined">注册时间：{userInfo?.createdAt?.slice(0, 10) || '-'}</div>
         </div>
       </div>
 
-      <ProfileStats stats={MOCK_STATS} />
+      <ProfileStats stats={stats || { totalInterviews: 0, avgScore: 0, resumeCount: 0, activePlans: 0 }} />
 
       <div className="profile-content">
         <div className="profile-card">
           <h2 className="card-title">
             <EditOutlined /> 个人信息
           </h2>
-          <ProfileForm user={user as UserData} onSave={handleSave} />
+          <ProfileForm user={userData} onSave={handleSave} />
         </div>
 
         <div className="profile-card">

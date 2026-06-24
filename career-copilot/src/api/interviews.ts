@@ -1,9 +1,9 @@
 import apiClient from './client'
 import type { ApiResponse } from '@/types/api'
-import type { Interview, InterviewMessage, CreateInterviewRequest, InterviewReport } from '@/types/interview'
-import { MOCK_INTERVIEWS, MOCK_INITIAL_MESSAGES, AI_RESPONSES } from '@/mock'
+import type { Interview, InterviewMessage, CreateInterviewRequest, InterviewReport, SubmitAnswerResult } from '@/types/interview'
+import { MOCK_INTERVIEWS, MOCK_INITIAL_MESSAGES, AI_FEEDBACKS, AI_NEXT_QUESTIONS } from '@/mock'
 
-const useMock = import.meta.env.DEV
+const useMock = import.meta.env.USE_MOCK
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 let mockResponseIndex = 0
@@ -14,7 +14,16 @@ export async function getInterviews(): Promise<ApiResponse<Interview[]>> {
     await delay(400)
     return { code: 200, message: 'success', data: MOCK_INTERVIEWS }
   }
-  return apiClient.get('/interviews')
+  // 后端返回 {list: InterviewSummary[], pagination: PaginationResult} 或 {items: [...]}
+  const response: any = await apiClient.get('/interviews')
+  const list = Array.isArray(response.data)
+    ? response.data
+    : (response.data?.list || response.data?.items || [])
+  return {
+    code: response.code,
+    message: response.message,
+    data: Array.isArray(list) ? list : [],
+  }
 }
 
 /** 获取面试详情 */
@@ -65,20 +74,27 @@ export async function createInterview(data: CreateInterviewRequest): Promise<Api
 export async function submitAnswer(
   interviewId: string,
   content: string
-): Promise<ApiResponse<InterviewMessage>> {
+): Promise<ApiResponse<SubmitAnswerResult>> {
   if (useMock) {
     await delay(1000)
-    const response = AI_RESPONSES[mockResponseIndex % AI_RESPONSES.length]
+    const feedback = AI_FEEDBACKS[mockResponseIndex % AI_FEEDBACKS.length]
+    const nextQuestion = AI_NEXT_QUESTIONS[mockResponseIndex % AI_NEXT_QUESTIONS.length]
     mockResponseIndex++
     return {
       code: 200,
       message: 'success',
       data: {
-        id: `msg-${Date.now()}`,
-        role: 'ai',
-        content: response,
-        timestamp: new Date().toISOString(),
-        rating: Math.floor(Math.random() * 2) + 3,
+        evaluation: {
+          score: Math.floor(Math.random() * 3) + 3,
+          feedback,
+          strengths: ['基础知识扎实', '表达清晰'],
+          weaknesses: ['可以结合更多实际案例'],
+        },
+        nextQuestion: {
+          content: nextQuestion,
+          questionType: 'technical',
+        },
+        isComplete: mockResponseIndex >= 5,
       },
     }
   }
@@ -110,5 +126,52 @@ export async function getInterviewReport(id: string): Promise<ApiResponse<Interv
       },
     }
   }
-  return apiClient.get(`/interviews/${id}/report`)
+  // 后端 POST /interviews/:id/feedback，NestJS ResponseInterceptor 返回 code=201
+  const response: any = await apiClient.post(`/interviews/${id}/feedback`)
+  const fb = response.data
+  if (!fb) {
+    throw new Error(response.message || '获取报告失败')
+  }
+  return {
+    code: response.code,
+    message: response.message,
+    data: {
+      overallScore: fb.overallScore,
+      strengths: fb.strengths || [],
+      weaknesses: fb.weaknesses || [],
+      suggestions: (fb.learningSuggestions || []).map(
+        (s: { area: string }) => s.area
+      ),
+      skillScores: fb.dimensions
+        ? (fb.dimensions as Array<{ name: string; score: number }>).map((d) => ({
+            name: d.name,
+            score: d.score,
+          }))
+        : [],
+    },
+  }
+}
+
+/** 结束面试（标记为 completed） */
+export async function completeInterview(id: string): Promise<ApiResponse<Interview>> {
+  if (useMock) {
+    await delay(300)
+    const interview = MOCK_INTERVIEWS.find((i) => i.id === id) || MOCK_INTERVIEWS[0]
+    return {
+      code: 200,
+      message: '面试已结束',
+      data: { ...interview, status: 'completed' },
+    }
+  }
+  return apiClient.post(`/interviews/${id}/complete`)
+}
+
+/** 删除面试记录 */
+export async function deleteInterview(_id: string): Promise<ApiResponse<null>> {
+  if (useMock) {
+    await delay(300)
+    return { code: 200, message: '删除成功', data: null }
+  }
+  // TODO: 后端无 DELETE /interviews/:id 端点
+  throw new Error('删除面试接口暂不可用，请配置 USE_MOCK=true 使用模拟数据')
 }

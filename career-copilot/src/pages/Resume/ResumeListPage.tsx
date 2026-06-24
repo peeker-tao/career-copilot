@@ -7,93 +7,46 @@ import {
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '@/components/common'
 import { ResumeCard } from '@/components/resume'
+import { useResumeStore } from '@/store/useResumeStore'
 import './Resume.css'
-
-interface MockResume {
-  id: string
-  title: string
-  status: string
-  skills: string[]
-  createdAt: string
-  isDefault: boolean
-}
-
-const MOCK_RESUMES: MockResume[] = [
-  {
-    id: '1',
-    title: '小明_后端简历_2026.pdf',
-    status: 'completed',
-    skills: ['Java', 'Spring Boot', 'MySQL', 'Redis', 'Docker', 'Git', 'RabbitMQ'],
-    createdAt: '2026-06-15T10:30:00Z',
-    isDefault: true,
-  },
-  {
-    id: '2',
-    title: '小明_前端简历_2026.pdf',
-    status: 'completed',
-    skills: ['React', 'TypeScript', 'Vue', 'Webpack', 'CSS'],
-    createdAt: '2026-06-10T08:00:00Z',
-    isDefault: false,
-  },
-  {
-    id: '3',
-    title: '小明_产品岗简历.pdf',
-    status: 'parsing',
-    skills: [],
-    createdAt: '2026-06-18T12:00:00Z',
-    isDefault: false,
-  },
-  {
-    id: '4',
-    title: '小明_全栈简历.pdf',
-    status: 'failed',
-    skills: [],
-    createdAt: '2026-06-08T14:00:00Z',
-    isDefault: false,
-  },
-]
 
 const ResumeListPage = () => {
   const navigate = useNavigate()
-  const [resumes, setResumes] = useState<MockResume[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const pageSize = 8
 
+  const resumes = useResumeStore((s) => s.resumes)
+  const loading = useResumeStore((s) => s.loading)
+  const error = useResumeStore((s) => s.error)
+  const fetchResumes = useResumeStore((s) => s.fetchResumes)
+  const deleteResume = useResumeStore((s) => s.deleteResume)
+  const setDefaultResume = useResumeStore((s) => s.setDefaultResume)
+
   useEffect(() => {
-    let mounted = true
-    setTimeout(() => {
-      if (!mounted) return
-      try {
-        setResumes([...MOCK_RESUMES])
-      } catch {
-        if (mounted) setError('加载简历列表失败')
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }, 400)
-    return () => { mounted = false }
-  }, [])
+    fetchResumes()
+  }, [fetchResumes])
 
   const handleDelete = (id: string) => {
     setDeleteTarget(id)
   }
 
-  const confirmDelete = () => {
-    setResumes((prev) => prev.filter((r) => r.id !== deleteTarget))
+  const confirmDelete = async () => {
+    if (deleteTarget) {
+      await deleteResume(deleteTarget)
+    }
     setDeleteTarget(null)
   }
 
   const handleSetDefault = (id: string) => {
-    setResumes((prev) =>
-      prev.map((r) => ({ ...r, isDefault: r.id === id }))
-    )
+    setDefaultResume(id)
   }
 
   const totalPages = Math.ceil(resumes.length / pageSize)
-  const pagedResumes = resumes.slice((page - 1) * pageSize, page * pageSize)
+  const pagedResumes = resumes.slice((page - 1) * pageSize, page * pageSize).map((r) => ({
+    ...r,
+    isDefault: r.isDefault ?? false,
+  }))
 
   if (loading) {
     return (

@@ -1,19 +1,37 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons'
 import { MarketCharts } from '../../components/career-plan'
+import { getMarketInsight } from '@/api/career'
+import type { MarketInsight } from '@/types/career'
 import './MarketInsight.css'
 import './CareerPlanDetail.css'
 
 const MarketInsightPage = () => {
   const [position, setPosition] = useState('后端开发工程师')
   const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<MarketInsight | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
-    const timer = setTimeout(() => setLoading(false), 500)
-    return () => clearTimeout(timer)
+    // Debounce 800ms to avoid too many API calls while typing
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(async () => {
+      try {
+        const res = await getMarketInsight(position)
+        if (res.code === 200) {
+          setData(res.data)
+        }
+      } catch (err) {
+        console.error('获取市场洞察失败:', err)
+      } finally {
+        setLoading(false)
+      }
+    }, 800)
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [position])
 
   return (
@@ -43,7 +61,7 @@ const MarketInsightPage = () => {
       </div>
 
       <div className="charts-grid">
-        <MarketCharts loading={loading} />
+        <MarketCharts loading={loading} data={data} />
       </div>
     </div>
   )
