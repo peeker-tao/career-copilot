@@ -66,9 +66,11 @@ export async function getUserStats(): Promise<ApiResponse<UserStats>> {
   try {
     // 调用 /dashboard 接口获取首页概览数据
     const response: any = await apiClient.get('/dashboard')
-    
+    console.log('Dashboard API response:', response)
     // 从响应中提取 stats，并映射字段名
-    const apiStats = response.data?.stats
+    // 注意：后端 AppController.getDashboard() 手动包装了 {code,message,data}，
+    // 而 ResponseInterceptor 又包了一层，导致实际结构为 response.data.data.stats
+    const apiStats = response.data?.data?.stats || response.data?.stats
     if (apiStats) {
       const stats: UserStats = {
         totalInterviews: apiStats.totalInterviews ?? 0,
