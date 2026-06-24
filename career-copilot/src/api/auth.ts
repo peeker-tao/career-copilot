@@ -7,7 +7,7 @@ import {
   MOCK_USER_STATS,
 } from '@/mock'
 
-const useMock = import.meta.env.VITE_USE_MOCK
+const useMock = import.meta.env.VITE_USE_MOCK === 'true'
 
 /** 延迟辅助函数 */
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))

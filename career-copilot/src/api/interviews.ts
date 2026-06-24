@@ -3,7 +3,7 @@ import type { ApiResponse } from '@/types/api'
 import type { Interview, InterviewMessage, CreateInterviewRequest, InterviewReport, SubmitAnswerResult } from '@/types/interview'
 import { MOCK_INTERVIEWS, MOCK_INITIAL_MESSAGES, AI_FEEDBACKS, AI_NEXT_QUESTIONS } from '@/mock'
 
-const useMock = import.meta.env.VITE_USE_MOCK
+const useMock = import.meta.env.VITE_USE_MOCK === 'true'
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 let mockResponseIndex = 0
@@ -167,11 +167,10 @@ export async function completeInterview(id: string): Promise<ApiResponse<Intervi
 }
 
 /** 删除面试记录 */
-export async function deleteInterview(_id: string): Promise<ApiResponse<null>> {
+export async function deleteInterview(id: string): Promise<ApiResponse<null>> {
   if (useMock) {
     await delay(300)
     return { code: 200, message: '删除成功', data: null }
   }
-  // TODO: 后端无 DELETE /interviews/:id 端点
-  throw new Error('删除面试接口暂不可用，请配置 VITE_USE_MOCK=true 使用模拟数据')
+  return apiClient.delete(`/interviews/${id}`)
 }

@@ -3,7 +3,7 @@ import type { ApiResponse } from '@/types/api'
 import type { CareerPlan, CareerPlanSummary, MarketInsight, SalaryRange } from '@/types/career'
 import { MOCK_PLAN_SUMMARIES, MOCK_PLAN_DETAIL, MOCK_MARKET_INSIGHT } from '@/mock'
 
-const useMock = import.meta.env.VITE_USE_MOCK
+const useMock = import.meta.env.VITE_USE_MOCK === 'true'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -94,6 +94,7 @@ export async function updatePlanProgress(
   phase?: number
 ): Promise<ApiResponse<CareerPlan>> {
   if (useMock) {
+    console.log(`Mock updatePlanProgress called with id: ${id}, progress: ${progress}, phase: ${phase}`)
     await delay(300)
     return { code: 200, message: '更新成功', data: { ...MOCK_PLAN_DETAIL, progress } }
   }

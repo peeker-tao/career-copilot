@@ -522,6 +522,18 @@ Authorization: Bearer <access_token>
 }
 ```
 
+### DELETE `/interviews/:id` - 删除面试
+**说明：** 删除面试。
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "删除成功"
+}
+```
+
 ### WebSocket `/ws/interview/:id` — 实时面试对话
 
 **说明：** 用于流式传输 AI 回答，实现打字机效果。
