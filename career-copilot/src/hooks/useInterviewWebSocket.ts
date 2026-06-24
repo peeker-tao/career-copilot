@@ -47,7 +47,6 @@ export function useInterviewWebSocket({
     // 连接 Socket.IO — namespace /ws/interview，经 Vite proxy → NestJS
     const socket = io('/ws/interview', {
       auth: { token },
-      transports: ['websocket', 'polling'],
       autoConnect: true,
     })
 
