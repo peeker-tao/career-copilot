@@ -16,8 +16,11 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:3002',  // NestJS后端地址
         changeOrigin: true,
-        // 如果后端没有 /api 前缀，需要 rewrite
-        // rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/socket.io': {
+        target: 'http://127.0.0.1:3002',
+        changeOrigin: true,
+        ws: true,  // 必须开启 WebSocket 代理
       },
     },
   },

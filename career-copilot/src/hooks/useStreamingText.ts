@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react'
  * 将完整文本逐字显示，模拟流式输出
  *
  * @param fullText 完整文本
- * @param speed 每个字符间隔（毫秒），默认 30
+ * @param speed 每个字符间隔（毫秒），默认 30；传 0 表示即时显示（适用于 WebSocket 真实流式）
  * @returns 当前已显示的文本
  */
 export function useStreamingText(fullText: string, speed = 30): string {
@@ -13,6 +13,12 @@ export function useStreamingText(fullText: string, speed = 30): string {
   const indexRef = useRef(0)
 
   useEffect(() => {
+    // speed=0：即时模式，直接展示全部（WebSocket 已逐块推送）
+    if (speed === 0) {
+      setDisplayed(fullText)
+      return
+    }
+
     indexRef.current = 0
 
     if (!fullText) return

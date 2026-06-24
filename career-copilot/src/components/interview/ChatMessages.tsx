@@ -7,9 +7,11 @@ import MessageBubble from './MessageBubble'
 export interface ChatMessagesProps {
   messages: InterviewMessage[]
   aiStreamingId?: string | null
+  /** true=实时流式(WebSocket)，直接展示；false/undefined=打字机动画(REST) */
+  instantStreaming?: boolean
 }
 
-export default function ChatMessages({ messages, aiStreamingId }: ChatMessagesProps) {
+export default function ChatMessages({ messages, aiStreamingId, instantStreaming }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,6 +33,7 @@ export default function ChatMessages({ messages, aiStreamingId }: ChatMessagesPr
           key={msg.id}
           message={msg}
           isStreaming={msg.id === aiStreamingId}
+          instantStreaming={instantStreaming}
         />
       ))}
       <div ref={bottomRef} />

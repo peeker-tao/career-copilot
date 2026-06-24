@@ -15,7 +15,10 @@ interface InterviewState {
   loading: boolean
   error: string | null
 
-  // Actions
+  // WebSocket mode — true 时 sendMessage 走 WS 流式通道
+  useWebSocket: boolean
+
+  // Actions — REST / Shared
   fetchInterviews: () => Promise<void>
   fetchInterview: (id: string) => Promise<void>
   startInterview: (position: string, difficulty: string) => Promise<string | null>
@@ -25,6 +28,23 @@ interface InterviewState {
   deleteInterview: (id: string) => Promise<void>
   clearError: () => void
   resetRoom: () => void
+
+  // Actions — WebSocket
+  setUseWebSocket: (enabled: boolean) => void
+  appendWSChunk: (messageId: string, chunk: string) => void
+  finalizeWSMessage: (data: {
+    messageId: string
+    fullContent: string
+    feedback: string
+    score: number
+    strengths: string[]
+    weaknesses: string[]
+    isFollowUp: boolean
+    nextAction: string
+    followUpContent: string | null
+    nextQuestion: string | null
+  }) => void
+  handleWSError: (code: number, message: string) => void
 }
 
 export const useInterviewStore = create<InterviewState>((set) => ({
@@ -36,6 +56,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   isFinished: false,
   loading: false,
   error: null,
+  useWebSocket: false,
 
   fetchInterviews: async () => {
     set({ loading: true, error: null })
@@ -102,6 +123,12 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       aiResponding: true,
     }))
 
+    // WebSocket 模式：只添加用户消息，实际发送由 useInterviewWebSocket hook 处理
+    if (useInterviewStore.getState().useWebSocket) {
+      return
+    }
+
+    // REST 模式（原有逻辑）
     try {
       const res = await interviewApi.submitAnswer(interviewId, content)
       const result: SubmitAnswerResult = res.data
@@ -185,5 +212,99 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   },
 
   clearError: () => set({ error: null }),
-  resetRoom: () => set({ interview: null, currentMessages: [], isFinished: false, streamingId: null, aiResponding: false }),
+  resetRoom: () =>
+    set({
+      interview: null,
+      currentMessages: [],
+      isFinished: false,
+      streamingId: null,
+      aiResponding: false,
+      useWebSocket: false,
+    }),
+
+  /* ══════════════════════════════════════════════
+     WebSocket Actions
+     ══════════════════════════════════════════════ */
+
+  setUseWebSocket: (enabled) => set({ useWebSocket: enabled }),
+
+  /**
+   * 追加 WebSocket 流式文本块
+   * - 第一个 chunk 创建新的 AI 消息
+   * - 后续 chunk 追加到同一条消息的内容末尾
+   */
+  appendWSChunk: (messageId, chunk) => {
+    set((state) => {
+      const existingIdx = state.currentMessages.findIndex((m) => m.id === messageId)
+      if (existingIdx >= 0) {
+        // 追加到已有消息
+        const updated = [...state.currentMessages]
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          content: updated[existingIdx].content + chunk,
+        }
+        return { currentMessages: updated, streamingId: messageId }
+      }
+      // 第一个 chunk：新建消息
+      const newMsg: InterviewMessage = {
+        id: messageId,
+        role: 'assistant',
+        content: chunk,
+        timestamp: new Date().toISOString(),
+        rating: null,
+      }
+      return {
+        currentMessages: [...state.currentMessages, newMsg],
+        streamingId: messageId,
+      }
+    })
+  },
+
+  /**
+   * WebSocket 流式传输完成 — 替换为最终内容，处理面试结束
+   */
+  finalizeWSMessage: (data) => {
+    set((state) => {
+      const messages = [...state.currentMessages]
+      // 用完整内容替换流式消息
+      const idx = messages.findIndex((m) => m.id === data.messageId)
+      if (idx >= 0) {
+        messages[idx] = {
+          ...messages[idx],
+          content: data.fullContent,
+          rating: data.score,
+        }
+      }
+
+      // 如果是追问，追加追问内容
+      if (data.isFollowUp && data.followUpContent) {
+        messages.push({
+          id: `ai-followup-${Date.now()}`,
+          role: 'assistant',
+          content: data.followUpContent,
+          timestamp: new Date().toISOString(),
+          rating: null,
+        })
+      }
+
+      return {
+        currentMessages: messages,
+        aiResponding: false,
+        streamingId: null,
+        isFinished: data.nextAction === 'complete',
+      }
+    })
+  },
+
+  /**
+   * WebSocket 错误处理
+   */
+  handleWSError: (code, message) => {
+    if (code === 400 && (message.includes('已结束') || message.includes('已完成'))) {
+      set({ isFinished: true, aiResponding: false, streamingId: null })
+    } else {
+      toast.error(`面试错误 [${code}]: ${message}`)
+      set({ aiResponding: false, streamingId: null })
+    }
+  },
 }))

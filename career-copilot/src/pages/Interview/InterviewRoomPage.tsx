@@ -8,6 +8,7 @@ import {
 import { EmptyState } from '@/components/common'
 import { ChatMessages, InputArea, InterviewTimer } from '@/components/interview'
 import { useInterviewStore } from '@/store/useInterviewStore'
+import { useInterviewWebSocket } from '@/hooks/useInterviewWebSocket'
 import './InterviewRoom.css'
 
 export default function InterviewRoomPage() {
@@ -28,6 +29,10 @@ export default function InterviewRoomPage() {
   const sendMessage = useInterviewStore((s) => s.sendMessage)
   const finishInterview = useInterviewStore((s) => s.finishInterview)
   const resetRoom = useInterviewStore((s) => s.resetRoom)
+  const setUseWebSocket = useInterviewStore((s) => s.setUseWebSocket)
+  const appendWSChunk = useInterviewStore((s) => s.appendWSChunk)
+  const finalizeWSMessage = useInterviewStore((s) => s.finalizeWSMessage)
+  const handleWSError = useInterviewStore((s) => s.handleWSError)
 
   // New interview setup state
   const [targetPosition, setTargetPosition] = useState('')
@@ -46,6 +51,20 @@ export default function InterviewRoomPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  // WebSocket 流式通道 — 非 mock 模式下，进入面试房间后自动连接
+  const wsEnabled = !isNew && !!id && !import.meta.env.VITE_USE_MOCK
+  useEffect(() => {
+    setUseWebSocket(wsEnabled)
+  }, [wsEnabled, setUseWebSocket])
+
+  const { sendAnswer: wsSendAnswer, connected: wsConnected } = useInterviewWebSocket({
+    interviewId: id,
+    enabled: wsEnabled,
+    onChunk: appendWSChunk,
+    onDone: finalizeWSMessage,
+    onError: handleWSError,
+  })
 
   const handleStartInterview = async () => {
     if (!targetPosition.trim()) {
@@ -74,8 +93,12 @@ export default function InterviewRoomPage() {
   const handleSend = useCallback((content: string) => {
     if (id && !isNew) {
       sendMessage(id, content)
+      // WebSocket 模式下才真正发出
+      if (wsEnabled) {
+        wsSendAnswer(content)
+      }
     }
-  }, [id, isNew, sendMessage])
+  }, [id, isNew, sendMessage, wsEnabled, wsSendAnswer])
 
   const handleEnd = useCallback(async () => {
     const confirmed = window.confirm('确定要结束当前面试吗？结束后将生成面试报告。')
@@ -195,14 +218,14 @@ export default function InterviewRoomPage() {
           </span>
         </div>
         <div className="topbar-right">
-          <span className="connection-status connected" title="已连接">
+          <span className={`connection-status ${wsConnected ? 'connected' : 'disconnected'}`} title={wsConnected ? 'WebSocket 已连接' : 'WebSocket 未连接'}>
             <ApiOutlined />
           </span>
           {interview?.startedAt && <InterviewTimer startedAt={interview.startedAt} />}
         </div>
       </div>
 
-      <ChatMessages messages={messages} aiStreamingId={streamingId} />
+      <ChatMessages messages={messages} aiStreamingId={streamingId} instantStreaming={wsEnabled} />
 
       <InputArea
         disabled={aiResponding}

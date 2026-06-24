@@ -6,11 +6,15 @@ import StarRating from './StarRating'
 export interface MessageBubbleProps {
   message: InterviewMessage
   isStreaming?: boolean
+  /** true=实时流式(WebSocket)，直接展示；false/undefined=打字机动画(REST) */
+  instantStreaming?: boolean
 }
 
-export default function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
+export default function MessageBubble({ message, isStreaming, instantStreaming }: MessageBubbleProps) {
   const isAI = message.role === 'ai' || message.role === 'assistant'
-  const streamingText = useStreamingText(isStreaming ? message.content : '', 25)
+  // WebSocket 真实流式：speed=0 即时展示；REST 假流式：speed=25 打字机效果
+  const streamingSpeed = instantStreaming ? 0 : 25
+  const streamingText = useStreamingText(isStreaming ? message.content : '', streamingSpeed)
 
   const displayContent = isStreaming ? streamingText : message.content
   const isComplete = !isStreaming || streamingText.length >= message.content.length
