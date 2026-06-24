@@ -6,9 +6,11 @@ import path from 'path'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiTarget = env.VITE_API_TARGET || 'http://127.0.0.1:3002'
+  const baseName = env.BASE_URL_NAME ? (env.BASE_URL_NAME.endsWith('/') ? env.BASE_URL_NAME : env.BASE_URL_NAME + '/') : '/'
 
   return {
     plugins: [react()],
+    base: baseName,
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
