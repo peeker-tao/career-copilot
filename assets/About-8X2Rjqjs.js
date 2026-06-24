@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-DUAcabCT.js";var t=e(),n=()=>(0,t.jsxs)(`div`,{children:[(0,t.jsx)(`h1`,{children:`About Page`}),(0,t.jsx)(`p`,{children:`This is the about page.`})]});export{n as default};
