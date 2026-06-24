@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons'
 import { MarketCharts } from '../../components/career-plan'
 import { getMarketInsight } from '@/api/career'
@@ -9,6 +9,7 @@ import './MarketInsight.css'
 import './CareerPlanDetail.css'
 
 const MarketInsightPage = () => {
+  const navigate = useNavigate()
   const [position, setPosition] = useState('后端开发工程师')
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<MarketInsight | null>(null)
@@ -38,9 +39,9 @@ const MarketInsightPage = () => {
   return (
     <div className="market-page">
       <div className="market-topbar">
-        <Link to="/career-plan" className="back-link">
+        <button className="back-link" onClick={() => navigate(-1)}>
           <ArrowLeftOutlined /> 返回
-        </Link>
+        </button>
       </div>
 
       <div className="market-header">
