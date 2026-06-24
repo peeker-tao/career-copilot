@@ -5,7 +5,7 @@ export type Difficulty = 'easy' | 'medium' | 'hard'
 export type InterviewStatus = 'in_progress' | 'completed' | 'interrupted' | 'pending'
 
 /** 消息角色 */
-export type MessageRole = 'ai' | 'user'
+export type MessageRole = 'ai' | 'user' | 'assistant'
 
 /** 面试会话 */
 export interface Interview {

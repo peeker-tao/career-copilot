@@ -9,7 +9,7 @@ export interface MessageBubbleProps {
 }
 
 export default function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
-  const isAI = message.role === 'ai'
+  const isAI = message.role === 'ai' || message.role === 'assistant'
   const streamingText = useStreamingText(isStreaming ? message.content : '', 25)
 
   const displayContent = isStreaming ? streamingText : message.content
