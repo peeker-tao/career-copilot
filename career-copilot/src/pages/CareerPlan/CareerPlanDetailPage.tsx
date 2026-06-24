@@ -9,7 +9,7 @@ import {
 import { Loading, EmptyState, ConfirmModal } from '../../components/common'
 import { StageCard, SkillGapPanel } from '../../components/career-plan'
 import type { CareerPlan, StudyStage } from '@/types/career'
-import { getCareerPlanById, deleteCareerPlan } from '@/api/career'
+import { getCareerPlanById, deleteCareerPlan, updatePlanProgress } from '@/api/career'
 import { toast } from '@/store/useToastStore'
 import './CareerPlan.css'
 import './CareerPlanDetail.css'
@@ -53,12 +53,22 @@ const CareerPlanDetailPage = () => {
   const handleToggleLearn = (stageId: string) => {
     setPlan((prev) => {
       if (!prev) return prev
-      return {
+      const updated = {
         ...prev,
         stages: prev.stages.map((s) =>
           s.id === stageId ? { ...s, learned: !s.learned } : s
         ),
       }
+      // 计算进度并调用 API 持久化
+      const learnedCount = updated.stages.filter((s) => s.learned).length
+      const newProgress = updated.stages.length > 0
+        ? Math.round((learnedCount / updated.stages.length) * 100)
+        : 0
+      setProgress(newProgress)
+      updatePlanProgress(id, newProgress).catch((err) =>
+        console.error('更新进度失败:', err)
+      )
+      return updated
     })
   }
 
