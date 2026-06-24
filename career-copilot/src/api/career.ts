@@ -3,7 +3,7 @@ import type { ApiResponse } from '@/types/api'
 import type { CareerPlan, CareerPlanSummary, MarketInsight, SalaryRange } from '@/types/career'
 import { MOCK_PLAN_SUMMARIES, MOCK_PLAN_DETAIL, MOCK_MARKET_INSIGHT } from '@/mock'
 
-const useMock = import.meta.env.USE_MOCK
+const useMock = import.meta.env.VITE_USE_MOCK
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 

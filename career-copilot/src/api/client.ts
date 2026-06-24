@@ -8,7 +8,7 @@ declare module 'axios' {
 }
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.BACKEND_API_URL || '/api',
+  baseURL: import.meta.env.VITE_BACKEND_API_URL || '/api',
   timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
