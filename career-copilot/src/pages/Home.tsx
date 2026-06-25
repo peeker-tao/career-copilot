@@ -90,7 +90,7 @@ const Home: React.FC = () => {
         <div className="section-card">
           <div className="section-header">
             <h2>📈 面试评分趋势</h2>
-            <Link to="/interview/history" className="section-link">
+            <Link to="/interview" className="section-link">
               查看全部 <RightOutlined className="fs-10" />
             </Link>
           </div>
@@ -102,7 +102,7 @@ const Home: React.FC = () => {
         <div className="section-card">
           <div className="section-header">
             <h2>📋 最近面试记录</h2>
-            <Link to="/interview/history" className="section-link">
+            <Link to="/interview" className="section-link">
               查看全部 <RightOutlined className="fs-10" />
             </Link>
           </div>
