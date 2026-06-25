@@ -451,6 +451,37 @@ Authorization: Bearer <access_token>
 }
 ```
 
+### DELETE `/interviews/:id` — 删除面试记录
+
+**说明：** 删除指定的面试记录及其所有对话消息（级联删除）。
+
+**路径参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `id` | string | ✅ | 面试会话 ID |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": {
+    "message": "面试记录已成功删除",
+    "deletedInterview": {
+      "id": "intv_xxx",
+      "targetPosition": "Java后端开发",
+      "status": "completed"
+    }
+  }
+}
+```
+
+**错误响应：**
+
+- `404`: 面试记录不存在或不属于当前用户
+
 ### POST `/interviews/:id/answer` — 提交用户回答
 
 **请求体：**
@@ -874,4 +905,3 @@ interface Phase {
   resources: Resource[];
   estimatedWeeks: number;
 }
-```

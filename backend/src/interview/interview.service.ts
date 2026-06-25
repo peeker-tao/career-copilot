@@ -313,4 +313,27 @@ export class InterviewService {
       },
     });
   }
+
+  async remove(id: string, userId: string) {
+    // 先验证面试存在且属于当前用户
+    const interview = await this.findOne(id, userId);
+
+    // 删除面试记录（级联删除相关的消息）
+    await this.prisma.interview.delete({
+      where: { id },
+    });
+
+    this.logger.log(`🗑️ 面试记录已删除: interviewId=${id}, userId=${userId}`);
+
+    return {
+      message: '面试记录已成功删除',
+      deletedInterview: {
+        id: interview.id,
+        targetPosition: interview.targetPosition,
+        status: interview.status,
+      },
+    };
+  }
 }
+
+
