@@ -6,6 +6,7 @@ import {
   Body,
   Query,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -108,5 +109,14 @@ export class InterviewController {
   @Post(':id/complete')
   complete(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.interviewService.complete(id, userId);
+  }
+
+  @Delete(':id')
+  @ApiOperation({
+    summary: '删除面试',
+    description: '删除指定的面试记录及其所有对话消息',
+  })
+  remove(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.interviewService.remove(id, userId);
   }
 }
