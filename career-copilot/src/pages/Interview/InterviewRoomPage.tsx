@@ -33,6 +33,8 @@ export default function InterviewRoomPage() {
   const appendWSChunk = useInterviewStore((s) => s.appendWSChunk)
   const finalizeWSMessage = useInterviewStore((s) => s.finalizeWSMessage)
   const handleWSError = useInterviewStore((s) => s.handleWSError)
+  const report = useInterviewStore((s) => s.report)
+  const fetchReport = useInterviewStore((s) => s.fetchReport)
 
   // New interview setup state
   const [targetPosition, setTargetPosition] = useState('')
@@ -57,6 +59,13 @@ export default function InterviewRoomPage() {
   useEffect(() => {
     setUseWebSocket(wsEnabled)
   }, [wsEnabled, setUseWebSocket])
+
+  // 被动结束（如题目答完）时自动拉取报告
+  useEffect(() => {
+    if (isFinished && id && !isNew && !report) {
+      fetchReport(id)
+    }
+  }, [isFinished, id, isNew, report, fetchReport])
 
   const { sendAnswer: wsSendAnswer, connected: wsConnected } = useInterviewWebSocket({
     interviewId: id,
@@ -101,12 +110,11 @@ export default function InterviewRoomPage() {
   }, [id, isNew, sendMessage, wsEnabled, wsSendAnswer])
 
   const handleEnd = useCallback(async () => {
-    const confirmed = window.confirm('确定要结束当前面试吗？结束后将生成面试报告。')
+    const confirmed = window.confirm('确定要结束当前面试吗？结束后将自动生成面试报告。')
     if (!confirmed) return
 
     await finishInterview(id!)
-    navigate(`/interview/${id}/report`)
-  }, [id, navigate, finishInterview])
+  }, [id, finishInterview])
 
   // 新面试 - 设置页面
   if (isNew) {

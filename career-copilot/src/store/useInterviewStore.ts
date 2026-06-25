@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Interview, InterviewMessage } from '@/types/interview'
+import type { Interview, InterviewMessage, InterviewReport } from '@/types/interview'
 import type { SubmitAnswerResult } from '@/types/interview'
 import type { InterviewStats } from '@/components/interview/HistoryStats'
 import * as interviewApi from '@/api/interviews'
@@ -15,6 +15,7 @@ interface InterviewState {
   isFinished: boolean
   loading: boolean
   error: string | null
+  report: InterviewReport | null
 
   // Pagination state
   total: number
@@ -35,6 +36,7 @@ interface InterviewState {
   loadMessages: (id: string) => Promise<void>
   sendMessage: (interviewId: string, content: string) => Promise<void>
   finishInterview: (interviewId: string) => Promise<void>
+  fetchReport: (interviewId: string) => Promise<void>
   deleteInterview: (id: string) => Promise<void>
   clearError: () => void
   resetRoom: () => void
@@ -72,6 +74,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   totalPages: 1,
   stats: null,
   useWebSocket: false,
+  report: null,
 
   fetchInterviews: async (page = 1, limit = 10) => {
     set({ loading: true, error: null })
@@ -230,8 +233,28 @@ export const useInterviewStore = create<InterviewState>((set) => ({
     set({ isFinished: true })
     try {
       await interviewApi.completeInterview(interviewId)
+      // 自动生成报告
+      try {
+        const reportRes = await interviewApi.getInterviewReport(interviewId)
+        if (reportRes.data) {
+          set({ report: reportRes.data })
+        }
+      } catch {
+        // 报告生成失败不阻塞流程
+      }
     } catch (err) {
       toast.error('标记面试完成失败: ' + (err as Error).message)
+    }
+  },
+
+  fetchReport: async (interviewId) => {
+    try {
+      const reportRes = await interviewApi.getInterviewReport(interviewId)
+      if (reportRes.data) {
+        set({ report: reportRes.data })
+      }
+    } catch {
+      // 静默失败，用户点击查看报告时再重试
     }
   },
 
@@ -259,6 +282,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       streamingId: null,
       aiResponding: false,
       useWebSocket: false,
+      report: null,
     }),
 
   /* ══════════════════════════════════════════════

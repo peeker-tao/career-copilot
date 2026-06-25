@@ -4,6 +4,7 @@ import { ArrowLeftOutlined, TrophyOutlined, ExclamationCircleOutlined } from '@a
 import { Loading, EmptyState } from '@/components/common'
 import type { InterviewReport } from '@/types/interview'
 import { getInterviewReport } from '@/api/interviews'
+import { useInterviewStore } from '@/store/useInterviewStore'
 import './InterviewReport.css'
 
 const getScoreLevel = (score: number): { label: string; color: string } => {
@@ -16,16 +17,21 @@ const getScoreLevel = (score: number): { label: string; color: string } => {
 export default function InterviewReportPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [report, setReport] = useState<InterviewReport | null>(null)
-  const [loading, setLoading] = useState(true)
+  const storedReport = useInterviewStore((s) => s.report)
+  const [fetchedReport, setFetchedReport] = useState<InterviewReport | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // store 中有就用 store 的（自动生成），否则用本地 fetch 的
+  const report = storedReport || fetchedReport
+  const loading = !report && !error
 
   useEffect(() => {
+    // store 中已有报告，无需 fetch
+    if (storedReport) return
+
     let mounted = true
     const fetchReport = async () => {
       if (!id) {
-        setError('缺少面试 ID')
-        setLoading(false)
+        if (mounted) setError('缺少面试 ID')
         return
       }
       try {
@@ -34,17 +40,15 @@ export default function InterviewReportPage() {
         if (res.code !== 200 && res.code !== 201) {
           throw new Error(res.message || '获取报告失败')
         }
-        setReport(res.data)
+        setFetchedReport(res.data)
       } catch (err) {
-        if (!mounted) return
-        setError((err as Error).message || '获取报告失败')
-      } finally {
-        if (mounted) setLoading(false)
+        if (!mounted) setError((err as Error).message || '获取报告失败')
       }
     }
     fetchReport()
+
     return () => { mounted = false }
-  }, [id])
+  }, [id, storedReport])
 
   if (loading) {
     return (
