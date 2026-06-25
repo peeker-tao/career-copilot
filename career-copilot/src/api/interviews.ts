@@ -8,21 +8,51 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 let mockResponseIndex = 0
 
+/** 面试列表分页结果 */
+export interface InterviewListResult {
+  items: Interview[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
 /** 获取面试历史 */
-export async function getInterviews(): Promise<ApiResponse<Interview[]>> {
+export async function getInterviews(params?: {
+  page?: number
+  limit?: number
+}): Promise<ApiResponse<InterviewListResult>> {
   if (useMock) {
     await delay(400)
-    return { code: 200, message: 'success', data: MOCK_INTERVIEWS }
+    const page = params?.page ?? 1
+    const limit = params?.limit ?? 10
+    const start = (page - 1) * limit
+    const pagedItems = MOCK_INTERVIEWS.slice(start, start + limit)
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        items: pagedItems,
+        total: MOCK_INTERVIEWS.length,
+        page,
+        limit,
+        totalPages: Math.ceil(MOCK_INTERVIEWS.length / limit),
+      },
+    }
   }
-  // 后端返回 {list: InterviewSummary[], pagination: PaginationResult} 或 {items: [...]}
-  const response: any = await apiClient.get('/interviews')
-  const list = Array.isArray(response.data)
-    ? response.data
-    : (response.data?.list || response.data?.items || [])
+  const response: any = await apiClient.get('/interviews', { params })
+  // 后端返回 { items: [...], total, page, limit, totalPages }
+  const data = response.data
   return {
     code: response.code,
     message: response.message,
-    data: Array.isArray(list) ? list : [],
+    data: {
+      items: Array.isArray(data?.items) ? data.items : [],
+      total: data?.total ?? 0,
+      page: data?.page ?? 1,
+      limit: data?.limit ?? 10,
+      totalPages: data?.totalPages ?? 1,
+    },
   }
 }
 

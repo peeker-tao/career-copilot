@@ -9,6 +9,12 @@ export interface ResumeSummary {
   skills: string[]
   createdAt: string
   isDefault?: boolean
+  /** 解析出的姓名，未知时为 null */
+  name?: string | null
+  /** 解析出的电话，未知时为 null */
+  phone?: string | null
+  /** 解析出的邮箱，未知时为 null */
+  email?: string | null
 }
 
 /** 教育经历 */

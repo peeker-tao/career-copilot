@@ -116,6 +116,27 @@
   word-break: break-all;
 }
 
+/* 简历卡片：联系人信息 */
+.resume-card-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin-bottom: 10px;
+}
+
+.contact-item {
+  font-size: 12px;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.contact-item .anticon {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
 .resume-card-date {
   font-size: 12px;
   color: var(--text);
@@ -737,6 +758,159 @@
 
 .btn-secondary:hover {
   border-color: var(--accent-border);
+}
+
+.btn-secondary.danger:hover {
+  border-color: #ff4d4f;
+  color: #ff4d4f;
+}
+
+/* 上传页头部切换按钮行 */
+.upload-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ========================================
+   批量上传
+   ======================================== */
+.batch-upload-area {
+  margin-top: 20px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.batch-upload-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-bg);
+}
+
+.batch-file-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.batch-file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.batch-file-item:last-child {
+  border-bottom: none;
+}
+
+.batch-file-item.batch-file-success {
+  background: rgba(82, 196, 26, 0.04);
+}
+
+.batch-file-item.batch-file-error {
+  background: rgba(255, 77, 79, 0.04);
+}
+
+.batch-file-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+}
+
+.spin-icon { animation: spin 1s linear infinite; }
+
+.batch-file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.batch-file-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-h);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.batch-file-meta {
+  font-size: 11px;
+  color: var(--text);
+}
+
+.batch-file-error {
+  font-size: 11px;
+  color: #ff4d4f;
+}
+
+.batch-file-progress-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.batch-file-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), #7c3aed);
+  width: 0%;
+  transition: width 0.2s ease;
+}
+
+/* 上传区域已选文件计数 */
+.upload-dropzone-count {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.batch-file-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.batch-file-btn {
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.batch-file-btn:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.batch-file-btn.danger:hover {
+  border-color: #ff4d4f;
+  color: #ff4d4f;
+}
+
+.batch-upload-footer {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  justify-content: flex-end;
 }
 
 /* 响应式 */

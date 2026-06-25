@@ -4,6 +4,9 @@ import {
   EyeOutlined,
   DeleteOutlined,
   LoadingOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 
 export interface ResumeCardProps {
@@ -14,6 +17,9 @@ export interface ResumeCardProps {
     skills: string[]
     createdAt: string
     isDefault: boolean
+    name?: string | null
+    phone?: string | null
+    email?: string | null
   }
   onView: (id: string) => void
   onDelete: (id: string) => void
@@ -46,6 +52,21 @@ const ResumeCard = ({ resume, onView, onDelete, onSetDefault }: ResumeCardProps)
       </div>
 
       <div className="resume-card-name">{resume.title}</div>
+
+      {/* 解析信息：姓名 / 电话 / 邮箱 */}
+      {resume.status === 'completed' && (
+        <div className="resume-card-contact">
+          <span className="contact-item">
+            <UserOutlined /> {resume.name || '未知'}
+          </span>
+          <span className="contact-item">
+            <PhoneOutlined /> {resume.phone || '未知'}
+          </span>
+          <span className="contact-item">
+            <MailOutlined /> {resume.email || '未知'}
+          </span>
+        </div>
+      )}
 
       <div className="resume-card-status">
         <span className={`status-badge ${statusInfo.cls}`}>

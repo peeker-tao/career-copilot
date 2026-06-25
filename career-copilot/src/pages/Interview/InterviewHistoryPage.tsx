@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   MessageOutlined,
   PlusOutlined,
   ExclamationCircleOutlined,
+  ArrowLeftOutlined,
+  RightOutlined,
+  SearchOutlined,
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '@/components/common'
 import { HistoryStats, HistoryCard } from '@/components/interview'
@@ -29,18 +32,37 @@ function toHistoryItem(i: Interview) {
 export default function InterviewHistoryPage() {
   const navigate = useNavigate()
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [keyword, setKeyword] = useState('')
 
   const interviews = useInterviewStore((s) => s.interviews)
   const loading = useInterviewStore((s) => s.loading)
   const error = useInterviewStore((s) => s.error)
+  const total = useInterviewStore((s) => s.total)
+  const currentPage = useInterviewStore((s) => s.currentPage)
+  const totalPages = useInterviewStore((s) => s.totalPages)
+  const stats = useInterviewStore((s) => s.stats)
   const fetchInterviews = useInterviewStore((s) => s.fetchInterviews)
   const deleteInterview = useInterviewStore((s) => s.deleteInterview)
 
   useEffect(() => {
-    fetchInterviews()
+    fetchInterviews(1)
   }, [fetchInterviews])
 
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) return
+    fetchInterviews(page)
+  }
+
   const historyItems = interviews.map(toHistoryItem)
+
+  // 搜索过滤
+  const filteredItems = useMemo(() => {
+    if (!keyword.trim()) return historyItems
+    const kw = keyword.toLowerCase()
+    return historyItems.filter((item) =>
+      item.position.toLowerCase().includes(kw)
+    )
+  }, [historyItems, keyword])
 
   const handleDelete = (id: string) => {
     setDeleteTarget(id)
@@ -90,10 +112,20 @@ export default function InterviewHistoryPage() {
         </button>
       </div>
 
-      <HistoryStats interviews={historyItems} />
+      <HistoryStats interviews={historyItems} stats={stats ?? undefined} />
 
       <div className="history-toolbar">
-        <span className="toolbar-count">共 {historyItems.length} 条记录</span>
+        <span className="toolbar-count">共 {total} 条记录</span>
+        <div className="search-bar">
+          <SearchOutlined className="search-icon" />
+          <input
+            type="text"
+            className="search-input"
+            placeholder="搜索面试岗位..."
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+          />
+        </div>
       </div>
 
       {historyItems.length === 0 ? (
@@ -104,16 +136,46 @@ export default function InterviewHistoryPage() {
           actionText="开始新面试"
           onAction={() => navigate('/interview/new')}
         />
+      ) : filteredItems.length === 0 ? (
+        <EmptyState
+          icon={<SearchOutlined />}
+          title="未找到匹配的面试"
+          description="试试其他关键词"
+        />
       ) : (
-        <div className="history-list">
-          {historyItems.map((item) => (
-            <HistoryCard
-              key={item.id}
-              interview={item}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
+        <>
+          <div className="history-list">
+            {filteredItems.map((item) => (
+              <HistoryCard
+                key={item.id}
+                interview={item}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="history-pagination">
+              <button
+                className="pagination-btn"
+                disabled={currentPage <= 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+              >
+                <ArrowLeftOutlined /> 上一页
+              </button>
+              <span className="pagination-info">
+                第 {currentPage} / {totalPages} 页
+              </span>
+              <button
+                className="pagination-btn"
+                disabled={currentPage >= totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
+              >
+                下一页 <RightOutlined />
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       <ConfirmModal

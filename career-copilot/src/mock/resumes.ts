@@ -8,6 +8,9 @@ export const MOCK_RESUMES: ResumeSummary[] = [
     skills: ['Java', 'Spring Boot', 'MySQL', 'Redis', 'Docker', 'Git', 'RabbitMQ'],
     createdAt: '2026-06-15T10:30:00Z',
     isDefault: true,
+    name: '小明',
+    phone: '138****1234',
+    email: 'xiaoming@example.com',
   },
   {
     id: '2',
@@ -16,6 +19,9 @@ export const MOCK_RESUMES: ResumeSummary[] = [
     skills: ['React', 'TypeScript', 'Vue', 'Webpack', 'CSS'],
     createdAt: '2026-06-10T08:00:00Z',
     isDefault: false,
+    name: '小明',
+    phone: '138****1234',
+    email: 'xiaoming@example.com',
   },
   {
     id: '3',
@@ -24,6 +30,9 @@ export const MOCK_RESUMES: ResumeSummary[] = [
     skills: [],
     createdAt: '2026-06-18T12:00:00Z',
     isDefault: false,
+    name: null,
+    phone: null,
+    email: null,
   },
   {
     id: '4',
@@ -32,6 +41,9 @@ export const MOCK_RESUMES: ResumeSummary[] = [
     skills: [],
     createdAt: '2026-06-08T14:00:00Z',
     isDefault: false,
+    name: null,
+    phone: null,
+    email: null,
   },
 ]
 

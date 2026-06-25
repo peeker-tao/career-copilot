@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Interview, InterviewMessage } from '@/types/interview'
 import type { SubmitAnswerResult } from '@/types/interview'
+import type { InterviewStats } from '@/components/interview/HistoryStats'
 import * as interviewApi from '@/api/interviews'
 import { toast } from '@/store/useToastStore'
 
@@ -15,11 +16,20 @@ interface InterviewState {
   loading: boolean
   error: string | null
 
+  // Pagination state
+  total: number
+  currentPage: number
+  pageSize: number
+  totalPages: number
+
+  // 全量统计（不从当前页推算）
+  stats: InterviewStats | null
+
   // WebSocket mode — true 时 sendMessage 走 WS 流式通道
   useWebSocket: boolean
 
   // Actions — REST / Shared
-  fetchInterviews: () => Promise<void>
+  fetchInterviews: (page?: number, limit?: number) => Promise<void>
   fetchInterview: (id: string) => Promise<void>
   startInterview: (position: string, difficulty: string) => Promise<string | null>
   loadMessages: (id: string) => Promise<void>
@@ -56,14 +66,41 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   isFinished: false,
   loading: false,
   error: null,
+  total: 0,
+  currentPage: 1,
+  pageSize: 10,
+  totalPages: 1,
+  stats: null,
   useWebSocket: false,
 
-  fetchInterviews: async () => {
+  fetchInterviews: async (page = 1, limit = 10) => {
     set({ loading: true, error: null })
     try {
-      const res = await interviewApi.getInterviews()
-      const interviews = Array.isArray(res.data) ? res.data : []
-      set({ interviews, loading: false })
+      const res = await interviewApi.getInterviews({ page, limit })
+      set({
+        interviews: res.data.items,
+        total: res.data.total,
+        currentPage: res.data.page,
+        pageSize: res.data.limit,
+        totalPages: res.data.totalPages,
+        loading: false,
+      })
+      // 拉全量数据计算统计（数量已知，避免当前页推算不准）
+      if (res.data.total > 0) {
+        interviewApi.getInterviews({ limit: res.data.total }).then((allRes) => {
+          const all = allRes.data.items
+          const completed = all.filter((i: Interview) => i.status === 'completed')
+          const scores = completed.map((i: Interview) => i.score ?? 0).filter((s: number) => s > 0)
+          set({
+            stats: {
+              total: all.length,
+              completed: completed.length,
+              avgScore: scores.length ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : 0,
+              bestScore: scores.length ? Math.max(...scores) : 0,
+            },
+          })
+        }).catch(() => {})
+      }
     } catch (err) {
       set({ error: (err as Error).message, loading: false })
     }
@@ -202,10 +239,12 @@ export const useInterviewStore = create<InterviewState>((set) => ({
     set({ loading: true, error: null })
     try {
       await interviewApi.deleteInterview(id)
-      set((state) => ({
-        interviews: state.interviews.filter((i) => i.id !== id),
-        loading: false,
-      }))
+      // 删除后重新获取当前页，若当前页空了则回退一页
+      const state = useInterviewStore.getState()
+      const page = state.interviews.length <= 1 && state.currentPage > 1
+        ? state.currentPage - 1
+        : state.currentPage
+      await useInterviewStore.getState().fetchInterviews(page)
     } catch (err) {
       set({ error: (err as Error).message, loading: false })
     }

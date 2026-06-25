@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   FileTextOutlined,
   PlusOutlined,
   ExclamationCircleOutlined,
+  SearchOutlined,
+  ArrowLeftOutlined,
+  RightOutlined,
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '@/components/common'
 import { ResumeCard } from '@/components/resume'
@@ -14,6 +17,7 @@ const ResumeListPage = () => {
   const navigate = useNavigate()
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [keyword, setKeyword] = useState('')
   const pageSize = 8
 
   const resumes = useResumeStore((s) => s.resumes)
@@ -27,6 +31,26 @@ const ResumeListPage = () => {
     fetchResumes()
   }, [fetchResumes])
 
+  // 搜索过滤
+  const filteredResumes = useMemo(() => {
+    if (!keyword.trim()) return resumes
+    const kw = keyword.toLowerCase()
+    return resumes.filter((r) =>
+      r.title.toLowerCase().includes(kw) ||
+      (r.name && r.name.toLowerCase().includes(kw)) ||
+      (r.phone && r.phone.includes(kw)) ||
+      (r.email && r.email.toLowerCase().includes(kw))
+    )
+  }, [resumes, keyword])
+
+  // 搜索时回到第一页
+  const totalPages = Math.ceil(filteredResumes.length / pageSize)
+  const safePage = totalPages > 0 ? Math.min(page, totalPages) : 1
+  const pagedResumes = filteredResumes.slice((safePage - 1) * pageSize, safePage * pageSize).map((r) => ({
+    ...r,
+    isDefault: r.isDefault ?? false,
+  }))
+
   const handleDelete = (id: string) => {
     setDeleteTarget(id)
   }
@@ -34,6 +58,10 @@ const ResumeListPage = () => {
   const confirmDelete = async () => {
     if (deleteTarget) {
       await deleteResume(deleteTarget)
+      // 如果当前页只剩这一项且不是第一页，回退一页
+      if (pagedResumes.length <= 1 && safePage > 1) {
+        setPage(safePage - 1)
+      }
     }
     setDeleteTarget(null)
   }
@@ -42,11 +70,10 @@ const ResumeListPage = () => {
     setDefaultResume(id)
   }
 
-  const totalPages = Math.ceil(resumes.length / pageSize)
-  const pagedResumes = resumes.slice((page - 1) * pageSize, page * pageSize).map((r) => ({
-    ...r,
-    isDefault: r.isDefault ?? false,
-  }))
+  const handleSearch = (value: string) => {
+    setKeyword(value)
+    setPage(1)
+  }
 
   if (loading) {
     return (
@@ -85,7 +112,31 @@ const ResumeListPage = () => {
         </button>
       </div>
 
-      {resumes.length === 0 ? (
+      {resumes.length > 0 && (
+        <div className="search-bar">
+          <SearchOutlined className="search-icon" />
+          <input
+            type="text"
+            className="search-input"
+            placeholder="搜索简历名称、姓名、电话或邮箱..."
+            value={keyword}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+          {keyword && (
+            <span className="search-count">
+              {filteredResumes.length} 条结果
+            </span>
+          )}
+        </div>
+      )}
+
+      {filteredResumes.length === 0 && resumes.length > 0 && keyword ? (
+        <EmptyState
+          icon={<SearchOutlined />}
+          title="未找到匹配的简历"
+          description="试试其他关键词"
+        />
+      ) : resumes.length === 0 ? (
         <div className="resume-empty">
           <div className="resume-empty-icon">
             <FileTextOutlined />
@@ -114,16 +165,24 @@ const ResumeListPage = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="resume-pagination">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  className={`card-action-btn ${p === page ? 'active' : ''}`}
-                  onClick={() => setPage(p)}
-                >
-                  {p}
-                </button>
-              ))}
+            <div className="history-pagination">
+              <button
+                className="pagination-btn"
+                disabled={safePage <= 1}
+                onClick={() => setPage(safePage - 1)}
+              >
+                <ArrowLeftOutlined /> 上一页
+              </button>
+              <span className="pagination-info">
+                第 {safePage} / {totalPages} 页
+              </span>
+              <button
+                className="pagination-btn"
+                disabled={safePage >= totalPages}
+                onClick={() => setPage(safePage + 1)}
+              >
+                下一页 <RightOutlined />
+              </button>
             </div>
           )}
         </>

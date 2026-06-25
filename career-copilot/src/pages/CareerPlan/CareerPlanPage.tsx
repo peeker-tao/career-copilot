@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { RightOutlined } from '@ant-design/icons'
+import { RightOutlined, ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '../../components/common'
 import { PlanCard, GeneratePlanForm } from '../../components/career-plan'
 import { getCareerPlans } from '@/api/career'
 import { toast } from '@/store/useToastStore'
 import './CareerPlan.css'
 
+const PAGE_SIZE = 5
+
 const CareerPlanPage = () => {
   const [plans, setPlans] = useState<Array<{ id: string; targetPosition: string; progress: number; createdAt: string; skills?: string[] }>>([])
   const [loading, setLoading] = useState(true)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; targetPosition: string; progress: number; createdAt: string; skills?: string[] } | null>(null)
+  const [page, setPage] = useState(1)
+  const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
     let mounted = true
@@ -36,6 +40,28 @@ const CareerPlanPage = () => {
   const handleDelete = (id: string) => {
     setPlans((prev) => prev.filter((p) => p.id !== id))
     setDeleteTarget(null)
+  }
+
+  // 搜索过滤
+  const filteredPlans = useMemo(() => {
+    if (!keyword.trim()) return plans
+    const kw = keyword.toLowerCase()
+    return plans.filter((p) => p.targetPosition.toLowerCase().includes(kw))
+  }, [plans, keyword])
+
+  // 分页
+  const totalPages = Math.ceil(filteredPlans.length / PAGE_SIZE)
+  const safePage = totalPages > 0 ? Math.min(page, totalPages) : 1
+  const pagedPlans = filteredPlans.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
+  const handleSearch = (value: string) => {
+    setKeyword(value)
+    setPage(1)
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages) return
+    setPage(newPage)
   }
 
   const handleGenerated = () => {
@@ -72,8 +98,21 @@ const CareerPlanPage = () => {
         <div className="plans-column">
           <h2 className="section-title">
             我的规划
-            <span className="plans-count">{plans.length}</span>
+            <span className="plans-count">{filteredPlans.length}</span>
           </h2>
+
+          {plans.length > 0 && (
+            <div className="search-bar">
+              <SearchOutlined className="search-icon" />
+              <input
+                type="text"
+                className="search-input"
+                placeholder="搜索目标岗位..."
+                value={keyword}
+                onChange={(e) => handleSearch(e.target.value)}
+              />
+            </div>
+          )}
 
           {loading ? (
             <Loading skeleton />
@@ -82,16 +121,46 @@ const CareerPlanPage = () => {
               title="还没有职业规划"
               description="去右侧生成你的第一个职业规划吧！"
             />
+          ) : filteredPlans.length === 0 ? (
+            <EmptyState
+              icon={<SearchOutlined />}
+              title="未找到匹配的规划"
+              description="试试其他关键词"
+            />
           ) : (
-            <div className="plans-list">
-              {plans.map((plan) => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  onDeleteRequest={(p) => setDeleteTarget(p)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="plans-list">
+                {pagedPlans.map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    onDeleteRequest={(p) => setDeleteTarget(p)}
+                  />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="history-pagination">
+                  <button
+                    className="pagination-btn"
+                    disabled={safePage <= 1}
+                    onClick={() => handlePageChange(safePage - 1)}
+                  >
+                    <ArrowLeftOutlined /> 上一页
+                  </button>
+                  <span className="pagination-info">
+                    第 {safePage} / {totalPages} 页
+                  </span>
+                  <button
+                    className="pagination-btn"
+                    disabled={safePage >= totalPages}
+                    onClick={() => handlePageChange(safePage + 1)}
+                  >
+                    下一页 <RightOutlined />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 

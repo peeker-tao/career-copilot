@@ -6,12 +6,23 @@ interface InterviewItem {
   score?: number | null
 }
 
-export interface HistoryStatsProps {
-  interviews: InterviewItem[]
+/** 预计算好的全量统计值，传了就不再从 interviews 推算 */
+export interface InterviewStats {
+  total: number
+  completed: number
+  avgScore: number
+  bestScore: number
 }
 
-export default function HistoryStats({ interviews }: HistoryStatsProps) {
+export interface HistoryStatsProps {
+  interviews: InterviewItem[]
+  /** 全量统计值，优先使用 */
+  stats?: InterviewStats
+}
+
+export default function HistoryStats({ interviews, stats: statsProp }: HistoryStatsProps) {
   const stats = useMemo(() => {
+    if (statsProp) return statsProp
     const completed = interviews.filter((i) => i.status === 'completed')
     const avgScore = completed.length
       ? Math.round(completed.reduce((s, i) => s + (i.score ?? 0), 0) / completed.length)
@@ -22,7 +33,7 @@ export default function HistoryStats({ interviews }: HistoryStatsProps) {
       avgScore,
       bestScore: completed.length ? Math.max(...completed.map((i) => i.score ?? 0)) : 0,
     }
-  }, [interviews])
+  }, [interviews, statsProp])
 
   const items = [
     { label: '总面试', value: stats.total, color: '#1890ff', icon: <MessageOutlined /> },
