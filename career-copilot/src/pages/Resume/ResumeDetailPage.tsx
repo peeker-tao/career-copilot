@@ -71,24 +71,11 @@ const ResumeDetailPage = () => {
     }
   }, [id, fetchResumeById])
 
-  const handleSaveEdit = useCallback(async (data: { basicInfo?: { name?: string; phone?: string; email?: string }; skills?: string[] }) => {
+  const handleSaveEdit = useCallback(async (data: ParsedResumeData) => {
     if (!id) return
-    const cur = useResumeStore.getState().currentResume
-    const existingParsed = cur?.parsedData
     setEditError(null)
     try {
-      const merged: ParsedResumeData = {
-        basicInfo: {
-          name: data.basicInfo?.name ?? existingParsed?.basicInfo?.name ?? '',
-          phone: data.basicInfo?.phone ?? existingParsed?.basicInfo?.phone ?? '',
-          email: data.basicInfo?.email ?? existingParsed?.basicInfo?.email ?? '',
-        },
-        education: existingParsed?.education ?? [],
-        experience: existingParsed?.experience ?? [],
-        projects: existingParsed?.projects ?? [],
-        skills: data.skills ?? existingParsed?.skills ?? [],
-      }
-      await updateResume(id, { parsedData: merged } as any)
+      await updateResume(id, { parsedData: data as any })
       setShowEdit(false)
     } catch (err) {
       setEditError((err as Error).message || '保存失败')
@@ -227,13 +214,11 @@ const ResumeDetailPage = () => {
         </div>
 
         {skillScores.length > 0 && (
-          <div className="detail-section">
+          <div className="detail-section full">
             <h3 className="detail-section-title">
               <CodeOutlined className="section-icon" /> 技能评估
             </h3>
-            <div className="radar-wrapper">
-              <SkillRadar skills={skillScores} />
-            </div>
+            <SkillRadar skills={skillScores} />
           </div>
         )}
 

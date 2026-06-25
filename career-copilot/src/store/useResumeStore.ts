@@ -53,7 +53,14 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
     try {
       const res = await resumeApi.getResumes()
       const resumes = Array.isArray(res.data) ? res.data : []
-      set({ resumes, loading: false })
+      // 从后端 parsedData.basicInfo 提取姓名/电话/邮箱到顶层（兼容已有值）
+      const mapped = resumes.map((item: any) => ({
+        ...item,
+        name: item.parsedData?.basicInfo?.name ?? item.name ?? null,
+        phone: item.parsedData?.basicInfo?.phone ?? item.phone ?? null,
+        email: item.parsedData?.basicInfo?.email ?? item.email ?? null,
+      }))
+      set({ resumes: mapped, loading: false })
     } catch (err) {
       set({ error: (err as Error).message, loading: false })
     }

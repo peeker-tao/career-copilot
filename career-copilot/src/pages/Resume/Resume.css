@@ -603,6 +603,149 @@
   height: 260px;
 }
 
+/* 技能雷达图 + 评分列表 */
+.skill-radar-container {
+  width: 100%;
+}
+
+.skill-radar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.skill-radar-label {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.skill-radar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color .2s, color .2s, background .2s;
+}
+
+.skill-radar-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.skill-radar-toggle.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.skill-radar-chart {
+  height: 380px;
+  width: 100%;
+}
+
+.skill-radar-chart-compact {
+  height: 280px;
+  width: 100%;
+}
+
+/* 自定义 tooltip（替代 ECharts 内置 tooltip，实现悬停仅显示最近技能） */
+.skill-radar-chart-wrap {
+  position: relative;
+}
+
+.skill-radar-tooltip {
+  position: absolute;
+  z-index: 99;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: nowrap;
+  transform: translate(0, -100%);
+}
+
+.skill-radar-tooltip b {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.skill-radar-tooltip-score {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* 技能评分明细 */
+.skill-score-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px;
+}
+
+.skill-score-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.skill-score-item:last-child {
+  border-bottom: none;
+}
+
+.skill-score-name {
+  width: 90px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-h);
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.skill-score-bar-wrap {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: #f0f0f0;
+  overflow: hidden;
+}
+
+.skill-score-bar {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  width: var(--score-pct);
+  background: var(--score-color);
+  transition: width .4s ease;
+}
+
+.skill-score-value {
+  width: 32px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  flex-shrink: 0;
+  color: var(--score-color);
+}
+
+.skill-score-level {
+  width: 36px;
+  font-size: 11px;
+  font-weight: 500;
+  flex-shrink: 0;
+  color: var(--score-color);
+}
+
 /* 加载解析中状态 */
 .parsing-overlay {
   display: flex;
@@ -642,10 +785,14 @@
   border-radius: 14px;
   width: 100%;
   max-width: 560px;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
   padding: 24px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+
+.edit-modal-wide {
+  max-width: 680px;
 }
 
 .edit-modal-header {
@@ -716,6 +863,16 @@
   resize: vertical;
 }
 
+/* 列表卡片内的字段更紧凑 */
+.list-item-card .edit-field {
+  margin-bottom: 10px;
+}
+
+.list-item-card .edit-field label {
+  font-size: 12px;
+  font-weight: 400;
+}
+
 .edit-modal-actions {
   display: flex;
   gap: 10px;
@@ -737,6 +894,188 @@
 
 .btn-primary:hover {
   opacity: 0.9;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 8px 20px;
+  background: var(--bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: var(--border);
+}
+
+/* ---- 编辑弹窗：分区 & 列表项 ---- */
+.edit-section {
+  margin-bottom: 20px;
+}
+
+.edit-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.edit-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 10px;
+}
+
+.edit-section-header .edit-section-title {
+  margin-bottom: 0;
+}
+
+.list-item-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: rgba(0,0,0,.02);
+}
+
+.list-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.list-item-index {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: .5px;
+}
+
+.list-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+
+.list-add-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.list-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  transition: color .2s, background .2s;
+}
+
+.list-remove-btn:hover {
+  color: #ff4d4f;
+  background: rgba(255,77,79,.1);
+}
+
+.list-empty-hint {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+  padding: 4px 0;
+}
+
+/* ---- 技能标签编辑 ---- */
+.skill-edit-area {
+  margin-top: 4px;
+}
+
+.skill-edit-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.skill-edit-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 10px;
+  border-radius: 6px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.skill-tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  transition: background .15s;
+}
+
+.skill-tag-remove:hover {
+  background: rgba(24,144,255,.25);
+}
+
+.skill-edit-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.skill-edit-input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-h);
+  background: var(--bg);
+}
+
+.skill-edit-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.skill-edit-input-row .list-add-btn {
+  flex-shrink: 0;
 }
 
 .btn-primary:disabled {
