@@ -112,7 +112,7 @@ export class InterviewService {
       where.status = status;
     }
 
-    const [items, total] = await Promise.all([
+    const [items, total, totalAll] = await Promise.all([
       this.prisma.interview.findMany({
         where,
         skip,
@@ -130,11 +130,13 @@ export class InterviewService {
         },
       }),
       this.prisma.interview.count({ where }),
+      this.prisma.interview.count({ where: { userId } }),
     ]);
 
     return {
       items,
       total,
+      totalAll,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
@@ -335,5 +337,3 @@ export class InterviewService {
     };
   }
 }
-
-
