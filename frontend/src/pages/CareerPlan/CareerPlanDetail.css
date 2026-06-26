@@ -1,0 +1,420 @@
+/* 规划详情页 */
+.detail-page {
+  padding: 24px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+/* 顶部栏 */
+.detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text);
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: var(--accent);
+}
+
+.detail-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 规划标题 */
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.detail-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.detail-header-info {
+  flex: 1;
+}
+
+.detail-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 4px 0;
+}
+
+.detail-date {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* 进度控制 */
+.progress-control {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.progress-control-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.progress-control-header .progress-value {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.progress-slider {
+  width: 100%;
+  margin-bottom: 8px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.progress-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+}
+
+.progress-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+/* 双栏布局 */
+.detail-layout {
+  display: grid;
+  grid-template-columns: 1.3fr 0.7fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* 阶段卡片 */
+.stages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stage-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.stage-card.learned {
+  border-color: #52c41a;
+}
+
+.stage-card.learned .stage-header {
+  background: rgba(82, 196, 26, 0.04);
+}
+
+.stage-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.stage-header:hover {
+  background: var(--code-bg);
+}
+
+.stage-index {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.stage-card.learned .stage-index {
+  background: rgba(82, 196, 26, 0.15);
+  color: #52c41a;
+}
+
+.stage-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.stage-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stage-duration {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--code-bg);
+  padding: 1px 8px;
+  border-radius: 4px;
+}
+
+.stage-goal {
+  font-size: 13px;
+  color: var(--text);
+  margin: 4px 0 0 0;
+}
+
+.stage-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.btn-learn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text);
+  transition: all 0.2s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.btn-learn:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.btn-learn.learned {
+  border-color: #52c41a;
+  color: #52c41a;
+  background: rgba(82, 196, 26, 0.08);
+}
+
+/* 阶段展开内容 */
+.stage-body {
+  border-top: 1px solid var(--border);
+  padding: 16px 20px;
+}
+
+.resources-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 10px 0;
+}
+
+.resources-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--code-bg);
+  border-radius: 8px;
+}
+
+.resource-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.resource-name {
+  font-size: 13px;
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.resource-type {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.resource-link {
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.resource-link:hover {
+  text-decoration: underline;
+}
+
+/* 技能侧边栏 */
+.skills-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.skill-gap-section {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.skill-gap-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.skill-gap-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gap-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.gap-tag.possessed {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+}
+
+.gap-tag.target {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+/* 技能统计 */
+.skill-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.summary-stat {
+  text-align: center;
+  flex: 1;
+}
+
+.summary-num {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.summary-num.highlight {
+  color: var(--accent);
+}
+
+.summary-label {
+  font-size: 12px;
+  color: var(--text);
+  margin-top: 2px;
+}
+
+.summary-divider {
+  width: 1px;
+  height: 36px;
+  background: var(--border);
+}
+
+/* 市场洞察入口 */
+.market-insight-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--accent-bg);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: border-color 0.2s;
+}
+
+.market-insight-card:hover {
+  border-color: var(--accent-border);
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .detail-page {
+    padding: 16px;
+  }
+  .detail-layout {
+    grid-template-columns: 1fr;
+  }
+}

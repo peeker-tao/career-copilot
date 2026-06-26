@@ -1,0 +1,390 @@
+/* 历史面试页面 */
+.history-page {
+  padding: 24px 32px;
+  max-width: 1000px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+/* 页面头部 */
+.history-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.history-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0 0 4px 0;
+}
+
+.history-subtitle {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.btn-start-interview {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-start-interview:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* 统计卡片 */
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.history-stat-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.history-stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.history-stat-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-h);
+  line-height: 1.2;
+}
+
+.history-stat-value small {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  margin-left: 2px;
+}
+
+.history-stat-label {
+  font-size: 12px;
+  color: var(--text);
+  margin-top: 2px;
+}
+
+/* 工具栏 */
+.history-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.toolbar-count {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* 面试列表 */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 面试卡片 */
+.history-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  text-decoration: none;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  gap: 12px;
+}
+
+.history-card:hover {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.history-card-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.history-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.history-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin-bottom: 4px;
+}
+
+.history-card-meta {
+  font-size: 12px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.meta-sep {
+  margin: 0 6px;
+  opacity: 0.4;
+}
+
+.history-card-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.history-card-score {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-h);
+  letter-spacing: -0.5px;
+}
+
+.history-card-score small {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  margin-left: 2px;
+}
+
+/* 状态标签 */
+.status-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status-tag.completed {
+  background: #e8f8e8;
+  color: #52c41a;
+}
+
+.status-tag.interrupted {
+  background: #fff3e0;
+  color: #fa8c16;
+}
+
+.status-tag.pending {
+  background: #e8f4fd;
+  color: #1890ff;
+}
+
+/* 难度标签 */
+.difficulty-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.difficulty-tag.easy {
+  background: #e8f8e8;
+  color: #52c41a;
+}
+
+.difficulty-tag.medium {
+  background: #fff3e0;
+  color: #fa8c16;
+}
+
+.difficulty-tag.hard {
+  background: #ffe8e8;
+  color: #ff4d4f;
+}
+
+/* 删除按钮 */
+.card-delete-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.history-card:hover .card-delete-btn {
+  opacity: 1;
+}
+
+.card-delete-btn:hover {
+  background: #ffe8e8;
+  color: #ff4d4f;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .history-page {
+    padding: 16px;
+  }
+
+  .history-header {
+    flex-direction: column;
+  }
+
+  .btn-start-interview {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .history-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .history-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .history-card-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .card-delete-btn {
+    opacity: 1;
+  }
+}
+
+/* 暗色适配 */
+@media (prefers-color-scheme: dark) {
+  .status-tag.completed {
+    background: rgba(82, 196, 26, 0.15);
+  }
+  .status-tag.interrupted {
+    background: rgba(250, 140, 22, 0.15);
+  }
+  .status-tag.pending {
+    background: rgba(24, 144, 255, 0.15);
+  }
+  .difficulty-tag.easy {
+    background: rgba(82, 196, 26, 0.15);
+  }
+  .difficulty-tag.medium {
+    background: rgba(250, 140, 22, 0.15);
+  }
+  .difficulty-tag.hard {
+    background: rgba(255, 77, 79, 0.15);
+  }
+  .card-delete-btn:hover {
+    background: rgba(255, 77, 79, 0.15);
+  }
+}
+
+/* 分页 */
+.history-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 12px 0;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: var(--text);
+  min-width: 80px;
+  text-align: center;
+}

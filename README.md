@@ -51,8 +51,10 @@
 # 后端
 cd backend && npm install && npx prisma migrate dev && npm run start:dev
 
-# 前端  
+# 前端
 cd frontend && npm install && npm run dev
+# 如果你使用的是yarn
+cd frontend && yarn && yarn dev
 ```
 
 > 📖 详细文档：[架构](./project_architecture.md) · [API](./api_documentation.md) · [数据库](./database_design.md)

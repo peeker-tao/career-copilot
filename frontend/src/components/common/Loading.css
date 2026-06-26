@@ -1,0 +1,100 @@
+/* Spin 模式 */
+.loading-spin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  color: var(--text);
+}
+
+.loading-spinner {
+  animation: spin-rotate 1.2s linear infinite;
+}
+
+.loading-spinner-track {
+  stroke: var(--border);
+  opacity: 0.3;
+}
+
+.loading-spinner-active {
+  stroke: var(--accent);
+  stroke-dashoffset: 0;
+  transform-origin: center;
+  animation: spin-dash 1.5s ease-in-out infinite;
+}
+
+.loading-tip {
+  font-size: 14px;
+  color: var(--text);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 骨架屏模式 */
+.loading-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.loading-skeleton-item {
+  height: 16px;
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    var(--code-bg) 50%,
+    var(--border) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+.loading-skeleton-item:last-child {
+  width: 60% !important;
+}
+
+/* 全屏模式 */
+.loading-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 动画 */
+@keyframes spin-rotate {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-dash {
+  0% {
+    stroke-dasharray: 1 200;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 90 150;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 90 150;
+    stroke-dashoffset: -124;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

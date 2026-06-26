@@ -1,0 +1,146 @@
+/* 导航栏 */
+.app-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-logo {
+  font-size: 22px;
+}
+
+.nav-name {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-h);
+  letter-spacing: -0.3px;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
+.nav-link.active {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+/* 响应式导航栏 */
+
+/* 较宽屏：缩小间距 */
+@media (max-width: 960px) {
+  .app-nav {
+    padding: 0 20px;
+  }
+  .nav-link {
+    padding: 8px 10px;
+  }
+}
+
+/* 中等屏：隐藏品牌文字，缩小导航项 */
+@media (max-width: 780px) {
+  .app-nav {
+    padding: 0 12px;
+  }
+  .nav-brand {
+    gap: 4px;
+  }
+  .nav-name {
+    display: none;
+  }
+  .nav-link {
+    padding: 8px 8px;
+    gap: 4px;
+    font-size: 13px;
+  }
+  .nav-link .anticon {
+    font-size: 16px;
+  }
+}
+
+/* 窄屏：仅显示图标 + hover tooltip */
+@media (max-width: 640px) {
+  .app-nav {
+    padding: 0 6px;
+    height: 52px;
+  }
+
+  .nav-links {
+    gap: 0px;
+  }
+
+  .nav-link {
+    padding: 6px 10px;
+    font-size: 16px;
+    position: relative;
+  }
+
+  .nav-link .anticon {
+    font-size: 20px;
+  }
+
+  .nav-label {
+    display: none;
+  }
+
+  .nav-link:hover .nav-label,
+  .nav-link:focus .nav-label {
+    display: block;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    background: var(--text-h);
+    color: var(--bg);
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    z-index: 200;
+    font-weight: 500;
+    box-shadow: var(--shadow);
+    pointer-events: none;
+  }
+
+  .nav-link.active .nav-label {
+    display: none;
+  }
+}
+
+/* 主内容区 */
+.app-main {
+  flex: 1;
+}
