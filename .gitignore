@@ -84,4 +84,6 @@ tsconfig.tsbuildinfo
 
 **/.yarn/*
 
-career-copilot/.yarn/install-state.gz
+**/.yarn/install-state.gz
+
+backend/
