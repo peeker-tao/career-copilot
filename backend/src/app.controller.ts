@@ -14,8 +14,8 @@ export class AppController {
 
   @Get('dashboard')
   @UseGuards(JwtAuthGuard)
-  async getDashboard(@CurrentUser() user: any) {
-    const data = await this.appService.getDashboard(user.userId);
+  async getDashboard(@CurrentUser() user: { id: string }) {
+    const data = await this.appService.getDashboard(user.id);
     return {
       code: 200,
       message: 'success',
