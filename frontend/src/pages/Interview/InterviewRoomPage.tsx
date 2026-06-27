@@ -4,11 +4,13 @@ import {
   ArrowLeftOutlined,
   ApiOutlined,
   ExclamationCircleOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import { EmptyState } from '@/components/common'
-import { ChatMessages, InputArea, InterviewTimer } from '@/components/interview'
+import { ChatMessages, InputArea, InterviewTimer, InterviewerAvatar } from '@/components/interview'
 import { useInterviewStore } from '@/store/useInterviewStore'
 import { useInterviewWebSocket } from '@/hooks/useInterviewWebSocket'
+import { useResumeStore } from '@/store/useResumeStore'
 import './InterviewRoom.css'
 
 export default function InterviewRoomPage() {
@@ -36,11 +38,24 @@ export default function InterviewRoomPage() {
   const report = useInterviewStore((s) => s.report)
   const fetchReport = useInterviewStore((s) => s.fetchReport)
 
+  // Resume store
+  const resumes = useResumeStore((s) => s.resumes)
+  const fetchResumes = useResumeStore((s) => s.fetchResumes)
+
   // New interview setup state
   const [targetPosition, setTargetPosition] = useState('')
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
+  const [selectedResumeId, setSelectedResumeId] = useState<string>('')
   const [starting, setStarting] = useState(false)
   const [setupError, setSetupError] = useState<string | null>(null)
+  const [showResumeDropdown, setShowResumeDropdown] = useState(false)
+
+  // 进入新面试页时加载简历列表
+  useEffect(() => {
+    if (isNew) {
+      fetchResumes()
+    }
+  }, [isNew, fetchResumes])
 
   // 加载已有面试
   useEffect(() => {
@@ -84,7 +99,11 @@ export default function InterviewRoomPage() {
     setStarting(true)
     try {
       const store = useInterviewStore.getState()
-      const newId = await store.startInterview(targetPosition.trim(), difficulty)
+      const newId = await store.startInterview(
+        targetPosition.trim(),
+        difficulty,
+        selectedResumeId || undefined,
+      )
       if (newId) {
         // 创建面试成功后立即加载消息
         await store.loadMessages(newId)
@@ -143,6 +162,51 @@ export default function InterviewRoomPage() {
                 onChange={(e) => setTargetPosition(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleStartInterview()}
               />
+            </div>
+
+            {/* 简历选择 */}
+            <div className="setup-field">
+              <label className="setup-label">关联简历（可选）</label>
+              <div className="resume-selector">
+                <button
+                  className={`resume-selector-trigger ${selectedResumeId ? 'has-value' : ''}`}
+                  onClick={() => setShowResumeDropdown(!showResumeDropdown)}
+                  type="button"
+                >
+                  <FileTextOutlined />
+                  <span className="resume-selector-label">
+                    {selectedResumeId
+                      ? resumes.find((r) => r.id === selectedResumeId)?.title || '已选择简历'
+                      : '不选择简历（空手面试）'}
+                  </span>
+                  <span className="resume-selector-arrow">{showResumeDropdown ? '▲' : '▼'}</span>
+                </button>
+                {showResumeDropdown && (
+                  <div className="resume-selector-dropdown">
+                    <div
+                      className={`resume-option ${!selectedResumeId ? 'active' : ''}`}
+                      onClick={() => { setSelectedResumeId(''); setShowResumeDropdown(false) }}
+                    >
+                      <span className="resume-option-label">不选择简历</span>
+                      <span className="resume-option-desc">空手开始面试</span>
+                    </div>
+                    {resumes
+                      .filter((r) => r.status === 'completed')
+                      .map((r) => (
+                        <div
+                          key={r.id}
+                          className={`resume-option ${selectedResumeId === r.id ? 'active' : ''}`}
+                          onClick={() => { setSelectedResumeId(r.id); setShowResumeDropdown(false) }}
+                        >
+                          <span className="resume-option-label">{r.name || r.title}</span>
+                          <span className="resume-option-desc">
+                            {r.skills.slice(0, 3).join('、')}{r.skills.length > 3 ? '...' : ''}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="setup-field">
@@ -238,7 +302,15 @@ export default function InterviewRoomPage() {
         </div>
       </div>
 
-      <ChatMessages messages={messages} aiStreamingId={streamingId} instantStreaming={wsEnabled} />
+      <div className="room-body">
+        <InterviewerAvatar
+          speaking={aiResponding}
+          listening={!!messages.length && !aiResponding && !isFinished}
+          finished={isFinished}
+          position={interview?.targetPosition}
+        />
+        <ChatMessages messages={messages} aiStreamingId={streamingId} instantStreaming={wsEnabled} />
+      </div>
 
       <InputArea
         disabled={aiResponding}

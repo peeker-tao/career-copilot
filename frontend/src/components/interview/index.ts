@@ -18,3 +18,6 @@ export type { HistoryStatsProps, InterviewStats } from './HistoryStats'
 
 export { default as HistoryCard } from './HistoryCard'
 export type { HistoryCardProps } from './HistoryCard'
+
+export { default as InterviewerAvatar } from './InterviewerAvatar'
+export type { InterviewerAvatarProps } from './InterviewerAvatar'

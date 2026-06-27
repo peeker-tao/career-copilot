@@ -148,6 +148,324 @@
   color: #fff;
 }
 
+/* ===== 面试房间主体布局（聊天 + 面试官） ===== */
+.room-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* ===== AI 面试官 Avatar ===== */
+.interviewer-avatar {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 12px;
+  border-right: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--code-bg) 0%, var(--bg) 100%);
+  position: relative;
+  overflow: hidden;
+  gap: 16px;
+}
+
+.avatar-glow {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(22, 119, 255, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* 人物主体容器 */
+.avatar-figure {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: avatar-breathe 4s ease-in-out infinite;
+}
+
+/* 呼吸动画 */
+@keyframes avatar-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* 头部 */
+.avatar-head {
+  position: relative;
+  width: 80px;
+  height: 90px;
+  z-index: 2;
+}
+
+/* 头发 */
+.avatar-hair {
+  position: absolute;
+  top: -2px;
+  left: 4px;
+  width: 72px;
+  height: 50px;
+  background: linear-gradient(180deg, #4a4a5a 0%, #5c5c6e 60%, #6a6a7e 100%);
+  border-radius: 36px 36px 12px 12px;
+  z-index: 3;
+}
+
+.avatar-hair::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 8px;
+  right: 8px;
+  height: 12px;
+  background: inherit;
+  border-radius: 50%;
+  filter: blur(2px);
+}
+
+/* 脸部 */
+.avatar-face {
+  position: absolute;
+  bottom: 0;
+  left: 6px;
+  width: 68px;
+  height: 62px;
+  background: linear-gradient(180deg, #fce8d6 0%, #f5d5b8 100%);
+  border-radius: 34px 34px 30px 30px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* 耳朵 */
+.avatar-ear {
+  position: absolute;
+  top: 42px;
+  width: 10px;
+  height: 16px;
+  background: linear-gradient(180deg, #f0ceb0 0%, #e8bca0 100%);
+  border-radius: 5px;
+  z-index: 1;
+}
+
+.left-ear { left: 0; }
+.right-ear { right: 0; }
+
+/* 眼睛区域 */
+.avatar-eyes {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.avatar-eye {
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: height 0.1s ease;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.avatar-eye.blink {
+  height: 2px;
+}
+
+.eye-pupil {
+  width: 5px;
+  height: 5px;
+  background: #2c2c3a;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+/* 倾听时瞳孔略放大 — 表现专注 */
+.interviewer-avatar.listening .eye-pupil {
+  width: 6px;
+  height: 6px;
+}
+
+/* 完成时瞳孔变小 */
+.interviewer-avatar.finished .eye-pupil {
+  width: 3px;
+  height: 3px;
+}
+
+/* 嘴巴 */
+.avatar-mouth {
+  width: 14px;
+  height: 3px;
+  background: #c4877a;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+  margin-top: -2px;
+}
+
+.avatar-mouth.open {
+  height: 8px;
+  width: 10px;
+  border-radius: 0 0 6px 6px;
+  background: #b07060;
+}
+
+/* 微笑 — 面试完成时 */
+.interviewer-avatar.finished .avatar-mouth {
+  width: 18px;
+  height: 4px;
+  border-radius: 2px 2px 6px 6px;
+  transform: translateY(-1px);
+}
+
+/* 身体 - 西装 */
+.avatar-body {
+  position: relative;
+  width: 72px;
+  height: 60px;
+  background: linear-gradient(180deg, #2c5f8a 0%, #1a4a6e 100%);
+  border-radius: 8px 8px 14px 14px;
+  margin-top: -6px;
+  z-index: 1;
+}
+
+/* 衬衫领 */
+.body-collar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 14px;
+  background: linear-gradient(180deg, #f0f4f8 0%, #dce4ec 100%);
+  border-radius: 0 0 4px 4px;
+  z-index: 2;
+}
+
+.body-collar::before,
+.body-collar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 12px;
+  background: linear-gradient(180deg, #e8eef4 0%, #d0dae4 100%);
+}
+
+.body-collar::before {
+  left: -6px;
+  border-radius: 0 0 0 4px;
+  transform: skewX(-10deg);
+}
+
+.body-collar::after {
+  right: -6px;
+  border-radius: 0 0 4px 0;
+  transform: skewX(10deg);
+}
+
+/* 领带 */
+.body-lapel {
+  position: absolute;
+  top: 10px;
+  width: 0;
+  height: 0;
+  z-index: 1;
+}
+
+.left-lapel {
+  left: 0;
+  border-top: 20px solid #1a4a6e;
+  border-right: 10px solid transparent;
+}
+
+.right-lapel {
+  right: 0;
+  border-top: 20px solid #1a4a6e;
+  border-left: 10px solid transparent;
+}
+
+/* 状态脉冲环 */
+.avatar-pulse {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  opacity: 0.3;
+}
+
+/* 说话时脉冲动画 */
+.interviewer-avatar.speaking .avatar-pulse {
+  background: var(--primary, #1677ff);
+  animation: pulse-ring 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateX(-50%) scaleX(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateX(-50%) scaleX(1.3);
+  }
+}
+
+/* 倾听时柔和平滑脉冲 */
+.interviewer-avatar.listening .avatar-pulse {
+  background: #52c41a;
+  opacity: 0.4;
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.2; transform: translateX(-50%) scaleX(1); }
+  50% { opacity: 0.6; transform: translateX(-50%) scaleX(1.1); }
+}
+
+/* 底部信息 */
+.avatar-footer {
+  text-align: center;
+  z-index: 2;
+}
+
+.avatar-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin-bottom: 4px;
+}
+
+.avatar-status {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+/* 小屏隐藏面试官 */
+@media (max-width: 768px) {
+  .interviewer-avatar {
+    display: none;
+  }
+}
+
 .connection-status {
   font-size: 16px;
   transition: color 0.3s;
@@ -394,6 +712,162 @@
   cursor: not-allowed;
 }
 
+/* ===== 语音按钮 ===== */
+.btn-voice {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.btn-voice:hover:not(:disabled) {
+  border-color: var(--accent-border);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.btn-voice:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-voice.hidden {
+  display: none;
+}
+
+/* 录音中 */
+.btn-voice.recording {
+  border-color: #ff4d4f;
+  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.06);
+  animation: voice-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 77, 79, 0); }
+}
+
+.voice-recording-icon {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  animation: rec-blink 0.8s step-end infinite;
+}
+
+@keyframes rec-blink {
+  50% { opacity: 0; }
+}
+
+/* 语音开关（小喇叭） */
+.btn-voice-toggle {
+  width: 32px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  opacity: 0.4;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.btn-voice-toggle.active {
+  opacity: 0.8;
+  color: var(--accent);
+}
+
+.btn-voice-toggle:hover {
+  opacity: 1;
+}
+
+/* 语音状态提示 */
+.voice-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.voice-status.recording {
+  background: rgba(255, 77, 79, 0.06);
+  color: #ff4d4f;
+}
+
+.voice-status.processing {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.voice-status.recognized {
+  background: rgba(82, 196, 26, 0.08);
+  color: var(--text-h);
+  flex-wrap: wrap;
+}
+
+.voice-status.error {
+  background: rgba(255, 77, 79, 0.06);
+  color: #ff4d4f;
+}
+
+.voice-status-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.voice-status-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.voice-status-btn.cancel {
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.voice-status-btn.cancel:hover {
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
 /* 结束面试按钮 */
 .input-area .btn-end {
   width: 100%;
@@ -553,6 +1027,105 @@
 .setup-input::placeholder {
   color: var(--text);
   opacity: 0.6;
+}
+
+/* ===== 简历选择器 ===== */
+.resume-selector {
+  position: relative;
+  width: 100%;
+}
+
+.resume-selector-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.resume-selector-trigger:hover {
+  border-color: var(--accent-border);
+}
+
+.resume-selector-trigger.has-value {
+  color: var(--text-h);
+  border-color: var(--accent-border);
+}
+
+.resume-selector-label {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resume-selector-arrow {
+  font-size: 10px;
+  color: var(--text);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.resume-selector-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+}
+
+.resume-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.resume-option:last-child {
+  border-bottom: none;
+}
+
+.resume-option:hover {
+  background: var(--code-bg);
+}
+
+.resume-option.active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+
+.resume-option-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.resume-option-desc {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .setup-difficulties {
