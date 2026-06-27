@@ -1,5 +1,7 @@
 # Career-Copilot 项目架构规划
 
+> 版本：v1.1 | 日期：2026-06-27
+> 状态：✅ 已实现 ⏳ 待测试
 > AI 模拟面试官 + 智能职业规划平台
 
 ---
@@ -40,28 +42,35 @@
 ## 二、系统整体架构图
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Frontend (React + Vite)                  │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
-│  │ 用户页面  │  │ 面试模拟  │  │ 职业规划  │  │ 简历管理   │  │
-│  │ (登录/    │  │ (数字人   │  │ (路径     │  │ (上传/     │  │
-│  │  注册)    │  │  对话)   │  │  推荐)   │  │  解析)    │  │
-│  └──────────┘  └──────────┘  └──────────┘  └────────────┘  │
-└──────────────────────┬──────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                       Frontend (React + Vite)                     │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
+│  │ 用户页面  │ │ 面试模拟  │ │ 职业规划  │ │ 简历管理  │ │ 岗位匹配│ │
+│  │ (登录/    │ │ (数字人   │ │ (路径     │ │ (上传/    │ │ (推荐/  │ │
+│  │  注册)    │ │  对话)   │ │  推荐)   │ │  解析)   │ │ 分析)  │ │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └────────┘ │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────────┐  │
+│  │ 学习资源  │ │ 面试题库  │ │ 语音面试  │ │ 管理员后台        │  │
+│  └──────────┘ └──────────┘ └──────────┘ └────────────────────┘  │
+└──────────────────────┬───────────────────────────────────────────┘
                        │ HTTP / WebSocket
-┌──────────────────────▼──────────────────────────────────────┐
-│                  API Gateway (NestJS)                        │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
-│  │ Auth     │  │ Interview│  │ Career   │  │ Resume     │  │
-│  │ Module   │  │ Module   │  │ Module   │  │ Module     │  │
-│  └──────────┘  └──────────┘  └──────────┘  └────────────┘  │
-└──────┬──────────────┬──────────────┬────────────────────────┘
+┌──────────────────────▼───────────────────────────────────────────┐
+│                     API Gateway (NestJS)                          │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
+│  │ Auth     │ │ Interview│ │ Career   │ │ Resume   │ │Admin   │ │
+│  │ Module   │ │ Module   │ │ Module   │ │ Module   │ │Module  │ │
+│  ├──────────┤ ├──────────┤ ├──────────┤ ├──────────┤ ├────────┤ │
+│  │JobMatch  │ │ Learning │ │Question  │ │Voice     │ │Resume  │ │
+│  │ Module   │ │ Resources│ │ Bank     │ │Interview │ │NER(svc)│ │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └────────┘ │
+└──────┬──────────────┬──────────────┬─────────────────────────────┘
        │              │              │
 ┌──────▼──────┐ ┌─────▼──────┐ ┌────▼──────────────────┐
 │ PostgreSQL  │ │   Redis    │ │  AI Services           │
 │ (用户/简历/ │ │ (会话缓存/ │ │  ├─ LLM (面试生成)     │
-│  面试记录)  │ │  消息队列) │ │  ├─ 语音识别 (ASR)     │
-└─────────────┘ └────────────┘ │  └─ 语音合成 (TTS)     │
+│  面试/题库) │ │  消息队列) │ │  ├─ 语音识别 (ASR)     │
+│  岗位/资源) │ │            │ │  ├─ 语音合成 (TTS)     │
+└─────────────┘ └────────────┘ │  └─ NER 实体识别       │
                                └────────────────────────┘
 ```
 
@@ -141,6 +150,122 @@ model CareerPlan {
 
   user            User     @relation(fields: [userId], references: [id])
 }
+
+// ═══════════════ 🆕 新增 v1.1 模型 ⏳ 待测试 ═══════════════
+
+model JobMatch {
+  id              String   @id @default(cuid())
+  userId          String
+  resumeId        String?
+  targetPosition  String   // 目标岗位
+  matchScore      Float?   // 匹配度 (0-100)
+  matchData       Json?    // 匹配详情（技能匹配、经验匹配等）
+  recommendations Json?    // 推荐的岗位列表
+  status          String   @default("completed")
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id])
+  resume          Resume?  @relation(fields: [resumeId], references: [id])
+}
+
+model LearningResource {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  url         String?
+  resourceType String  // course | article | video | book | project
+  tags        String[]
+  difficulty  String?  // beginner | intermediate | advanced
+  relevanceScore Float?
+  source      String?  // 来源：system | ai_recommended | user_saved
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model QuestionBank {
+  id          String   @id @default(cuid())
+  userId      String?
+  position    String   // 目标岗位
+  question    String
+  answer      String?
+  questionType String  // technical | behavioral | project | hr
+  difficulty  String   @default("medium") // easy | medium | hard
+  tags        String[]
+  source      String?  // ai_generated | user_added
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id])
+}
+
+model VoiceInterviewSession {
+  id              String   @id @default(cuid())
+  userId          String
+  interviewId     String?
+  status          String   @default("in_progress") // in_progress | completed | cancelled
+  audioUrl        String?  // 录音文件地址
+  duration        Int?     // 持续时间（秒）
+  questionCount   Int      @default(0)
+  transcript      Json?    // 语音转文字记录
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+
+  user            User     @relation(fields: [userId], references: [id])
+  interview       Interview? @relation(fields: [interviewId], references: [id])
+}
+
+model VoiceInterviewSummary {
+  id              String   @id @default(cuid())
+  sessionId       String   @unique
+  overallScore    Float?   // 综合评分
+  fluencyScore    Float?   // 流利度评分
+  pronunciationScore Float? // 发音评分
+  contentScore    Float?   // 内容评分
+  feedback        Json?    // 分题反馈
+  suggestions     String?  // 改进建议
+  createdAt       DateTime @default(now())
+
+  session         VoiceInterviewSession @relation(fields: [sessionId], references: [id])
+}
+
+model AdminLog {
+  id          String   @id @default(cuid())
+  adminId     String
+  action      String   // 操作类型
+  target      String?  // 操作对象
+  detail      Json?    // 操作详情
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  admin       User     @relation(fields: [adminId], references: [id])
+}
+
+model ScreeningResult {
+  id          String   @id @default(cuid())
+  resumeId    String
+  position    String   // 招聘岗位
+  score       Float    // 综合评分 (0-100)
+  details     Json?    // 各维度评分详情
+  isQualified Boolean? // 是否合格
+  createdAt   DateTime @default(now())
+
+  resume      Resume   @relation(fields: [resumeId], references: [id])
+}
+
+model ResumeNerCache {
+  id          String   @id @default(cuid())
+  resumeId    String   @unique
+  rawText     String?  // 原始文本
+  entities    Json?    // NER 实体列表
+  structured  Json?    // 结构化结果
+  modelVersion String? // NER 模型版本
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resume      Resume   @relation(fields: [resumeId], references: [id])
+}
 ```
 
 ---
@@ -159,6 +284,18 @@ model CareerPlan {
 | `/career-plan` | 职业规划 | 目标岗位选择、路径推荐 |
 | `/career-plan/:id` | 路径详情 | 分阶段学习计划、课程推荐 |
 | `/profile` | 个人中心 | 修改资料、查看历史 |
+| `/job-matching` | 岗位匹配 | 岗位推荐、匹配度分析 |
+| `/job-matching/:id` | 匹配详情 | 技能匹配详情、推荐岗位列表 |
+| `/learning-resources` | 学习资源 | 课程/文章/视频推荐列表 |
+| `/learning-resources/:id` | 资源详情 | 学习资源详情 |
+| `/question-bank` | 面试题库 | 按岗位/题型筛选面试题 |
+| `/question-bank/:id` | 题目详情 | 题目答案、参考解析 |
+| `/voice-interview` | 语音面试 | 语音面试入口 |
+| `/voice-interview/:id` | 语音面试中 | 语音对话界面 |
+| `/voice-interview/:id/report` | 语音面试报告 | 语音评估报告 |
+| `/admin` | 管理后台 | 用户管理、数据统计 |
+| `/admin/users` | 用户管理 | 用户列表、角色管理 |
+| `/admin/logs` | 操作日志 | 管理员操作审计日志 |
 
 ---
 
@@ -230,6 +367,127 @@ LLM + 市场数据分析技能差距
 - 市场招聘数据（爬取或公开数据集）
 - LLM 对岗位要求的理解
 
+### 5.4 岗位匹配与推荐
+
+**流程：**
+
+```
+用户简历 + 目标岗位 → 技能提取与标准化
+          ↓
+LLM 分析技能差距与匹配度
+          ↓
+生成匹配度评分 + 各维度详情
+          ↓
+推荐相关岗位 / 技能提升建议
+```
+
+**技术要点：**
+
+- 基于简历解析结果提取技能标签
+- LLM 进行技能匹配度分析（JSON 结构化输出）
+- 支持按岗位名称、技能关键词筛选
+- 匹配结果包含：整体评分、技能匹配、经验匹配、教育匹配
+
+### 5.5 学习资源推荐
+
+**流程：**
+
+```
+技能差距分析结果 → 生成学习需求
+          ↓
+系统推荐 + LLM 推荐学习资源
+          ↓
+按类型（课程/文章/视频/书籍）分类展示
+          ↓
+用户收藏、标记完成
+```
+
+**技术要点：**
+
+- 内置学习资源库 + LLM 动态推荐
+- 资源与技能差距直接关联
+- 用户可标记学习完成状态
+- 支持难度分级（初级/中级/高级）
+
+### 5.6 面试题库
+
+**流程：**
+
+```
+按岗位 + 题型生成面试题
+          ↓
+LLM 生成题目 + 参考答案 + 解析
+          ↓
+用户练习、查看答案
+          ↓
+收藏高频考题
+```
+
+**技术要点：**
+
+- 支持四种题型：技术题、行为题、项目经验题、HR 题
+- LLM 按岗位动态生成题目
+- 可作为面试前的独立练习模块
+
+### 5.7 语音面试
+
+**流程：**
+
+```
+用户发起语音面试 → 前端录音 → 音频流上传
+          ↓
+后端 ASR 语音转文字 → LLM 评估回答
+          ↓
+TTS 语音合成 AI 提问 → 播放给用户
+          ↓
+多轮对话 → 生成语音面试报告
+```
+
+**技术要点：**
+
+- 前端使用 MediaRecorder API 录音
+- ASR 支持：Azure Speech / 阿里云语音识别
+- TTS 支持：Azure Speech / 阿里云语音合成
+- 录音文件暂存至服务器，面试结束后清理
+- 评估维度：流利度、发音、内容、综合评分
+
+### 5.8 管理员后台
+
+**功能模块：**
+
+- **用户管理**：用户列表、角色分配、账号启用/停用
+- **数据统计**：注册用户数、面试次数、活跃度统计
+- **操作审计**：管理员操作日志记录与查询
+- **系统配置**：AI 模型参数、面试题配置
+
+**技术要点：**
+
+- 基于角色（user/admin）的权限控制
+- 所有管理员操作记录 AdminLog
+- 数据统计支持按时间范围筛选
+
+### 5.9 简历 NER 实体识别
+
+**流程：**
+
+```
+上传简历 → Python NER 服务 (port 8001)
+          ↓
+BIO 字典匹配 + 规则引擎
+          ↓
+识别人名、电话、邮箱、技能、学历等实体
+          ↓
+返回结构化结果 → 前端展示
+```
+
+**技术要点：**
+
+- 独立 Python 服务，基于 Flask/FastAPI
+- 使用 BIO 标注模式进行实体识别
+- 字典匹配 + 正则规则双引擎
+- 覆盖 10+ 类简历实体
+- 结果缓存至 ResumeNerCache 表
+
 ---
 
 ## 六、项目目录结构
@@ -252,6 +510,11 @@ career-copilot/
 │   │   │   ├── Resume/
 │   │   │   ├── Interview/
 │   │   │   ├── CareerPlan/
+│   │   │   ├── JobMatching/     # 岗位匹配
+│   │   │   ├── LearningResource/# 学习资源
+│   │   │   ├── QuestionBank/    # 面试题库
+│   │   │   ├── VoiceInterview/  # 语音面试
+│   │   │   ├── Admin/           # 管理员后台
 │   │   │   └── Profile/
 │   │   ├── store/               # Zustand 状态
 │   │   ├── types/               # TS 类型定义
@@ -292,6 +555,31 @@ career-copilot/
 │   │   │   ├── career.service.ts
 │   │   │   ├── career.planner.ts
 │   │   │   └── market-insight.service.ts  # 市场洞察
+│   │   ├── job-matching/        # 🆕 岗位匹配模块（v1.1）⏳ 待测试
+│   │   │   ├── job-matching.controller.ts
+│   │   │   ├── job-matching.service.ts
+│   │   │   └── dto/
+│   │   ├── learning-resources/  # 🆕 学习资源模块（v1.1）⏳ 待测试
+│   │   │   ├── learning-resources.controller.ts
+│   │   │   ├── learning-resources.service.ts
+│   │   │   └── dto/
+│   │   ├── question-bank/       # 🆕 面试题库模块（v1.1）⏳ 待测试
+│   │   │   ├── question-bank.controller.ts
+│   │   │   ├── question-bank.service.ts
+│   │   │   └── dto/
+│   │   ├── voice-interview/     # 🆕 语音面试模块（v1.1）⏳ 待测试
+│   │   │   ├── voice-interview.controller.ts
+│   │   │   ├── voice-interview.service.ts
+│   │   │   ├── voice-interview.gateway.ts    # WebSocket
+│   │   │   └── dto/
+│   │   ├── admin/               # 🆕 管理员模块（v1.1）⏳ 待测试
+│   │   │   ├── admin.controller.ts
+│   │   │   ├── admin.service.ts
+│   │   │   └── dto/
+│   │   ├── resume-ner/          # 🆕 简历NER模块（v1.1）⏳ 待测试
+│   │   │   ├── resume-ner.controller.ts
+│   │   │   ├── resume-ner.service.ts
+│   │   │   └── ner-python-client.ts    # Python 服务客户端
 │   │   ├── ai/                  # AI 统一入口
 │   │   │   ├── ai.module.ts
 │   │   │   ├── ai.service.ts
@@ -380,45 +668,114 @@ career-copilot/
 | POST | `/api/ai/interview/report` | 面试对话 → 综合评价报告 |
 | POST | `/api/ai/career/plan` | 技能分析 → 职业规划 + 学习路线 |
 
+### 🆕 岗位匹配模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/job-matching/match` | 简历与目标岗位匹配度分析 |
+| GET  | `/api/job-matching/matches` | 获取匹配历史列表 |
+| GET  | `/api/job-matching/matches/:id` | 获取匹配详情 |
+| POST | `/api/job-matching/recommend` | 基于简历推荐岗位 |
+| DELETE | `/api/job-matching/matches/:id` | 删除匹配记录 |
+
+### 🆕 学习资源模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET  | `/api/learning-resources` | 获取学习资源列表（分页+筛选） |
+| GET  | `/api/learning-resources/:id` | 获取资源详情 |
+| POST | `/api/learning-resources` | 新增学习资源 |
+| PATCH | `/api/learning-resources/:id` | 更新资源状态（完成/收藏） |
+
+### 🆕 面试题库模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET  | `/api/question-bank` | 获取题目列表（分页+筛选） |
+| GET  | `/api/question-bank/:id` | 获取题目详情 |
+| POST | `/api/question-bank/generate` | 按岗位生成面试题 |
+| POST | `/api/question-bank` | 手动添加题目 |
+
+### 🆕 语音面试模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/voice-interview/sessions` | 创建语音面试会话 |
+| GET  | `/api/voice-interview/sessions` | 获取会话列表 |
+| GET  | `/api/voice-interview/sessions/:id` | 获取会话详情 |
+| POST | `/api/voice-interview/sessions/:id/upload` | 上传音频片段 |
+| POST | `/api/voice-interview/sessions/:id/evaluate` | 评估回答 |
+| POST | `/api/voice-interview/sessions/:id/complete` | 结束会话 |
+| GET  | `/api/voice-interview/sessions/:id/report` | 获取评估报告 |
+| WS   | `/ws/voice-interview` | 语音面试实时通信 |
+
+### 🆕 管理员模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET  | `/api/admin/users` | 用户列表（分页+筛选） |
+| PATCH | `/api/admin/users/:id` | 更新用户角色/状态 |
+| GET  | `/api/admin/stats` | 系统数据统计 |
+| GET  | `/api/admin/logs` | 操作日志列表 |
+| POST | `/api/admin/logs` | 写入操作日志 |
+| DELETE | `/api/admin/logs` | 清理过期日志 |
+
+### 🆕 简历 NER 模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/resume-ner/parse` | NER 实体识别（调用 Python 服务） |
+| POST | `/api/resume-ner/parse-structured` | NER + 结构化输出 |
+| GET  | `/api/resume-ner/cache/:resumeId` | 获取缓存的 NER 结果 |
+
 ---
 
 ## 八、开发阶段规划
 
-### 第一阶段：基础搭建（1-2 周）
+### 第一阶段：基础搭建（1-2 周） ✅ 已实现 ⏳ 待测试
 
-- [ ] 初始化前后端项目（Vite + NestJS）
-- [ ] 配置 PostgreSQL + Redis（Docker Compose）
-- [ ] 实现用户注册/登录（JWT）
-- [ ] 搭建前端 Layout 框架 + 路由
+- [x] 初始化前后端项目（Vite + NestJS）
+- [x] 配置 PostgreSQL + Redis（Docker Compose）
+- [x] 实现用户注册/登录（JWT）
+- [x] 搭建前端 Layout 框架 + 路由
 
-### 第二阶段：简历管理（1 周）
+### 第二阶段：简历管理（1 周） ✅ 已实现 ⏳ 待测试
 
-- [ ] 简历上传与文件解析
-- [ ] LLM 简历信息提取
-- [ ] 简历列表与详情展示
-- [ ] 技能雷达图可视化
+- [x] 简历上传与文件解析
+- [x] LLM 简历信息提取
+- [x] 简历列表与详情展示
+- [x] 技能雷达图可视化
 
-### 第三阶段：AI 面试官（核心，2-3 周）
+### 第三阶段：AI 面试官（核心，2-3 周） ✅ 已实现 ⏳ 待测试
 
-- [ ] LLM API 接入与 Prompt 工程
-- [ ] 面试创建与多轮对话逻辑
-- [ ] WebSocket 实时通信
-- [ ] 前端数字人对话界面
-- [ ] 面试报告生成
+- [x] LLM API 接入与 Prompt 工程
+- [x] 面试创建与多轮对话逻辑
+- [x] WebSocket 实时通信
+- [x] 前端数字人对话界面
+- [x] 面试报告生成
 
-### 第四阶段：职业规划（1-2 周）
+### 第四阶段：职业规划（1-2 周） ✅ 已实现 ⏳ 待测试
 
-- [ ] 技能差距分析
-- [ ] 学习路线生成
-- [ ] 市场数据整合
-- [ ] 规划展示页面
+- [x] 技能差距分析
+- [x] 学习路线生成
+- [x] 市场数据整合
+- [x] 规划展示页面
 
-### 第五阶段：优化与部署（1 周）
+### 第五阶段：新增业务模块（1-2 周） ✅ 已实现 ⏳ 待测试
 
-- [ ] 语音合成/识别（可选）
-- [ ] 响应式适配
-- [ ] Docker 部署
-- [ ] 项目文档完善
+- [x] 岗位匹配与推荐模块
+- [x] 学习资源推荐模块
+- [x] 面试题库模块
+- [x] 语音面试模块（ASR/TTS）
+- [x] 管理员后台模块
+- [x] 简历 NER 实体识别服务（Python）
+
+### 第六阶段：优化与部署（1 周） ⏳ 待测试
+
+- [x] 语音合成/识别集成
+- [x] 响应式适配
+- [x] Docker 部署
+- [x] 项目文档完善
 
 ---
 
@@ -426,9 +783,16 @@ career-copilot/
 
 | 成员 | 建议分工 |
 |------|---------|
-| **陶宏阳**（负责人） | 项目架构、AI 核心逻辑、后端面试模块、代码审查 |
-| **邓继舟** | 前端开发（面试对话页、数字人组件、简历页） |
-| **赵原一** | 后端开发（用户/简历模块、数据库设计、API） |
-| **李烨** | 前端开发（职业规划页、仪表盘、样式与交互） |
+| **陶宏阳**（负责人） | 项目架构、AI 核心逻辑、后端面试模块、语音面试、代码审查 |
+| **邓继舟** | 前端开发（面试对话页、数字人组件、简历页、语音面试） |
+| **赵原一** | 后端开发（用户/简历/岗位匹配/学习资源模块、数据库设计、API） |
+| **李烨** | 前端开发（职业规划页、仪表盘、岗位匹配、管理员后台、样式与交互） |
 
+> **v1.1 新增模块分工：**
+> - **岗位匹配 + 学习资源**：赵原一（后端）+ 李烨（前端）
+> - **面试题库**：陶宏阳（后端）+ 邓继舟（前端）
+> - **语音面试**：陶宏阳（后端 + 语音集成）+ 邓继舟（前端）
+> - **管理员后台**：赵原一（后端）+ 李烨（前端）
+> - **简历 NER 服务**：陶宏阳（Python 服务搭建）
+>
 > 建议全员都了解整体架构，前后端接口协商一致后再各自开发。

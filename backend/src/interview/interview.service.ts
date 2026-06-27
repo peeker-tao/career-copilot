@@ -8,6 +8,7 @@ import { PrismaService } from '../common/prisma.service';
 import { AiService } from '../ai/ai.service';
 import { AiInterviewService, InterviewContext } from './ai-interview.service';
 import { InterviewReportService } from './interview-report.service';
+import { QueueService } from '../queue/queue.service';
 import { normalizeNextAction } from './interview.utils';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class InterviewService {
     private aiInterviewService: AiInterviewService,
     private aiService: AiService,
     private interviewReportService: InterviewReportService,
+    private queueService: QueueService,
   ) {}
 
   async create(
@@ -302,6 +304,54 @@ export class InterviewService {
         (err as Error).message || '报告生成失败，请稍后重试',
       );
     }
+  }
+
+  /**
+   * 异步生成面试报告（入队列）
+   * 立即返回 jobId，前端可轮询 /:id/feedback/status?jobId=xxx 获取状态
+   */
+  async generateFeedbackAsync(id: string, userId: string) {
+    const interview = await this.findOne(id, userId);
+
+    if (interview.status !== 'completed') {
+      throw new BadRequestException('面试未完成，无法生成报告');
+    }
+
+    if (interview.overallFeedback) {
+      // 已有缓存报告，直接返回
+      return {
+        type: 'cached',
+        data: interview.overallFeedback,
+      };
+    }
+
+    // 入队列
+    const job = await this.queueService.addFeedbackJob(id, userId);
+
+    return {
+      type: 'queued',
+      jobId: job.id,
+      message: '报告生成任务已加入队列，请使用返回的 jobId 轮询结果',
+    };
+  }
+
+  /**
+   * 查询异步反馈任务状态
+   */
+  async getFeedbackJobStatus(id: string, userId: string, jobId: string) {
+    const interview = await this.findOne(id, userId);
+
+    // 先检查报告是否已生成（可能在两次查询之间已完成）
+    if (interview.overallFeedback) {
+      return {
+        status: 'completed',
+        data: interview.overallFeedback,
+      };
+    }
+
+    const jobStatus = await this.queueService.getFeedbackJobStatus(jobId);
+
+    return jobStatus;
   }
 
   async complete(id: string, userId: string) {

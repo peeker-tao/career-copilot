@@ -26,7 +26,10 @@ import { QueueService } from './queue.service';
       }),
       inject: [ConfigService],
     }),
-    BullModule.registerQueue({ name: 'resume-parser' }),
+    BullModule.registerQueue(
+      { name: 'resume-parser' },
+      { name: 'feedback-generator' },
+    ),
   ],
   providers: [QueueService],
   exports: [QueueService, BullModule],
