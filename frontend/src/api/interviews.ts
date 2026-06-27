@@ -82,19 +82,20 @@ export async function getInterviewMessages(id: string): Promise<ApiResponse<Inte
 export async function createInterview(data: CreateInterviewRequest): Promise<ApiResponse<Interview>> {
   if (useMock) {
     await delay(500)
+    const mockInterview: Interview = {
+      id: Date.now().toString(),
+      targetPosition: data.targetPosition,
+      difficulty: data.difficulty,
+      status: 'in_progress',
+      score: null,
+      rounds: 0,
+      duration: '-',
+      startedAt: new Date().toISOString(),
+    }
     return {
       code: 200,
       message: '创建成功',
-      data: {
-        id: Date.now().toString(),
-        targetPosition: data.targetPosition,
-        difficulty: data.difficulty,
-        status: 'in_progress',
-        score: null,
-        rounds: 0,
-        duration: '-',
-        startedAt: new Date().toISOString(),
-      },
+      data: mockInterview,
     }
   }
   return apiClient.post('/interviews', data)

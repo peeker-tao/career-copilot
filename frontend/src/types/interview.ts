@@ -37,6 +37,8 @@ export interface InterviewMessage {
 export interface CreateInterviewRequest {
   targetPosition: string
   difficulty: Difficulty
+  /** 关联简历 ID（可选） */
+  resumeId?: string
 }
 
 /** 面试反馈报告 */

@@ -32,7 +32,7 @@ interface InterviewState {
   // Actions — REST / Shared
   fetchInterviews: (page?: number, limit?: number) => Promise<void>
   fetchInterview: (id: string) => Promise<void>
-  startInterview: (position: string, difficulty: string) => Promise<string | null>
+  startInterview: (position: string, difficulty: string, resumeId?: string) => Promise<string | null>
   loadMessages: (id: string) => Promise<void>
   sendMessage: (interviewId: string, content: string) => Promise<void>
   finishInterview: (interviewId: string) => Promise<void>
@@ -124,12 +124,13 @@ export const useInterviewStore = create<InterviewState>((set) => ({
     }
   },
 
-  startInterview: async (position, difficulty) => {
+  startInterview: async (position, difficulty, resumeId) => {
     set({ loading: true, error: null })
     try {
       const res = await interviewApi.createInterview({
         targetPosition: position,
         difficulty: difficulty as 'easy' | 'medium' | 'hard',
+        resumeId,
       })
       set({ loading: false, isFinished: false, currentMessages: [] })
       return res.data.id
