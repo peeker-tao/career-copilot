@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
   Delete,
+  HttpCode,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -98,12 +99,35 @@ export class InterviewController {
   }
 
   @Post(':id/feedback')
+  @HttpCode(202)
   @ApiOperation({
-    summary: '生成面试报告',
-    description: '根据对话记录生成多维度评分报告',
+    summary: '异步生成面试报告',
+    description: '将面试报告生成任务加入队列，返回任务 ID 供轮询',
   })
-  generateFeedback(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.interviewService.generateFeedback(id, userId);
+  async generateFeedback(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.interviewService.generateFeedbackAsync(id, userId);
+  }
+
+  @Get(':id/feedback/status')
+  @ApiOperation({
+    summary: '查询面试报告生成状态',
+    description: '根据 jobId 轮询异步任务的执行状态',
+  })
+  @ApiQuery({
+    name: 'jobId',
+    required: true,
+    type: String,
+    description: '异步任务 ID',
+  })
+  async getFeedbackStatus(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Query('jobId') jobId: string,
+  ) {
+    return this.interviewService.getFeedbackJobStatus(id, userId, jobId);
   }
 
   @Post(':id/complete')

@@ -102,3 +102,8 @@ tsconfig.tsbuildinfo
 backend/generated
 /datasets
 .conda
+
+**/.yarn/*
+career-copilot/.yarn/install-state.gz
+
+/frontend

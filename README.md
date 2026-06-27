@@ -55,4 +55,4 @@ cd backend && npm install && npx prisma migrate dev && npm run start:dev
 cd frontend && npm install && npm run dev
 ```
 
-> 📖 详细文档：[架构](./project_architecture.md) · [API](./api_documentation.md) · [数据库](./database_design.md)
+> 📖 详细文档：[架构](./项目设计文件/project_architecture.md) · [API](./项目设计文件/api_documentation.md) · [数据库](./项目设计文件/database_design.md)

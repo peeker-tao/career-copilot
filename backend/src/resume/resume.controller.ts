@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFile,
   Query,
+  HttpCode,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -23,6 +24,11 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { ResumeService } from './resume.service';
 import { UpdateResumeDto } from './dto/update-resume.dto';
+import { RewriteSectionDto, RewriteSuggestionsDto } from './dto/rewrite-resume.dto';
+import {
+  ScreeningBenchmarkImportDto,
+  ScreeningEvaluateDto,
+} from './dto/screening-benchmark.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -112,5 +118,55 @@ export class ResumeController {
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.resumeService.remove(id, userId);
+  }
+
+  @Post(':id/rewrite-suggestions')
+  @ApiBody({ type: RewriteSuggestionsDto })
+  async rewriteSuggestions(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: RewriteSuggestionsDto,
+  ) {
+    return this.resumeService.generateRewriteSuggestions(id, userId, {
+      goal: dto.goal,
+      focusAreas: dto.focusAreas,
+    });
+  }
+
+  @Post(':id/rewrite-section')
+  @ApiBody({ type: RewriteSectionDto })
+  async rewriteSection(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: RewriteSectionDto,
+  ) {
+    return this.resumeService.rewriteSection(
+      id,
+      userId,
+      dto.section,
+      dto.instruction,
+    );
+  }
+
+  // ================================================
+  // 筛选基准评估 (Dataset 4: AI Resume Screening)
+  // ================================================
+
+  @Post('screening/benchmark-import')
+  @HttpCode(201)
+  @ApiBody({ type: ScreeningBenchmarkImportDto })
+  async importScreeningBenchmark(
+    @Body() dto: ScreeningBenchmarkImportDto,
+  ) {
+    return this.resumeService.importScreeningBenchmark(dto.records);
+  }
+
+  @Post('screening/evaluate')
+  @HttpCode(201)
+  @ApiBody({ type: ScreeningEvaluateDto })
+  async evaluateScreening(
+    @Body() dto: ScreeningEvaluateDto,
+  ) {
+    return this.resumeService.evaluateScreening(dto);
   }
 }

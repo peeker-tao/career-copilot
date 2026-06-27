@@ -16,12 +16,17 @@ model User {
   education     String?
   targetPosition String?  @map("target_position")
   role          String    @default("user")
+  modelConfig   Json?     @map("model_config")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  resumes       Resume[]
-  interviews    Interview[]
-  careerPlans   CareerPlan[]
+  resumes             Resume[]
+  interviews          Interview[]
+  careerPlans         CareerPlan[]
+  voiceInterviewSessions VoiceInterviewSession[]
+  passwordResetTokens PasswordResetToken[]
+  jobMatches          JobMatch[]
+  resumeBookmarks     ResumeBookmark[]
 
   @@map("users")
 }
@@ -33,12 +38,15 @@ model Resume {
   fileUrl     String?   @map("file_url")
   parsedData  Json?     @map("parsed_data")
   skills      String[]
+  suggestions Json?     @map("suggestions")        // 简历改进建议列表
+  evaluations Json?     @map("evaluations")        // 六维评估分数 [{name, score, comment}]
   status      String    @default("parsing")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   interviews  Interview[]
+  resumeBookmarks ResumeBookmark[]
 
   @@index([userId, createdAt])
   @@map("resumes")
@@ -97,4 +105,124 @@ model CareerPlan {
 
   @@index([userId, createdAt])
   @@map("career_plans")
+}
+
+// ============================================================
+// 新功能模型
+// ============================================================
+
+model VoiceInterviewSession {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  interviewId     String?   @map("interview_id")
+  targetPosition  String    @map("target_position")
+  difficulty      String    @default("medium")
+  resumeId        String?   @map("resume_id")
+  status          String    @default("recording") // recording | paused | completed | cancelled
+  audioUrl        String?   @map("audio_url")
+  durationSeconds Int       @default(0) @map("duration_seconds")
+  transcript      Json?     // [{ timestamp, speaker, text }]
+  startedAt       DateTime  @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("voice_interview_sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  used      Boolean   @default(false)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model QuestionBank {
+  id          String   @id @default(cuid())
+  category    String            // 分类: java, python, frontend, system-design, behavioral, etc.
+  type        String            // choice | short_answer | coding | behavioral
+  difficulty  String   @default("medium") // easy | medium | hard
+  title       String
+  content     Json              // 题目内容：{ question, options?, answer, explanation }
+  tags        String[]
+  source      String?           // 来源：manual | ai_generated | crawled
+  usageCount  Int      @default(0) @map("usage_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([category, difficulty])
+  @@index([tags])
+  @@map("question_bank")
+}
+
+model JobMatch {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  position      String             // 岗位名称
+  company       String?            // 公司名称
+  location      String?            // 工作地点
+  salaryRange   String?   @map("salary_range")
+  description   String?            // 岗位描述
+  requirements  Json?              // 岗位要求列表
+  matchScore    Float    @map("match_score")   // 匹配度 0-100
+  matchDetails  Json?    @map("match_details") // { matched_skills, missing_skills, suggestions }
+  status        String   @default("pending")   // pending | saved | applied | archived
+  source        String?            // 来源: ai_recommended | manual | external
+  applyUrl      String?   @map("apply_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([position])
+  @@map("job_matches")
+}
+
+model LearningResource {
+  id            String   @id @default(cuid())
+  title         String
+  url           String
+  type          String              // course | article | video | book | documentation
+  category      String              // 技能分类
+  tags          String[]
+  description   String?
+  provider      String?             // Coursera, Udemy, YouTube, etc.
+  difficulty    String   @default("intermediate") // beginner | intermediate | advanced
+  duration      String?             // 学习时长估计
+  rating        Float?              // 评分 0-5
+  relevanceScore Float?  @map("relevance_score") // AI 推荐相关度
+  aiGenerated   Boolean  @default(false) @map("ai_generated")
+  usageCount    Int      @default(0) @map("usage_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([category, type])
+  @@index([tags])
+  @@map("learning_resources")
+}
+
+model ResumeBookmark {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  resumeId  String   @map("resume_id")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume    Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, resumeId])
+  @@map("resume_bookmarks")
 }

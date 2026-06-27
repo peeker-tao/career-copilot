@@ -4,11 +4,14 @@ import { ResponseInterceptor } from './interceptors/response.interceptor';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 import { ValidationPipe } from './pipes/validation.pipe';
 import { PrismaService } from './prisma.service';
+import { ThrottleGuard } from './guards/throttle.guard';
+import { EmailService } from './email.service';
 
 @Global()
 @Module({
   providers: [
     PrismaService,
+    EmailService,
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
@@ -21,7 +24,8 @@ import { PrismaService } from './prisma.service';
       provide: APP_PIPE,
       useClass: ValidationPipe,
     },
+    ThrottleGuard,
   ],
-  exports: [PrismaService],
+  exports: [PrismaService, EmailService, ThrottleGuard],
 })
 export class CommonModule {}

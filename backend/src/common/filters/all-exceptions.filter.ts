@@ -73,10 +73,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = exception.message;
     }
 
-    this.logger.error(
-      `[${request.method}] ${request.url} → ${status} ${message}`,
-      exception instanceof Error ? exception.stack : '',
-    );
+    // 4xx 客户端错误（如 401/403/404）是预期行为，记录为 WARN
+    // 5xx 服务器错误才记录为 ERROR
+    if (status >= 500) {
+      this.logger.error(
+        `[${request.method}] ${request.url} → ${status} ${message}`,
+        exception instanceof Error ? exception.stack : '',
+      );
+    } else if (status >= 400) {
+      this.logger.warn(
+        `[${request.method}] ${request.url} → ${status} ${message}`,
+      );
+    } else {
+      this.logger.log(
+        `[${request.method}] ${request.url} → ${status} ${message}`,
+      );
+    }
 
     response.status(status).json({
       code: status,

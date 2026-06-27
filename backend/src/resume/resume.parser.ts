@@ -11,6 +11,7 @@ import * as mammoth from 'mammoth';
 import { createCanvas } from '@napi-rs/canvas';
 import { recognize } from 'tesseract.js';
 import { AiService } from '../ai/ai.service';
+import { ResumeNerService } from '../resume-ner/resume-ner.service';
 
 export interface ParsedResumeResult {
   basicInfo: {
@@ -40,6 +41,18 @@ export interface ParsedResumeResult {
   }>;
   skills: string[];
   summary?: string;
+  /** 简历改进建议列表 */
+  suggestions?: Array<{
+    category: string;
+    content: string;
+    priority: 'high' | 'medium' | 'low';
+  }>;
+  /** 六维评估分数（面试官关注维度） */
+  evaluations?: Array<{
+    name: string;
+    score: number;
+    comment?: string;
+  }>;
 }
 
 @Injectable()
@@ -49,7 +62,10 @@ export class ResumeParser {
   /** pdf-parse 提取文本少于该阈值时触发 OCR 回退 */
   private readonly OCR_MIN_TEXT_LENGTH = 50;
 
-  constructor(private readonly aiService: AiService) {}
+  constructor(
+    private readonly aiService: AiService,
+    private readonly resumeNerService: ResumeNerService,
+  ) {}
 
   /**
    * 从文件中提取原始文本
@@ -142,15 +158,75 @@ export class ResumeParser {
   }
 
   /**
+   * 对中文简历文本执行 NER 预提取，返回带标注的增强文本
+   * 将 NER 识别出的实体作为上下文注入 LLM 提示词
+   */
+  private async enhanceWithNer(text: string): Promise<{
+    enhancedText: string;
+    nerEntities: Record<string, string[]>;
+  }> {
+    // 仅对含中文的文本启用 NER
+    const hasChinese = /[\u4e00-\u9fff]/.test(text);
+    if (!hasChinese) {
+      return { enhancedText: text, nerEntities: {} };
+    }
+
+    try {
+      const nerResult = await this.resumeNerService.extractEntities(text);
+      const entities = nerResult.entities;
+      const total = nerResult.stats?.total ?? 0;
+
+      if (total === 0) {
+        return { enhancedText: text, nerEntities: {} };
+      }
+
+      // 构建 NER 标注摘要
+      const nerSummary = Object.entries(entities)
+        .filter(([, values]) => values.length > 0)
+        .map(([tag, values]) => `  - ${tag}: ${[...new Set(values)].join('、')}`)
+        .join('\n');
+
+      // 在文本前添加 NER 预提取的实体信息，作为 LLM 的辅助上下文
+      const enhancedText = [
+        '【NER 预提取的简历实体信息（供参考）】',
+        nerSummary,
+        '',
+        '【简历原文】',
+        text,
+      ].join('\n');
+
+      this.logger.log(
+        `🧠 NER 预提取完成: ${total} 个实体 | ${Object.keys(entities).length} 种类别`,
+      );
+
+      return { enhancedText, nerEntities: entities };
+    } catch (error) {
+      this.logger.warn(`NER 增强跳过: ${(error as Error).message}`);
+      return { enhancedText: text, nerEntities: {} };
+    }
+  }
+
+  /**
    * 调用 LLM 解析简历文本为结构化数据
+   * 中文简历会自动使用 NER 预提取增强
    */
   async parseWithLLM(text: string): Promise<ParsedResumeResult> {
     this.logger.log(`🤖 LLM 解析简历文本 (${text.length} 字符)`);
 
-    const raw = await this.aiService.parseResume(text);
+    // 对中文文本执行 NER 预提取
+    const { enhancedText, nerEntities } = await this.enhanceWithNer(text);
+
+    const raw = await this.aiService.parseResume(enhancedText);
 
     // 将 AiService 返回的通用结构转换为 ParsedResumeResult
-    return this.transformResult(raw);
+    const result = this.transformResult(raw);
+
+    // 如果 LLM 未识别出姓名但 NER 有结果，补充到结果中
+    if (!result.basicInfo.name && nerEntities['姓名']?.length) {
+      result.basicInfo.name = nerEntities['姓名'][0];
+    }
+
+    return result;
   }
 
   /**
@@ -201,6 +277,35 @@ export class ResumeParser {
 
     const summary = (raw.summary as string) ?? undefined;
 
-    return { basicInfo, education, experience, projects, skills, summary };
+    // 提取改进建议（新版 LLM 输出）
+    const suggestions = Array.isArray(raw.suggestions)
+      ? raw.suggestions.map((s: Record<string, unknown>) => ({
+          category: (s.category as string) ?? '',
+          content: (s.content as string) ?? '',
+          priority: (['high', 'medium', 'low'].includes(s.priority as string)
+            ? (s.priority as 'high' | 'medium' | 'low')
+            : 'medium') as 'high' | 'medium' | 'low',
+        }))
+      : undefined;
+
+    // 提取六维评估分数（新版 LLM 输出）
+    const evaluations = Array.isArray(raw.evaluations)
+      ? raw.evaluations.map((e: Record<string, unknown>) => ({
+          name: (e.name as string) ?? '',
+          score: (e.score as number) ?? 0,
+          comment: (e.comment as string) ?? undefined,
+        }))
+      : undefined;
+
+    return {
+      basicInfo,
+      education,
+      experience,
+      projects,
+      skills,
+      summary,
+      suggestions,
+      evaluations,
+    };
   }
 }

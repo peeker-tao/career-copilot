@@ -20,7 +20,7 @@ export class AiService {
    * 将简历原始文本解析为结构化 JSON（带自动重试）
    */
   async parseResume(text: string): Promise<Record<string, unknown>> {
-    const systemPrompt = `你是一个专业的简历解析助手。请从以下简历文本中提取结构化信息，以 JSON 格式返回。
+    const systemPrompt = `你是一个专业的简历解析与评估助手。请从以下简历文本中提取结构化信息，并给出改进建议和六维评估分数，以 JSON 格式返回。
 
 返回格式（严格 JSON，不要包含 markdown 代码块标记）：
 {
@@ -37,7 +37,18 @@ export class AiService {
     { "name": "项目名", "role": "角色", "description": "项目描述", "techStack": ["技术栈"] }
   ],
   "skills": ["技能1", "技能2"],
-  "summary": "个人总结（如有）"
+  "summary": "个人总结（如有）",
+  "suggestions": [
+    { "category": "分类（如：技能提升/项目经验/简历优化）", "content": "具体改进建议", "priority": "high/medium/low" }
+  ],
+  "evaluations": [
+    { "name": "专业技能", "score": 0-100, "comment": "评语" },
+    { "name": "项目经验", "score": 0-100, "comment": "评语" },
+    { "name": "工作经验", "score": 0-100, "comment": "评语" },
+    { "name": "教育背景", "score": 0-100, "comment": "评语" },
+    { "name": "竞赛与证书", "score": 0-100, "comment": "评语" },
+    { "name": "综合潜力", "score": 0-100, "comment": "评语" }
+  ]
 }
 
 ⚠️ 重要：JSON 中所有字符串值内部的引号必须用反斜杠转义（如 \\"），
@@ -47,7 +58,9 @@ export class AiService {
 注意：
 - 如果某字段在简历中不存在，使用空数组或 null
 - 日期尽量标准化为 YYYY-MM 格式
-- 技能标签拆分为单个关键词`;
+- 技能标签拆分为单个关键词
+- evaluations 六维度必须全部输出，score 范围 0-100
+- suggestions 根据简历实际情况给出 3-5 条针对性改进建议，priority 区分高中低优先级`;
 
     const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },

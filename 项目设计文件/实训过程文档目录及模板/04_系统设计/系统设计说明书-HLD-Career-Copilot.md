@@ -260,7 +260,7 @@ erDiagram
 
 ### 4.2 表结构
 
-详见 [`项目设计文件/database_design.md`](../database_design.md)。
+详见 [`项目设计文件/database_design.md`](../../database_design.md)。
 
 ---
 
@@ -288,7 +288,7 @@ erDiagram
 
 ### 5.3 详细接口定义
 
-详见 [`项目设计文件/api_documentation.md`](../api_documentation.md)。
+详见 [`项目设计文件/api_documentation.md`](../../api_documentation.md)。
 
 ---
 
