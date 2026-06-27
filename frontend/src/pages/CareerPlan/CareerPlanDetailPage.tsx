@@ -80,7 +80,7 @@ const CareerPlanDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="detail-page">
+      <div className="detail-page page-container">
         <Loading skeleton className="pad-24-0" />
       </div>
     )
@@ -88,7 +88,7 @@ const CareerPlanDetailPage = () => {
 
   if (error) {
     return (
-      <div className="detail-page">
+      <div className="detail-page page-container">
         <EmptyState
           title="加载失败"
           description={error}

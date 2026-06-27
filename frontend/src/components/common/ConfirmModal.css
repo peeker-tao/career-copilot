@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.5);
   animation: confirm-fade-in 0.2s ease-out;
   padding: 20px;
 }
@@ -14,16 +14,15 @@
 /* 弹窗主体 */
 .confirm-modal {
   position: relative;
-  background: var(--bg);
-  border-radius: 16px;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
   padding: 32px 28px 24px;
   max-width: 420px;
   width: 100%;
   text-align: center;
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.15),
-    0 0 0 1px var(--border);
-  animation: confirm-scale-in 0.2s ease-out;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-light);
+  animation: confirm-scale-in 0.25s ease-out;
 }
 
 /* 关闭按钮 */
@@ -31,22 +30,23 @@
   position: absolute;
   top: 14px;
   right: 14px;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
-  color: var(--text);
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 14px;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .confirm-close:hover {
-  background: var(--code-bg);
+  background: var(--bg-soft);
+  color: var(--text-h);
 }
 
 .confirm-close:disabled {
@@ -62,15 +62,15 @@
 }
 
 .confirm-icon--danger {
-  color: #ff4d4f;
+  color: var(--danger);
 }
 
 .confirm-icon--warning {
-  color: #faad14;
+  color: var(--warning);
 }
 
 .confirm-icon--info {
-  color: #1890ff;
+  color: var(--info);
 }
 
 /* 标题 */
@@ -85,7 +85,7 @@
 /* 内容 */
 .confirm-message {
   font-size: 14px;
-  color: var(--text);
+  color: var(--text-muted);
   line-height: 1.6;
   margin-bottom: 24px;
 }
@@ -103,13 +103,13 @@
   justify-content: center;
   gap: 6px;
   width: 100%;
-  padding: 10px 20px;
+  padding: 11px 20px;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s;
+  transition: all 0.2s ease;
 }
 
 .confirm-btn:active {
@@ -124,43 +124,48 @@
 
 /* 确认按钮 - 危险 */
 .confirm-btn--danger {
-  background: #ff4d4f;
+  background: var(--danger);
   color: #fff;
 }
 
 .confirm-btn--danger:hover:not(:disabled) {
   opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+  transform: translateY(-1px);
 }
 
 /* 确认按钮 - 警告 */
 .confirm-btn--warning {
-  background: var(--accent);
+  background: var(--accent-gradient-strong);
   color: #fff;
 }
 
 .confirm-btn--warning:hover:not(:disabled) {
-  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+  transform: translateY(-1px);
 }
 
 /* 确认按钮 - 信息 */
 .confirm-btn--info {
-  background: #1890ff;
+  background: var(--info);
   color: #fff;
 }
 
 .confirm-btn--info:hover:not(:disabled) {
-  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+  transform: translateY(-1px);
 }
 
 /* 取消按钮 */
 .confirm-btn--cancel {
-  background: var(--code-bg);
+  background: var(--bg-soft);
   color: var(--text-h);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border-light);
 }
 
 .confirm-btn--cancel:hover:not(:disabled) {
-  background: var(--border);
+  background: var(--bg-card);
+  border-color: var(--accent-border);
 }
 
 /* 按钮加载动画 */

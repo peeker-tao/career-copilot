@@ -138,7 +138,7 @@ export default function InterviewRoomPage() {
   // 新面试 - 设置页面
   if (isNew) {
     return (
-      <div className="room-page">
+      <div className="room-page page-full">
         <div className="room-topbar">
           <Link to="/interview" className="topbar-back">
             <ArrowLeftOutlined />
@@ -242,7 +242,7 @@ export default function InterviewRoomPage() {
   // 加载中
   if (loading && messages.length === 0) {
     return (
-      <div className="room-page">
+      <div className="room-page page-full">
         <div className="room-loading">
           <div className="loading-header-skeleton" />
           <div className="loading-body-skeleton">
@@ -264,7 +264,7 @@ export default function InterviewRoomPage() {
   // 错误或不存在的面试
   if (error || (!loading && !interview && !isNew)) {
     return (
-      <div className="room-page">
+      <div className="room-page page-full">
         <EmptyState
           icon={<ExclamationCircleOutlined />}
           title="面试不存在或已被删除"
@@ -277,7 +277,7 @@ export default function InterviewRoomPage() {
   }
 
   return (
-    <div className="room-page">
+    <div className="room-page page-full">
       <div className="room-topbar">
         <Link to="/interview" className="topbar-back">
           <ArrowLeftOutlined />

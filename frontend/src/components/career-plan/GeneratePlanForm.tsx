@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TagsOutlined, UploadOutlined, PlusOutlined, LoadingOutlined } from '@ant-design/icons'
+import { TagsOutlined, FileTextOutlined, PlusOutlined, LoadingOutlined } from '@ant-design/icons'
 import { generateCareerPlan } from '@/api/career'
+import { useResumeStore } from '@/store/useResumeStore'
 import { toast } from '@/store/useToastStore'
 
 const POSITION_SUGGESTIONS = [
@@ -41,8 +42,13 @@ export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps)
   const [skillInput, setSkillInput] = useState('')
   const [skills, setSkills] = useState<string[]>([])
   const [generating, setGenerating] = useState(false)
-  const [fileName, setFileName] = useState('')
   const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // Resume selector
+  const resumes = useResumeStore((s) => s.resumes)
+  const fetchResumes = useResumeStore((s) => s.fetchResumes)
+  const [selectedResumeId, setSelectedResumeId] = useState<string>('')
+  const [showResumeDropdown, setShowResumeDropdown] = useState(false)
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -53,6 +59,10 @@ export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps)
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  useEffect(() => {
+    fetchResumes()
+  }, [fetchResumes])
 
   const addSkill = () => {
     const trimmed = skillInput.trim()
@@ -97,7 +107,7 @@ export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps)
 
   }
 
-  const canGenerate = position.trim() && (inputMethod === 'manual' || fileName)
+  const canGenerate = position.trim() && (inputMethod === 'manual' || inputMethod === 'resume')
 
   return (
     <div className="generate-section">
@@ -147,10 +157,10 @@ export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps)
               <TagsOutlined /> 手动填写
             </button>
             <button
-              className={`method-tab ${inputMethod === 'upload' ? 'active' : ''}`}
-              onClick={() => setInputMethod('upload')}
+              className={`method-tab ${inputMethod === 'resume' ? 'active' : ''}`}
+              onClick={() => setInputMethod('resume')}
             >
-              <UploadOutlined /> 上传简历
+              <FileTextOutlined /> 选择简历
             </button>
           </div>
 
@@ -188,34 +198,67 @@ export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps)
             </div>
           ) : (
             <div className="upload-area">
-              <div className="upload-dropzone">
-                <UploadOutlined className="fs-28 text-accent" />
-                <p>
-                  {fileName
-                    ? `已选择：${fileName}`
-                    : '点击或拖拽简历文件到此处'}
-                </p>
-                <p className="form-hint">支持 PDF、DOCX 格式，最大 10MB</p>
-                <input
-                  title="resume-upload"
-                  type="file"
-                  accept=".pdf,.docx"
-                  className="hidden-input"
-                  id="resume-upload"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) setFileName(file.name)
-                  }}
-                />
+              {/* 简历选择器 */}
+              <div className="resume-selector">
                 <button
-                  className="btn-secondary"
-                  onClick={() =>
-                    (document.getElementById('resume-upload') as HTMLInputElement)?.click()
-                  }
+                  className={`resume-selector-trigger ${selectedResumeId ? 'has-value' : ''}`}
+                  onClick={() => setShowResumeDropdown(!showResumeDropdown)}
+                  type="button"
                 >
-                  选择文件
+                  <FileTextOutlined />
+                  <span className="resume-selector-label">
+                    {selectedResumeId
+                      ? resumes.find((r) => r.id === selectedResumeId)?.title || '已选择简历'
+                      : '选择一份简历导入技能'}
+                  </span>
+                  <span className="resume-selector-arrow">{showResumeDropdown ? '▲' : '▼'}</span>
                 </button>
+                {showResumeDropdown && (
+                  <div className="resume-selector-dropdown">
+                    {resumes
+                      .filter((r) => r.status === 'completed')
+                      .map((r) => (
+                        <div
+                          key={r.id}
+                          className={`resume-option ${selectedResumeId === r.id ? 'active' : ''}`}
+                          onClick={() => {
+                            setSelectedResumeId(r.id)
+                            setShowResumeDropdown(false)
+                            // 将简历中的技能填入 skills
+                            setSkills(r.skills || [])
+                          }}
+                        >
+                          <span className="resume-option-label">{r.name || r.title}</span>
+                          <span className="resume-option-desc">
+                            {r.skills.slice(0, 4).join('、')}{r.skills.length > 4 ? '...' : ''}
+                          </span>
+                        </div>
+                      ))}
+                    {resumes.filter((r) => r.status === 'completed').length === 0 && (
+                      <div className="resume-option" style={{ cursor: 'default' }}>
+                        <span className="resume-option-label" style={{ color: 'var(--text)' }}>
+                          暂无已解析的简历
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+              {/* 已选简历的技能标签 */}
+              {selectedResumeId && (() => {
+                const selected = resumes.find((r) => r.id === selectedResumeId)
+                if (!selected || !selected.skills.length) return null
+                return (
+                  <div className="skills-tags" style={{ marginTop: 8 }}>
+                    <span className="form-hint" style={{ width: '100%', marginBottom: 4 }}>
+                      从简历导入的技能：
+                    </span>
+                    {selected.skills.map((skill) => (
+                      <span key={skill} className="skill-tag">{skill}</span>
+                    ))}
+                  </div>
+                )
+              })()}
             </div>
           )}
         </div>

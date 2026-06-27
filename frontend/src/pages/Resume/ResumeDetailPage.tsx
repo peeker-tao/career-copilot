@@ -109,7 +109,7 @@ const ResumeDetailPage = () => {
   // 首次加载中
   if (loading && !resume) {
     return (
-      <div className="detail-page">
+      <div className="detail-page page-container">
         <Loading skeleton={{ rows: 6 }} className="pad-24-0" />
       </div>
     )
@@ -118,7 +118,7 @@ const ResumeDetailPage = () => {
   // 加载失败
   if ((storeError && !resume) || (!loading && !resume)) {
     return (
-      <div className="detail-page">
+      <div className="detail-page page-container">
         <EmptyState
           icon={<ExclamationCircleOutlined />}
           title="简历不存在或加载失败"
@@ -138,7 +138,7 @@ const ResumeDetailPage = () => {
   // 解析中状态
   if (resume.status === 'parsing') {
     return (
-      <div className="detail-page">
+      <div className="detail-page page-container">
         <div className="parsing-overlay">
           <LoadingOutlined className="parsing-icon" />
           <h3 style={{ margin: 0, color: 'var(--text-h)' }}>简历解析中</h3>
@@ -149,7 +149,7 @@ const ResumeDetailPage = () => {
   }
 
   return (
-    <div className="detail-page">
+    <div className="detail-page page-container">
       <div className="detail-header">
         <div className="detail-header-left">
           <div className="detail-header-icon">

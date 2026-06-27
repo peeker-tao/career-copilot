@@ -7,12 +7,13 @@
   padding: 64px 24px;
   text-align: center;
   min-height: 320px;
-  color: var(--text);
+  color: var(--text-muted);
+  animation: fade-in 0.3s ease-out;
 }
 
 .error-boundary-icon {
   font-size: 48px;
-  color: #ff4d4f;
+  color: var(--danger);
   margin-bottom: 16px;
   line-height: 1;
 }
@@ -37,8 +38,8 @@
   max-width: 600px;
   text-align: left;
   margin-bottom: 24px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
@@ -47,10 +48,11 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  color: var(--text);
-  background: var(--code-bg);
+  color: var(--text-muted);
+  background: var(--bg-soft);
   -webkit-user-select: none;
   user-select: none;
+  transition: opacity 0.2s;
 }
 
 .error-boundary-details summary:hover {
@@ -71,7 +73,7 @@
 }
 
 .error-boundary-stack {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-light);
   opacity: 0.7;
   font-size: 11px !important;
 }
@@ -86,13 +88,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 20px;
+  padding: 10px 22px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s;
+  transition: all 0.25s ease;
 }
 
 .error-boundary-btn:active {
@@ -100,22 +102,24 @@
 }
 
 .error-boundary-btn--primary {
-  background: var(--accent);
+  background: var(--accent-gradient-strong);
   color: #fff;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
 }
 
 .error-boundary-btn--primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.35);
 }
 
 .error-boundary-btn--secondary {
-  background: var(--code-bg);
+  background: var(--bg-soft);
   color: var(--text-h);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border-light);
 }
 
 .error-boundary-btn--secondary:hover {
-  opacity: 0.8;
+  background: var(--bg-card);
+  border-color: var(--accent-border);
   transform: translateY(-1px);
 }

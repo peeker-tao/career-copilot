@@ -1,8 +1,7 @@
 /* 面试报告页 */
 .report-page {
   max-width: 720px;
-  margin: 0 auto;
-  padding: 24px;
+  text-align: left;
 }
 
 .report-back {
