@@ -35,9 +35,17 @@ export class InterviewProcessor extends WorkerHost {
       this.logger.log(`✅ 面试报告生成完成: interviewId=${interviewId}, score=${report.overallScore}`);
       return report;
     } catch (error) {
+      const errMsg = (error as Error).message;
       this.logger.error(
-        `❌ 面试报告生成失败: interviewId=${interviewId}, error=${(error as Error).message}`,
+        `❌ 面试报告生成失败: interviewId=${interviewId}, error=${errMsg}`,
       );
+      // 对话不足是永久性错误，重试也无法解决，直接丢弃避免重试
+      if (
+        errMsg.includes('对话记录不足') ||
+        errMsg.includes('未找到有效的问答对')
+      ) {
+        await job.discard();
+      }
       throw error;
     }
   }

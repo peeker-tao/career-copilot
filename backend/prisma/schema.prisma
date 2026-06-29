@@ -27,6 +27,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   jobMatches          JobMatch[]
   resumeBookmarks     ResumeBookmark[]
+  screeningBenchmarks ScreeningBenchmark[]
 
   @@map("users")
 }
@@ -225,4 +226,26 @@ model ResumeBookmark {
 
   @@unique([userId, resumeId])
   @@map("resume_bookmarks")
+}
+
+model ScreeningBenchmark {
+  id                  String    @id @default(cuid())
+  userId              String    @map("user_id")
+  resumeId            Int
+  name                String
+  skills              String[]
+  experienceYears     Float     @map("experience_years")
+  education           String
+  certifications      String?
+  jobRole             String    @map("job_role")
+  recruiterDecision   String    @map("recruiter_decision")
+  salaryExpectation   Int       @map("salary_expectation")
+  projectsCount       Int       @map("projects_count")
+  aiScore             Int       @map("ai_score")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, jobRole])
+  @@map("screening_benchmarks")
 }

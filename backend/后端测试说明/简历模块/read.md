@@ -73,6 +73,54 @@
 
 ---
 
+### 6. AI 筛选基准测试 — `POST /api/resumes/screening/benchmark/import`
+
+| 项目 | 内容 |
+|------|------|
+| 功能 | 从 CSV 数据集批量导入简历基准测试记录（追加模式，不会删除已有数据） |
+| 认证方式 | ✅ 需要 Bearer Token |
+| 请求体参数 | `records`（必填，数组，每项含：`resume`、`jobRole`、`label`、`confidenceScore` 等字段） |
+| 请求体示例 | `{ "records": [{ "resume": "5+ years experience...", "jobRole": "Data Scientist", "label": 1, "confidenceScore": 0.95 }] }` |
+| 返回内容 | `{ "imported": 500 }` 表示成功导入的记录数 |
+| 注意事项 | ⚠️ 此接口为**纯追加**模式，不会清空已有数据；每次导入重复调用会累积重复记录 |
+| 测试建议 | 可配合数据集脚本 `datasets/analyze_ai_screening.py` 生成的 JSON 数据使用 |
+
+### 7. 种子数据 — `POST /api/resumes/screening/benchmark/seed`
+
+| 项目 | 内容 |
+|------|------|
+| 功能 | 从预设 CSV 数据集（`datasets/AI_Resume_Screening/AI_Resume_Screening.csv`）填充 500 条基准测试数据 |
+| 认证方式 | ✅ 需要 Bearer Token |
+| 请求方式 | 直接 `POST`，**不需要请求体** |
+| 返回内容 | `{ "imported": 500, "jobRoles": ["Data Scientist", "Software Engineer", ...] }` |
+| 注意事项 | ⚠️ 先清空再导入，每次调用会先删除当前用户的所有旧数据再重新导入 |
+| 测试建议 | 首次测试时调用此接口快速填充数据，后续评估和统计依赖此数据 |
+
+### 8. 统计信息 — `GET /api/resumes/screening/benchmark/stats`
+
+| 项目 | 内容 |
+|------|------|
+| 功能 | 获取基准测试数据的统计信息（总量、各岗位分布、标签分布等） |
+| 认证方式 | ✅ 需要 Bearer Token |
+| 查询参数 | `jobRole`（可选，筛选特定岗位的统计） |
+| 示例 | `GET /api/resumes/screening/benchmark/stats?jobRole=Data%20Scientist` |
+| 测试建议 | 调用种子数据后，用此接口查看数据分布是否合理 |
+
+### 9. 评估测试 — `POST /api/resumes/screening/benchmark/evaluate`
+
+| 项目 | 内容 |
+|------|------|
+| 功能 | 用基准测试数据评估 AI 简历筛选的准确率（返回准确率、精确率、召回率、F1 等指标） |
+| 认证方式 | ✅ 需要 Bearer Token |
+| 请求体参数 | `jobRole`（可选，筛选特定岗位进行评估）、`sampleSize`（可选，采样数量） |
+| 请求体示例 | `{ "jobRole": "Data Scientist", "sampleSize": 50 }` 或 `{ "jobRole": "Software Engineer" }` |
+| Swagger 示例值 | ① 高匹配岗位：`{ "jobRole": "Data Scientist", "sampleSize": 100 }`<br>② 中等岗位：`{ "jobRole": "Software Engineer", "sampleSize": 50 }`<br>③ 入门级岗位：`{ "jobRole": "Java Developer", "sampleSize": 20 }` |
+| 返回内容 | `{ "accuracy": 0.85, "precision": 0.80, "recall": 0.75, "f1Score": 0.77, ... }` |
+| 注意事项 | ⚠️ 依赖基准测试数据，需先调用 seed 或 import 接口填充数据 |
+| 测试建议 | 先 seed 500 条数据，再对不同岗位分别评估 |
+
+---
+
 ## 通用注意事项
 
 1. **文件格式**：仅支持 **PDF** 和 **DOCX** 格式，文件大小限制为 **10MB**
