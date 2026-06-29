@@ -38,7 +38,7 @@ export class MarketInsightService {
     const systemPrompt = buildMarketInsightSystemPrompt();
     const userPrompt = buildMarketInsightUserPrompt(position);
 
-    const raw = await this.aiService.callLLM(systemPrompt, userPrompt, 0.5);
+    const raw = await this.aiService.callLLM(systemPrompt, userPrompt, 0.5, 'career:insight');
 
     // 解析并转换为 MarketInsightResult
     return this.transform(raw, position);

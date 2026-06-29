@@ -213,7 +213,7 @@ export class ResumeService {
 以 JSON 数组格式返回。`;
 
     try {
-      return await this.aiService.callLLM(systemPrompt, userPrompt);
+      return await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'resume:rewrite');
     } catch (err) {
       this.logger.error(`AI 改写建议生成失败: ${(err as Error).message}`);
       throw new BadRequestException('AI 改写建议生成失败，请稍后重试');
@@ -249,7 +249,7 @@ export class ResumeService {
 请输出优化后的 "${section}" 章节内容。保持与原结构一致，但改进表达。`;
 
     try {
-      const rewritten = await this.aiService.callLLM(systemPrompt, userPrompt);
+      const rewritten = await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'resume:rewrite');
 
       // 保存改写结果到简历中
       const updatedParsedData = {
@@ -343,6 +343,8 @@ ${dto.projectsCount ? `项目数量: ${dto.projectsCount}` : ''}
       const result = await this.aiService.callLLM(
         '你是一个专业的 AI 招聘筛选助手。',
         prompt,
+        0.3,
+        'resume:screening',
       );
       return result;
     } catch (err) {

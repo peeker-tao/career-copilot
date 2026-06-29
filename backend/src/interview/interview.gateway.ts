@@ -234,6 +234,7 @@ export class InterviewGateway
         nextAction: evaluation.nextAction,
         followUpContent: evaluation.followUpContent || null,
         nextQuestion: evaluation.nextQuestion || null,
+        nextQuestionReferenceAnswer: evaluation.nextQuestionReferenceAnswer || null,
       });
 
       this.logger.log(

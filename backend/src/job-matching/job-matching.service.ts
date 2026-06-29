@@ -152,6 +152,8 @@ export class JobMatchingService {
       const result = (await this.aiService.callLLM(
         systemPrompt,
         userPrompt,
+        0.3,
+        'job:matching',
       )) as any;
 
       return {
@@ -201,7 +203,7 @@ export class JobMatchingService {
 
 以 JSON 数组格式返回。`;
 
-    const result = await this.aiService.callLLM(systemPrompt, userPrompt);
+    const result = await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'job:recommend');
     return Array.isArray(result) ? result : [];
   }
 

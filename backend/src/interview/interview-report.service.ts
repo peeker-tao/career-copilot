@@ -88,7 +88,7 @@ export class InterviewReportService {
 
     let report: Record<string, unknown>;
     try {
-      report = await this.aiService.callLLM(systemPrompt, userPrompt);
+      report = await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'interview:report');
     } catch (err) {
       this.logger.error(`AI 报告生成失败: ${(err as Error).message}`);
       throw new Error('报告生成失败，请稍后重试');

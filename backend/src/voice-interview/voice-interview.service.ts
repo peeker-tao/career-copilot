@@ -184,7 +184,7 @@ ${transcriptText}
 以 JSON 格式返回。`;
 
     try {
-      const summary = await this.aiService.callLLM(systemPrompt, userPrompt);
+      const summary = await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'interview:voice');
       await this.prisma.voiceInterviewSession.update({
         where: { id: session.id },
         data: { transcript: summary as any },

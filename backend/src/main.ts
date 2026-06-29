@@ -13,7 +13,7 @@ async function bootstrap() {
 
   // 跨域配置
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'null'],
     credentials: true,
   });
 
@@ -115,7 +115,7 @@ async function bootstrap() {
 
   // 全局路由前缀
   app.setGlobalPrefix('api', {
-    exclude: ['/'],
+    exclude: ['/', 'reset-password.html'],
   });
 
   // ======== Swagger 文档配置 ========

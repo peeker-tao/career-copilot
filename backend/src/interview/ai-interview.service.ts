@@ -17,6 +17,7 @@ export interface InterviewContext {
 export interface FirstQuestionResult {
   content: string;
   questionType: string;
+  referenceAnswer?: string;
 }
 
 export interface EvaluationResult {
@@ -29,6 +30,7 @@ export interface EvaluationResult {
   followUpContent?: string;
   nextQuestion?: string;
   nextQuestionType?: string;
+  nextQuestionReferenceAnswer?: string;
   summary?: string;
 }
 
@@ -58,7 +60,7 @@ export class AiInterviewService {
 
     const userPrompt = `请为「${context.position}」岗位生成第一道面试题。`;
 
-    const result = await this.aiService.callLLM(systemPrompt, userPrompt);
+    const result = await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'interview:question');
 
     return {
       content:
@@ -66,6 +68,7 @@ export class AiInterviewService {
         (result.question as string) ||
         '请介绍一下你的项目经验',
       questionType: (result.questionType as string) || 'technical',
+      referenceAnswer: result.referenceAnswer as string | undefined,
     };
   }
 
@@ -96,7 +99,7 @@ export class AiInterviewService {
 
     const userPrompt = `以下是本次面试的对话记录：\n\n${dialogue}\n\n---\n\n应聘者的最新回答：\n${userAnswer}\n\n请评估这个回答，并决定下一步动作（追问 / 下一题 / 结束面试）。`;
 
-    const result = await this.aiService.callLLM(systemPrompt, userPrompt);
+    const result = await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'interview:evaluate');
 
     // 容错归一化 nextAction（大小写 / 下划线 / 连字符变体）
     const normalized = normalizeNextAction(result.nextAction as string);
@@ -111,6 +114,7 @@ export class AiInterviewService {
       followUpContent: result.followUpContent as string | undefined,
       nextQuestion: result.nextQuestion as string | undefined,
       nextQuestionType: result.nextQuestionType as string | undefined,
+      nextQuestionReferenceAnswer: result.nextQuestionReferenceAnswer as string | undefined,
       summary: result.summary as string | undefined,
     };
   }

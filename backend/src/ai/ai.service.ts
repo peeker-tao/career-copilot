@@ -1,15 +1,27 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChatMessage, LLMProvider, createProvider } from './llm.provider';
+import { AiCacheService } from './ai-cache.service';
+import { SimpleRagService } from './rag/simple-rag.service';
 
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private provider: LLMProvider;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    @Optional() private aiCacheService?: AiCacheService,
+    @Optional() private simpleRagService?: SimpleRagService,
+  ) {
     this.provider = createProvider(this.configService);
     this.logger.log(`🤖 LLM Provider 初始化完成`);
+    if (this.aiCacheService) {
+      this.logger.log(`📦 AI 缓存服务已就绪`);
+    }
+    if (this.simpleRagService) {
+      this.logger.log(`📚 RAG 知识库服务已就绪`);
+    }
   }
 
   /* ══════════════════════════════════════════════
@@ -20,6 +32,7 @@ export class AiService {
    * 将简历原始文本解析为结构化 JSON（带自动重试）
    */
   async parseResume(text: string): Promise<Record<string, unknown>> {
+    const cachePrefix = 'resume:parse';
     const systemPrompt = `你是一个专业的简历解析与评估助手。请从以下简历文本中提取结构化信息，并给出改进建议和六维评估分数，以 JSON 格式返回。
 
 返回格式（严格 JSON，不要包含 markdown 代码块标记）：
@@ -62,13 +75,36 @@ export class AiService {
 - evaluations 六维度必须全部输出，score 范围 0-100
 - suggestions 根据简历实际情况给出 3-5 条针对性改进建议，priority 区分高中低优先级`;
 
+    const userMessage = `请解析以下简历文本：\n\n${text}`;
+
+    // ── 缓存检查 ──
+    if (this.aiCacheService) {
+      try {
+        const cached = await this.aiCacheService.get(cachePrefix, systemPrompt, userMessage);
+        if (cached !== null) {
+          this.logger.log(`📦 缓存命中 (prefix=${cachePrefix})`);
+          return JSON.parse(cached) as Record<string, unknown>;
+        }
+        this.logger.log(`📦 缓存未命中 (prefix=${cachePrefix})`);
+      } catch (e) {
+        this.logger.warn(`⚠️ 缓存读取失败，跳过: ${(e as Error).message}`);
+      }
+    }
+
     const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `请解析以下简历文本：\n\n${text}` },
+      { role: 'user', content: userMessage },
     ];
 
     try {
-      return await this.safeJsonParse(messages, '简历解析失败，请检查简历内容');
+      const result = await this.safeJsonParse(messages, '简历解析失败，请检查简历内容');
+      // ── 写入缓存 ──
+      if (this.aiCacheService) {
+        await this.aiCacheService.set(cachePrefix, systemPrompt, userMessage, JSON.stringify(result)).catch((e) =>
+          this.logger.warn(`⚠️ 缓存写入失败: ${(e as Error).message}`),
+        );
+      }
+      return result;
     } catch {
       // 第一次失败后，告知 LLM 上次输出 JSON 不合法，请求重新生成
       this.logger.warn('⚠️ 首次 JSON 解析失败，尝试带错误反馈重试...');
@@ -88,11 +124,18 @@ export class AiService {
             '你上次返回的 JSON 格式不合法，有未转义的特殊字符或字符串未正确闭合。请确保输出**严格合法的 JSON**，所有字符串中的引号必须转义，不要包含任何多余文本。',
         },
       ];
-      return this.safeJsonParse(
+      const retryResult = await this.safeJsonParse(
         retryMessages,
         '简历解析失败，请检查简历内容',
         0.2,
       );
+      // ── 写入缓存（重试成功） ──
+      if (this.aiCacheService) {
+        await this.aiCacheService.set(cachePrefix, systemPrompt, userMessage, JSON.stringify(retryResult)).catch((e) =>
+          this.logger.warn(`⚠️ 缓存写入失败: ${(e as Error).message}`),
+        );
+      }
+      return retryResult;
     }
   }
 
@@ -146,15 +189,9 @@ export class AiService {
 - 题目应覆盖实际工作场景
 - ${skillsText}`;
 
-    const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
-      {
-        role: 'user',
-        content: `请为「${context.position}」岗位生成 ${count} 道面试题。${industryText}`,
-      },
-    ];
+    const userMessage = `请为「${context.position}」岗位生成 ${count} 道面试题。${industryText}`;
 
-    return this.safeJsonParse(messages, '面试题生成失败，请稍后重试');
+    return this.callLLM(systemPrompt, userMessage, 0.3, 'interview:question', 'interview:qa');
   }
 
   /* ══════════════════════════════════════════════
@@ -202,12 +239,9 @@ export class AiService {
       .filter(Boolean)
       .join('\n');
 
-    const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `${questionInfo}\n\n用户的回答：\n${answer}` },
-    ];
+    const userMessage = `${questionInfo}\n\n用户的回答：\n${answer}`;
 
-    return this.safeJsonParse(messages, '回答评估失败，请稍后重试');
+    return this.callLLM(systemPrompt, userMessage, 0.3, 'interview:evaluate');
   }
 
   /* ══════════════════════════════════════════════
@@ -253,15 +287,9 @@ export class AiService {
 评分维度包括：专业技能、项目经验、沟通表达、逻辑思维、学习能力
 等级说明：S(≥90) A(≥80) B(≥70) C(≥60) D(<60)`;
 
-    const msgs: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
-      {
-        role: 'user',
-        content: `以下是面试对话记录，请生成评估报告：\n\n${conversationLog}`,
-      },
-    ];
+    const userMessage = `以下是面试对话记录，请生成评估报告：\n\n${conversationLog}`;
 
-    return this.safeJsonParse(msgs, '报告生成失败，请稍后重试');
+    return this.callLLM(systemPrompt, userMessage, 0.3, 'interview:report');
   }
 
   /* ══════════════════════════════════════════════
@@ -323,12 +351,9 @@ export class AiService {
       .filter(Boolean)
       .join('\n');
 
-    const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `请为我生成职业规划：\n\n${userInfo}` },
-    ];
+    const userMessage = `请为我生成职业规划：\n\n${userInfo}`;
 
-    return this.safeJsonParse(messages, '职业规划生成失败，请稍后重试');
+    return this.callLLM(systemPrompt, userMessage, 0.3, 'career:plan');
   }
 
   /* ══════════════════════════════════════════════
@@ -338,21 +363,75 @@ export class AiService {
   /**
    * 通用的 LLM 调用方法，传入 System Prompt + User Message，
    * 自动解析 JSON 返回。供 AiInterviewService 等模块使用。
+   *
+   * 支持可选的缓存层（cachePrefix）和 RAG 知识库增强（ragNamespace）。
+   *
    * @param systemPrompt 系统提示词
    * @param userMessage  用户消息
    * @param temperature  温度参数（默认 0.3）
+   * @param cachePrefix  缓存前缀（如 "resume:parse"），传入则启用缓存
+   * @param ragNamespace RAG 命名空间（如 "interview:qa"），传入则用知识库增强 prompt
    */
   async callLLM(
     systemPrompt: string,
     userMessage: string,
     temperature = 0.3,
+    cachePrefix?: string,
+    ragNamespace?: string,
   ): Promise<Record<string, unknown>> {
+    // ── RAG 知识库增强 ──
+    let enhancedPrompt = systemPrompt;
+    if (ragNamespace && this.simpleRagService) {
+      try {
+        enhancedPrompt = await this.simpleRagService.augmentCall(
+          systemPrompt,
+          userMessage,
+          ragNamespace,
+        );
+        this.logger.log(`📚 RAG 增强已应用 (namespace=${ragNamespace})`);
+      } catch (e) {
+        this.logger.warn(`⚠️ RAG 增强失败，使用原始 prompt: ${(e as Error).message}`);
+      }
+    }
+
+    // ── 缓存检查 ──
+    if (cachePrefix && this.aiCacheService) {
+      try {
+        const cached = await this.aiCacheService.get(
+          cachePrefix,
+          enhancedPrompt,
+          userMessage,
+        );
+        if (cached !== null) {
+          this.logger.log(`📦 缓存命中 (prefix=${cachePrefix})`);
+          return JSON.parse(cached) as Record<string, unknown>;
+        }
+        this.logger.log(`📦 缓存未命中 (prefix=${cachePrefix})`);
+      } catch (e) {
+        this.logger.warn(`⚠️ 缓存读取失败，跳过: ${(e as Error).message}`);
+      }
+    }
+
+    // ── 调用 LLM ──
     const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: enhancedPrompt },
       { role: 'user', content: userMessage },
     ];
 
-    return this.safeJsonParse(messages, 'LLM 调用失败', temperature);
+    const result = await this.safeJsonParse(messages, 'LLM 调用失败', temperature);
+
+    // ── 写入缓存 ──
+    if (cachePrefix && this.aiCacheService) {
+      try {
+        const raw = JSON.stringify(result);
+        await this.aiCacheService.set(cachePrefix, enhancedPrompt, userMessage, raw);
+        this.logger.log(`📦 缓存已写入 (prefix=${cachePrefix})`);
+      } catch (e) {
+        this.logger.warn(`⚠️ 缓存写入失败: ${(e as Error).message}`);
+      }
+    }
+
+    return result;
   }
 
   /* ══════════════════════════════════════════════

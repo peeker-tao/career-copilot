@@ -10,7 +10,7 @@ import { RedisService } from '../../redis/redis.service';
 
 export const THROTTLE_KEY = 'throttle';
 export const THROTTLE_DEFAULT_LIMIT = 60;
-export const THROTTLE_DEFAULT_WINDOW = 60;
+export const THROTTLE_DEFAULT_WINDOW = 1;
 
 export interface ThrottleOptions {
   limit?: number;

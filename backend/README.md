@@ -1,98 +1,74 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Career-Copilot Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Career-Copilot 后端服务 — NestJS + Prisma + PostgreSQL + Redis
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 技术栈
 
-## Description
+| 类别 | 选型 |
+|:----:|------|
+| 框架 | NestJS 10 + TypeScript |
+| ORM | Prisma 5 + PostgreSQL 15 |
+| 缓存/队列 | Redis 7 + BullMQ |
+| 认证 | JWT 双 Token（Access + Refresh） |
+| 实时通信 | WebSocket (Socket.IO) |
+| AI 接入 | 多 Provider 适配（OpenAI / DeepSeek / 通义千问） |
+| RAG 知识库 | BAAI/bge-small-zh-v1.5 (fastembed + Python Worker) |
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## 快速开始
 
 ```bash
-$ npm install
+# 安装依赖
+npm install
+
+# 启动数据库 & Redis
+docker compose up -d
+
+# 数据库迁移
+npx prisma migrate dev
+
+# 启动开发服务器
+npm run start:dev
 ```
 
-## Compile and run the project
+## 数据初始化
 
 ```bash
-# development
-$ npm run start
+# 填充面试题库（29 条）
+npx ts-node scripts/seed-questionbank.ts
 
-# watch mode
-$ npm run start:dev
+# 生成 Embedding 向量并存入 Redis
+npx ts-node scripts/seed-knowledge.ts
 
-# production mode
-$ npm run start:prod
+# 验证 RAG 检索效果
+npx ts-node scripts/test-rag-e2e.ts
 ```
 
-## Run tests
+## 目录结构
 
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+```
+src/
+├── ai/            # AI 统一入口（LLM 调用 + 缓存 + RAG）
+├── auth/          # 认证模块
+├── career/        # 职业规划模块
+├── common/        # 公共工具（过滤器、拦截器、管道）
+├── interview/     # 面试模块（核心）
+├── queue/         # 消息队列
+├── redis/         # Redis 缓存服务
+├── resume/        # 简历模块
+├── resume-ner/    # 简历 NER 解析
+├── question-bank/ # 面试题库
+├── job-matching/  # 岗位匹配
+├── learning-resources/ # 学习资源
+├── voice-interview/    # 语音面试
+└── admin/         # 管理后台
+scripts/           # 数据初始化 & Embedding 脚本
+prisma/            # 数据库 Schema
 ```
 
-## Deployment
+## RAG 知识库
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- **嵌入模型**: `BAAI/bge-small-zh-v1.5`（本地，ONNX Runtime）
+- **向量维度**: 512 维
+- **运行方式**: Python Worker 子进程（`scripts/embed_worker.py`）
+- **存储**: Redis Hash（`rag:*` 命名空间）
+- **已填充数据**: 29 条面试题（Java/Python/前端/系统设计等类别）
