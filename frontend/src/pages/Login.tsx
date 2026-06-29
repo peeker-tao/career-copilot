@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/useAuthStore'
-import { LoadingOutlined, UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
+import { LoadingOutlined, UserOutlined, LockOutlined, MailOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import BackgroundImage from '@/components/login/BackgroundImage'
 import './Login.css'
 
@@ -66,7 +66,7 @@ const Login: React.FC = () => {
       <BackgroundImage className="login-bg" />
       <div className="login-card">
         <div className="login-header">
-          <span className="login-logo">🚀</span>
+          <span className="login-logo"><ThunderboltOutlined /></span>
           <h1 className="login-title">Career Copilot</h1>
           <p className="login-subtitle">AI 驱动的职业发展助手</p>
         </div>

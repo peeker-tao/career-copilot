@@ -5,6 +5,7 @@ import {
   FileTextOutlined,
   MessageOutlined,
   CompassOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons'
 
 const navItems = [
@@ -21,7 +22,7 @@ export default function AppNav() {
   return (
     <nav className="app-nav">
       <div className="nav-brand">
-        <span className="nav-logo">🚀</span>
+        <span className="nav-logo"><ThunderboltOutlined /></span>
         <span className="nav-name">Career Copilot</span>
       </div>
       <div className="nav-links">

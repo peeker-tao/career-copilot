@@ -22,6 +22,25 @@
   font-size: 14px;
   line-height: 1.5;
   word-break: break-word;
+
+  /* 添加过渡效果，让高度和边距变化更平滑 */
+  transition:
+    margin-bottom 0.3s ease-in-out,
+    margin-top 0.3s ease-in-out,
+    opacity 0.3s ease-in-out;
+
+  /* 设置 CSS 变量默认值 */
+  --toast-height: auto;
+}
+
+/* 退出中的 toast */
+.toast-item.toast-exiting {
+  animation: toast-slide-out 0.3s ease-in forwards;
+
+  /* 关键：使用负边距来让下面的 toast 平滑上移 */
+  margin-bottom: calc(-1 * (var(--toast-height) + 10px));
+  /* 10px 是 gap 的值 */
+  opacity: 0;
 }
 
 .toast-item.toast-error {
@@ -54,16 +73,19 @@
     border-color: rgba(239, 68, 68, 0.3);
     color: #fca5a5;
   }
+
   .toast-item.toast-success {
     background: rgba(34, 197, 94, 0.12);
     border-color: rgba(34, 197, 94, 0.3);
     color: #86efac;
   }
+
   .toast-item.toast-warning {
     background: rgba(245, 158, 11, 0.12);
     border-color: rgba(245, 158, 11, 0.3);
     color: #fde68a;
   }
+
   .toast-item.toast-info {
     background: rgba(59, 130, 246, 0.12);
     border-color: rgba(59, 130, 246, 0.3);
@@ -105,8 +127,21 @@
     transform: translateX(120%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
+  }
+}
+
+@keyframes toast-slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(120%);
+    opacity: 0;
   }
 }
