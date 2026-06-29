@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeftOutlined, TrophyOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, TrophyOutlined, ExclamationCircleOutlined, FileTextOutlined, BarChartOutlined } from '@ant-design/icons'
 import { Loading, EmptyState } from '@/components/common'
 import type { InterviewReport } from '@/types/interview'
 import { getInterviewReport } from '@/api/interviews'
@@ -23,11 +23,12 @@ export default function InterviewReportPage() {
   // store 中有就用 store 的（自动生成），否则用本地 fetch 的
   const report = storedReport || fetchedReport
   const loading = !report && !error
+  const [refresh, setRefresh] = useState(0) // 用于强制刷新 useEffect
 
   useEffect(() => {
     // store 中已有报告，无需 fetch
-    if (storedReport) return
-
+    if (report) return
+    console.log('Fetching interview report for id:', id)
     let mounted = true
     const fetchReport = async () => {
       if (!id) {
@@ -36,9 +37,16 @@ export default function InterviewReportPage() {
       }
       try {
         const res = await getInterviewReport(id)
+        console.log('Interview report fetched:', res)
         if (!mounted) return
-        if (res.code !== 200 && res.code !== 201) {
+        if (res.code !== 200 && res.code !== 201 && res.code !== 202) {
+          console.error('Failed to fetch interview report:', res)
           throw new Error(res.message || '获取报告失败')
+        }
+        if (!res.data) {
+          console.warn('No report data returned from backend for id:', id)
+          setTimeout(() => setRefresh((prev) => prev + 1), 1000)
+          return
         }
         setFetchedReport(res.data)
       } catch (err) {
@@ -48,7 +56,7 @@ export default function InterviewReportPage() {
     fetchReport()
 
     return () => { mounted = false }
-  }, [id, storedReport])
+  }, [id, report, refresh])
 
   if (loading) {
     return (
@@ -122,7 +130,7 @@ export default function InterviewReportPage() {
       </div>
 
       <div className="report-section">
-        <h2 className="report-section-title">📝 学习建议</h2>
+        <h2 className="report-section-title"><FileTextOutlined /> 学习建议</h2>
         <ul className="report-list">
           {report.suggestions.map((s, i) => (
             <li key={i} className="report-list-item suggestion">{s}</li>
@@ -131,7 +139,7 @@ export default function InterviewReportPage() {
       </div>
 
       <div className="report-section">
-        <h2 className="report-section-title">📊 技能评分</h2>
+        <h2 className="report-section-title"><BarChartOutlined /> 技能评分</h2>
         <div className="skill-bars">
           {report.skillScores.map((skill) => (
             <div key={skill.name} className="skill-bar-item">

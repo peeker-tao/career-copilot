@@ -2,6 +2,8 @@
 .report-page {
   max-width: 720px;
   text-align: left;
+  margin: 0 auto;
+  padding: 24px;
 }
 
 .report-back {

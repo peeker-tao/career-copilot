@@ -51,7 +51,7 @@ export function useInterviewWebSocket({
     })
 
     socket.on('connect', () => {
-      console.log('🔌 WebSocket 已连接:', socket.id)
+      console.log('WebSocket 已连接:', socket.id)
       setConnected(true)
     })
 
@@ -79,12 +79,12 @@ export function useInterviewWebSocket({
     })
 
     socket.on('disconnect', (reason) => {
-      console.log('🔌 WebSocket 已断开:', reason)
+      console.log('WebSocket 已断开:', reason)
       setConnected(false)
     })
 
     socket.on('connect_error', (err) => {
-      console.error('❌ WebSocket 连接失败:', err.message)
+      console.error('WebSocket 连接失败:', err.message)
       toast.error('面试服务连接失败，请检查后端是否启动')
       setConnected(false)
     })
@@ -92,7 +92,7 @@ export function useInterviewWebSocket({
     socketRef.current = socket
 
     return () => {
-      console.log('🧹 清理 WebSocket 连接')
+      console.log('清理 WebSocket 连接')
       socket.disconnect()
       socketRef.current = null
       setConnected(false)

@@ -75,7 +75,18 @@ export async function getInterviewMessages(id: string): Promise<ApiResponse<Inte
     await delay(300)
     return { code: 200, message: 'success', data: MOCK_INITIAL_MESSAGES }
   }
-  return apiClient.get(`/interviews/${id}/messages`)
+  const response: any = await apiClient.get(`/interviews/${id}/messages`)
+  // 后端 Prisma 返回 createdAt，前端类型需要 timestamp，做字段映射
+  const raw = Array.isArray(response.data) ? response.data : []
+  const messages: InterviewMessage[] = raw.map((msg: any) => ({
+    id: msg.id,
+    role: msg.role,
+    content: msg.content,
+    timestamp: msg.timestamp || msg.createdAt,
+    rating: msg.rating ?? msg.score ?? null,
+    questionType: msg.questionType,
+  }))
+  return { code: response.code, message: response.message, data: messages }
 }
 
 /** 创建面试会话 */
@@ -133,13 +144,14 @@ export async function submitAnswer(
 }
 
 /** 获取面试报告 */
-export async function getInterviewReport(id: string): Promise<ApiResponse<InterviewReport>> {
+export async function getInterviewReport(id: string): Promise<ApiResponse<InterviewReport | null>> {
   if (useMock) {
     await delay(600)
     return {
       code: 200,
       message: 'success',
       data: {
+        overallRating: 'B',
         overallScore: 85,
         strengths: ['技术基础扎实', '表达清晰', '逻辑思维强'],
         weaknesses: ['系统设计经验不足', '部分细节理解不够深入'],
@@ -148,37 +160,44 @@ export async function getInterviewReport(id: string): Promise<ApiResponse<Interv
           '多了解分布式系统的实际案例',
         ],
         skillScores: [
-          { name: 'Java', score: 85 },
-          { name: 'Spring Boot', score: 80 },
-          { name: 'MySQL', score: 75 },
-          { name: 'Redis', score: 70 },
-          { name: '系统设计', score: 60 },
+          { name: 'Java', score: 85, comment: '基础知识扎实', suggestions: '可以进一步深入学习高级特性' },
+          { name: 'Spring Boot', score: 80, comment: '能够熟练使用', suggestions: '建议多关注最新版本的特性和最佳实践' },
+          { name: 'MySQL', score: 75, comment: '基本操作熟练', suggestions: '需要加强索引优化和性能调优方面的知识' },
+          { name: 'Redis', score: 70, comment: '了解基本用法', suggestions: '建议深入学习数据结构和应用场景' },
+          { name: '系统设计', score: 60, comment: '基础概念掌握', suggestions: '需要积累更多实际项目经验' },
         ],
+        summary: '整体表现良好，但在系统设计方面有待加强。',
       },
     }
   }
   // 后端 POST /interviews/:id/feedback，NestJS ResponseInterceptor 返回 code=201
   const response: any = await apiClient.post(`/interviews/${id}/feedback`)
-  const fb = response.data
-  if (!fb) {
+  console.log('Raw interview report response from backend:', response)
+  const fb = response.data.data
+  if (response.code !== 200 && response.code !== 201 && response.code !== 202) {
     throw new Error(response.message || '获取报告失败')
   }
+  if (!fb) {
+    return {
+      code: response.code,
+      message: response.message,
+      data: null
+    }
+  }
+  // console.log('Fetched interview report from backend:', fb)
   return {
     code: response.code,
     message: response.message,
     data: {
+      overallRating: fb.overallRating,
       overallScore: fb.overallScore,
       strengths: fb.strengths || [],
       weaknesses: fb.weaknesses || [],
       suggestions: (fb.learningSuggestions || []).map(
         (s: { area: string }) => s.area
       ),
-      skillScores: fb.dimensions
-        ? (fb.dimensions as Array<{ name: string; score: number }>).map((d) => ({
-            name: d.name,
-            score: d.score,
-          }))
-        : [],
+      skillScores: fb.dimensions ?? [],
+      summary: fb.summary || '',
     },
   }
 }

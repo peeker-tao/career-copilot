@@ -43,11 +43,13 @@ export interface CreateInterviewRequest {
 
 /** 面试反馈报告 */
 export interface InterviewReport {
+  overallRating: string
   overallScore: number
   strengths: string[]
   weaknesses: string[]
   suggestions: string[]
-  skillScores: Array<{ name: string; score: number }>
+  skillScores: Array<{ name: string; score: number, comment: string, suggestions: string }>
+  summary: string
 }
 
 /** 提交回答的结果 */

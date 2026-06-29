@@ -70,9 +70,11 @@ export default function InterviewRoomPage() {
   }, [id])
 
   // WebSocket 流式通道 — 非 mock 模式下，进入面试房间后自动连接
-  const wsEnabled = !isNew && !!id && !import.meta.env.VITE_USE_MOCK
+  const isMockMode = import.meta.env.VITE_USE_MOCK === 'true'
+  const wsEnabled = !isNew && !!id && !isMockMode
   useEffect(() => {
     setUseWebSocket(wsEnabled)
+    console.log(`WebSocket ${wsEnabled ? 'enabled' : 'disabled'} for interview room`)
   }, [wsEnabled, setUseWebSocket])
 
   // 被动结束（如题目答完）时自动拉取报告

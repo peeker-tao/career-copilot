@@ -3,6 +3,7 @@ import { SendOutlined, StopOutlined, CheckCircleOutlined, LoadingOutlined, Audio
 import { Link } from 'react-router-dom'
 import { useVoiceStore } from '@/store/useVoiceStore'
 import { useMediaRecorder } from '@/hooks/useMediaRecorder'
+import { toast } from '@/store/useToastStore'
 
 export interface InputAreaProps {
   disabled?: boolean
@@ -19,7 +20,8 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Voice store
-  const voiceEnabled = useVoiceStore((s) => s.enabled)
+  const voiceStore = useVoiceStore()
+  const voiceEnabled = voiceStore.enabled
   const isProcessing = useVoiceStore((s) => s.isProcessing)
   const recognizedText = useVoiceStore((s) => s.recognizedText)
   const speakText = useVoiceStore((s) => s.speakText)
@@ -32,7 +34,12 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
   const resetRecording = useVoiceStore((s) => s.resetRecording)
 
   const recorder = useMediaRecorder()
-
+  useEffect(() => {
+    if (!voiceStore.enabled) {
+      voiceStore.setEnabled(true)
+    }
+  }, [voiceStore])
+  
   useEffect(() => {
     if (!disabled && !isFinished) {
       inputRef.current?.focus()
@@ -117,6 +124,12 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
+  // 弹出错误toast
+  useEffect(() => {
+    if (recorder.error) {
+      toast.error(`录音错误: ${recorder.error}`)
+    }
+  }, [recorder.error])
   if (isFinished) {
     return (
       <div className="input-area finished">
@@ -165,13 +178,13 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
         </button>
 
         {/* 语音开关 */}
-        <button
+        {/* <button
           className={`btn-voice-toggle ${voiceEnabled ? 'active' : ''}`}
           onClick={toggleEnabled}
           title={voiceEnabled ? '关闭语音输入' : '开启语音输入'}
         >
           {voiceEnabled ? <SoundOutlined /> : <AudioMutedOutlined />}
-        </button>
+        </button> */}
 
         <button
           className="btn-send"
@@ -206,11 +219,7 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
           </button>
         </div>
       )}
-      {recorder.error && (
-        <div className="voice-status error">
-          录音错误: {recorder.error}
-        </div>
-      )}
+
 
       {/* 语音按钮始终渲染但通过 CSS 控制显隐 */}
 
