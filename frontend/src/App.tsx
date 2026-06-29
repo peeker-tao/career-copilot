@@ -16,6 +16,7 @@ const MarketInsightPage = lazy(() => import('./pages/CareerPlan/MarketInsightPag
 const InterviewRoomPage = lazy(() => import('./pages/Interview/InterviewRoomPage'))
 const InterviewHistoryPage = lazy(() => import('./pages/Interview/InterviewHistoryPage'))
 const InterviewReportPage = lazy(() => import('./pages/Interview/InterviewReportPage'))
+const ResumeComparePage = lazy(() => import('./pages/Resume/ResumeComparePage'))
 const ResumeDetailPage = lazy(() => import('./pages/Resume/ResumeDetailPage'))
 const ResumeListPage = lazy(() => import('./pages/Resume/ResumeListPage'))
 const ResumeUploadPage = lazy(() => import('./pages/Resume/ResumeUploadPage'))
@@ -59,8 +60,9 @@ const App: React.FC = () => {
           <Route path="/interview/:id" element={<InterviewRoomPage />} />
           <Route path="/interview/:id/report" element={<InterviewReportPage />} />
           <Route path="/resume" element={<ResumeListPage />} />
-          <Route path="/resume/:id" element={<ResumeDetailPage />} />
+          <Route path="/resume/compare" element={<ResumeComparePage />} />
           <Route path="/resume/upload" element={<ResumeUploadPage />} />
+          <Route path="/resume/:id" element={<ResumeDetailPage />} />
         </Route>
       </Routes>
       <ToastContainer />

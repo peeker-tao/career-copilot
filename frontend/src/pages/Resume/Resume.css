@@ -1335,3 +1335,398 @@
     background: rgba(0,0,0,0.6);
   }
 }
+
+/* PDF 原文查看 */
+.pdf-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.2s ease-out;
+}
+
+.pdf-viewer {
+  width: 90vw;
+  height: 90vh;
+  background: #fff;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+}
+
+.pdf-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pdf-viewer-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.pdf-viewer-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text);
+  transition: background 0.15s;
+}
+
+.pdf-viewer-close:hover {
+  background: var(--hover-bg);
+}
+
+.pdf-iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 对比模式分页提示 */
+.pagination-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+/* ========================================
+   简历对比模式
+   ======================================== */
+
+/* 头部操作栏 */
+.resume-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-compare {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 20px;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-compare:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.btn-compare.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+/* 卡片选中状态 */
+.resume-card-selected {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-bg), var(--shadow-lg) !important;
+  background: linear-gradient(135deg, var(--accent-bg) 0%, var(--bg-card) 60%);
+}
+
+/* 卡片勾选框 */
+.resume-card-check {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-light);
+  color: var(--text-muted);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.resume-card-check:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.resume-card-selected .resume-card-check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* 对比模式底部操作栏 */
+.compare-bar {
+  position: sticky;
+  bottom: 0;
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+  gap: 16px;
+  z-index: 10;
+}
+
+.compare-bar-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.compare-bar-close:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.compare-bar-info {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.btn-compare-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  background: var(--accent-gradient-strong);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+}
+
+.btn-compare-start:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.35);
+}
+
+.btn-compare-start:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ========================================
+   简历对比页面
+   ======================================== */
+
+.compare-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 32px;
+  text-align: left;
+  animation: fade-in-up 0.4s ease-out;
+}
+
+.compare-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.compare-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.compare-count {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* 对比网格 */
+.compare-grid {
+  display: grid;
+  gap: 1px;
+  background: var(--border-light);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.compare-label-placeholder {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.compare-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 16px;
+  background: var(--bg);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.compare-label .anticon {
+  color: var(--accent);
+}
+
+.compare-col {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.compare-col-header {
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.compare-col-header:hover {
+  background: var(--hover-bg);
+}
+
+.compare-col-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  word-break: break-all;
+  margin-bottom: 2px;
+}
+
+.compare-col-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.compare-cell {
+  padding: 14px 16px;
+  background: var(--bg-card);
+  min-height: 60px;
+}
+
+.compare-basic-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+  border-bottom: 1px dashed var(--border-light);
+}
+
+.compare-basic-row:last-child {
+  border-bottom: none;
+}
+
+.compare-basic-row span:first-child {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.compare-basic-row span:last-child {
+  color: var(--text-h);
+  text-align: right;
+  word-break: break-all;
+}
+
+/* 时间线样式（在对比单元格内） */
+.compare-timeline-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.compare-timeline-item:last-child {
+  border-bottom: none;
+}
+
+.compare-timeline-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin-bottom: 2px;
+}
+
+.compare-timeline-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 1px;
+}
+
+.compare-timeline-period {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.compare-timeline-desc {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.empty-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* 暗色适配 */
+@media (prefers-color-scheme: dark) {
+  .compare-bar {
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+  }
+}
