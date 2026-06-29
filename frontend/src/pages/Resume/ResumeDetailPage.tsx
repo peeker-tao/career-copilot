@@ -13,11 +13,14 @@ import {
   BuildOutlined,
   ProjectOutlined,
   CodeOutlined,
+  CloseOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '@/components/common'
 import { EditModal, SkillRadar } from '@/components/resume'
 import { useResumeStore } from '@/store/useResumeStore'
 import { toast } from '@/store/useToastStore'
+import { getResumeFileBlobUrl } from '@/api/resumes'
 import type { ParsedResumeData } from '@/types/resume'
 import './Resume.css'
 
@@ -46,6 +49,9 @@ const ResumeDetailPage = () => {
   const [showDelete, setShowDelete] = useState(false)
   const [reparsing, setReparsing] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [showPdf, setShowPdf] = useState(false)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [pdfLoading, setPdfLoading] = useState(false)
 
   // 首次加载
   useEffect(() => {
@@ -98,6 +104,33 @@ const ResumeDetailPage = () => {
   const handleDelete = () => {
     setShowDelete(true)
   }
+
+  const handleViewPdf = useCallback(async () => {
+    if (!id) return
+    setPdfLoading(true)
+    const url = await getResumeFileBlobUrl(id)
+    setPdfLoading(false)
+    if (url) {
+      setPdfUrl(url)
+      setShowPdf(true)
+    } else {
+      toast.error('简历文件不可用')
+    }
+  }, [id])
+
+  // 关闭 PDF 时释放 blob URL
+  const handleClosePdf = useCallback(() => {
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl)
+    setPdfUrl(null)
+    setShowPdf(false)
+  }, [pdfUrl])
+
+  // 组件卸载时清理 blob URL
+  const pdfUrlRef = useRef(pdfUrl)
+  pdfUrlRef.current = pdfUrl
+  useEffect(() => {
+    return () => { if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current) }
+  }, [])
 
   const confirmDelete = async () => {
     if (!id) return
@@ -184,6 +217,14 @@ const ResumeDetailPage = () => {
             onClick={handleDelete}
           >
             <DeleteOutlined /> 删除
+          </button>
+          <button
+            className="detail-action-btn"
+            onClick={handleViewPdf}
+            disabled={pdfLoading}
+          >
+            {pdfLoading ? <LoadingOutlined /> : <EyeOutlined />}
+            {pdfLoading ? '加载中...' : '查看原文'}
           </button>
           <button
             className="detail-action-btn"
@@ -313,6 +354,20 @@ const ResumeDetailPage = () => {
         onConfirm={confirmDelete}
         onCancel={() => setShowDelete(false)}
       />
+
+      {showPdf && pdfUrl && (
+        <div className="pdf-overlay" onClick={handleClosePdf}>
+          <div className="pdf-viewer" onClick={(e) => e.stopPropagation()}>
+            <div className="pdf-viewer-header">
+              <span className="pdf-viewer-title">{resume.title} - 原文</span>
+              <button className="pdf-viewer-close" onClick={handleClosePdf}>
+                <CloseOutlined />
+              </button>
+            </div>
+            <iframe src={pdfUrl} className="pdf-iframe" title="简历原文" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

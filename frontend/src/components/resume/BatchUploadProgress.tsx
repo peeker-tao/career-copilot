@@ -53,9 +53,9 @@ const BatchUploadProgress = ({
               : `已选择 ${items.length} 个文件`}
         </span>
         <span className="fs-12 text-body">
-          {items.reduce((s, i) => s + i.file.size, 0) > 1024 * 1024
-            ? `${(items.reduce((s, i) => s + i.file.size, 0) / (1024 * 1024)).toFixed(1)} MB`
-            : `${(items.reduce((s, i) => s + i.file.size, 0) / 1024).toFixed(0)} KB`}
+          {items.reduce((s, i) => s + (i.file?.size ?? 0), 0) > 1024 * 1024
+            ? `${(items.reduce((s, i) => s + (i.file?.size ?? 0), 0) / (1024 * 1024)).toFixed(1)} MB`
+            : `${(items.reduce((s, i) => s + (i.file?.size ?? 0), 0) / 1024).toFixed(0)} KB`}
         </span>
       </div>
 

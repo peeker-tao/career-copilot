@@ -36,16 +36,18 @@ export async function getResumeById(id: string): Promise<ApiResponse<ResumeDetai
 /** 上传简历 */
 export async function uploadResume(
   file: File,
-  onProgress?: (percent: number) => void
+  onProgress?: (percent: number) => void,
+  signal?: AbortSignal
 ): Promise<ApiResponse<ResumeDetail>> {
   if (useMock) {
     // 模拟上传进度
     const interval = setInterval(() => {
+      if (signal?.aborted) { clearInterval(interval); return }
       onProgress?.(Math.min(Math.random() * 15 + 5, 95))
     }, 300)
     await delay(2500)
     clearInterval(interval)
-    onProgress?.(100)
+    if (!signal?.aborted) onProgress?.(100)
     return {
       code: 200,
       message: '上传成功',
@@ -56,6 +58,7 @@ export async function uploadResume(
   form.append('file', file)
   return apiClient.post('/resumes/upload', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    signal,
     onUploadProgress: (e) => {
       if (e.total) onProgress?.(Math.round((e.loaded * 100) / e.total))
     },
@@ -78,6 +81,23 @@ export async function updateResume(id: string, data: Partial<ResumeDetail>): Pro
     return { code: 200, message: '更新成功', data: { ...MOCK_RESUME_DETAIL, id, ...data } }
   }
   return apiClient.put(`/resumes/${id}`, { parsedData: data.parsedData })
+}
+
+/** 获取简历原文件（返回 blob URL） */
+export async function getResumeFileBlobUrl(id: string): Promise<string | null> {
+  if (useMock) return null
+  try {
+    const token = localStorage.getItem('accessToken')
+    const baseURL = apiClient.defaults.baseURL || ''
+    const res = await fetch(`${baseURL}/resumes/${id}/file`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new Error('文件获取失败')
+    const blob = await res.blob()
+    return URL.createObjectURL(blob)
+  } catch {
+    return null
+  }
 }
 
 /** 重新解析简历 */
