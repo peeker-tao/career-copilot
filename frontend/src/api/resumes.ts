@@ -113,3 +113,27 @@ export async function reparseResume(id: string): Promise<ApiResponse<ResumeDetai
   // 后端暂未实现独立的 reparse 端点，通过 PUT 设置 status=parsing 触发重新解析
   return apiClient.put(`/resumes/${id}`, { status: 'parsing' })
 }
+
+/** 改写建议 */
+export interface RewriteSuggestion {
+  section: string
+  original: string
+  suggested: string
+  reason: string
+}
+
+/** 获取简历改写建议 */
+export async function getRewriteSuggestions(
+  id: string,
+  targetPosition: string
+): Promise<ApiResponse<{ suggestions: RewriteSuggestion[] }>> {
+  return apiClient.post(`/resumes/${id}/rewrite-suggestions`, { targetPosition })
+}
+
+/** 改写简历特定部分 */
+export async function rewriteSection(
+  id: string,
+  data: { section: string; targetPosition: string; content: string }
+): Promise<ApiResponse<{ rewritten: string; changes: string[] }>> {
+  return apiClient.post(`/resumes/${id}/rewrite-section`, data)
+}
