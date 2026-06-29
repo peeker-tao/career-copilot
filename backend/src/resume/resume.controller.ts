@@ -11,6 +11,7 @@ import {
   UploadedFile,
   Query,
   HttpCode,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,6 +19,7 @@ import {
   ApiConsumes,
   ApiBody,
   ApiQuery,
+  ApiOperation,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -154,19 +156,138 @@ export class ResumeController {
 
   @Post('screening/benchmark-import')
   @HttpCode(201)
-  @ApiBody({ type: ScreeningBenchmarkImportDto })
+  @ApiBody({
+    type: ScreeningBenchmarkImportDto,
+    examples: {
+      '一条记录': {
+        summary: '单条导入示例',
+        value: {
+          records: [
+            {
+              resumeId: 1,
+              name: '张三',
+              skills: ['Python', 'TensorFlow', 'NLP', 'Docker'],
+              experienceYears: 5,
+              education: '硕士',
+              certifications: 'PMP',
+              jobRole: 'Software Engineer',
+              recruiterDecision: 'Hire',
+              salaryExpectation: 120000,
+              projectsCount: 8,
+              aiScore: 85,
+            },
+          ],
+        },
+      },
+      '多条记录': {
+        summary: '批量导入示例（2条）',
+        value: {
+          records: [
+            {
+              resumeId: 1,
+              name: '张三',
+              skills: ['Python', 'TensorFlow'],
+              experienceYears: 5,
+              education: '硕士',
+              certifications: 'PMP',
+              jobRole: 'Software Engineer',
+              recruiterDecision: 'Hire',
+              salaryExpectation: 120000,
+              projectsCount: 8,
+              aiScore: 85,
+            },
+            {
+              resumeId: 2,
+              name: '李四',
+              skills: ['Java', 'Spring Boot', 'SQL'],
+              experienceYears: 3,
+              education: '本科',
+              jobRole: 'Software Engineer',
+              recruiterDecision: 'Review',
+              salaryExpectation: 80000,
+              projectsCount: 5,
+              aiScore: 72,
+            },
+          ],
+        },
+      },
+    },
+  })
   async importScreeningBenchmark(
+    @CurrentUser('id') userId: string,
     @Body() dto: ScreeningBenchmarkImportDto,
   ) {
-    return this.resumeService.importScreeningBenchmark(dto.records);
+    if (!dto.records || dto.records.length === 0) {
+      throw new BadRequestException('records 不能为空');
+    }
+    return this.resumeService.importScreeningBenchmark(dto.records, userId);
+  }
+
+  @Post('screening/benchmark-seed')
+  @HttpCode(201)
+  @ApiOperation({ summary: '导入默认基准数据集', description: '从系统 CSV 数据集自动导入 1000 条岗位筛选基准记录，无需传入任何数据' })
+  async seedDefaultBenchmarks(
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.resumeService.seedDefaultBenchmarks(userId);
+  }
+
+  @Get('screening/benchmark-stats')
+  @ApiOperation({ summary: '获取基准统计', description: '返回当前用户指定岗位的 AI 评分分布、招聘决策分布等统计数据。不传 jobRole 则返回所有岗位的统计。' })
+  @ApiQuery({ name: 'jobRole', required: false, description: '岗位名称（不传则返回全部 4 个岗位的统计）' })
+  async getBenchmarkStats(
+    @CurrentUser('id') userId: string,
+    @Query('jobRole') jobRole?: string,
+  ) {
+    if (jobRole) {
+      return this.resumeService.getBenchmarkStats(userId, jobRole);
+    }
+    return this.resumeService.getAllBenchmarkStats(userId);
   }
 
   @Post('screening/evaluate')
   @HttpCode(201)
-  @ApiBody({ type: ScreeningEvaluateDto })
+  @ApiBody({
+    type: ScreeningEvaluateDto,
+    examples: {
+      '高匹配候选人': {
+        summary: '技术栈匹配度高，经验丰富',
+        value: {
+          jobRole: 'Software Engineer',
+          skills: ['Python', 'TypeScript', 'React', 'Docker', 'AWS'],
+          experienceYears: 6,
+          education: '硕士',
+          certifications: 'AWS Certified Developer',
+          projectsCount: 10,
+        },
+      },
+      '中等匹配候选人': {
+        summary: '部分技能匹配，经验适中',
+        value: {
+          jobRole: 'Data Scientist',
+          skills: ['Python', 'Pandas', 'Scikit-learn'],
+          experienceYears: 3,
+          education: '本科',
+          certifications: '',
+          projectsCount: 4,
+        },
+      },
+      '入门级候选人': {
+        summary: '经验较少，技能基础',
+        value: {
+          jobRole: 'Cybersecurity Analyst',
+          skills: ['Linux', 'Wireshark', 'Python'],
+          experienceYears: 1,
+          education: '本科',
+          projectsCount: 2,
+        },
+      },
+    },
+  })
   async evaluateScreening(
+    @CurrentUser('id') userId: string,
     @Body() dto: ScreeningEvaluateDto,
   ) {
-    return this.resumeService.evaluateScreening(dto);
+    return this.resumeService.evaluateScreening(dto, userId);
   }
 }

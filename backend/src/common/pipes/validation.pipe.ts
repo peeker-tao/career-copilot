@@ -1,5 +1,6 @@
 import {
   Injectable,
+  UnprocessableEntityException,
   ValidationPipe as NestValidationPipe,
   ValidationError,
 } from '@nestjs/common';
@@ -19,11 +20,7 @@ export class ValidationPipe extends NestValidationPipe {
           }
           return `${error.property} 校验失败`;
         });
-        return {
-          code: 422,
-          message: messages[0] || '参数校验失败',
-          errors: messages,
-        } as any;
+        throw new UnprocessableEntityException(messages[0] || '参数校验失败');
       },
     });
   }

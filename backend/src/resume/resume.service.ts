@@ -13,6 +13,7 @@ import {
 } from './dto/screening-benchmark.dto';
 import { AiService } from '../ai/ai.service';
 import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class ResumeService {
@@ -276,14 +277,17 @@ export class ResumeService {
   }
 
   // ================================================
-  // 筛选基准评估 (Dataset 4)
+  // 筛选基准评估 (Dataset 4) — 持久化 + 分用户
   // ================================================
 
   /**
-   * 批量导入筛选基准评估数据
+   * 批量导入筛选基准数据（持久化到数据库，按用户隔离）
    */
-  async importScreeningBenchmark(records: ScreeningBenchmarkRecordDto[]) {
-    this.logger.log(`📊 导入筛选基准数据: ${records.length} 条`);
+  async importScreeningBenchmark(
+    records: ScreeningBenchmarkRecordDto[],
+    userId: string,
+  ) {
+    this.logger.log(`📊 导入筛选基准数据: userId=${userId}, count=${records.length}`);
 
     if (!records || records.length === 0) {
       throw new BadRequestException('记录列表不能为空');
@@ -298,6 +302,30 @@ export class ResumeService {
       }
     }
 
+    // 追加式导入：直接添加新记录，不清除任何已有数据
+    const data = records.map((r) => ({
+      userId,
+      resumeId: r.resumeId,
+      name: r.name,
+      skills: r.skills,
+      experienceYears: r.experienceYears,
+      education: r.education,
+      certifications: r.certifications ?? null,
+      jobRole: r.jobRole,
+      recruiterDecision: r.recruiterDecision,
+      salaryExpectation: r.salaryExpectation,
+      projectsCount: r.projectsCount,
+      aiScore: r.aiScore,
+    }));
+
+    // 分批写入，避免单次事务过大
+    const BATCH = 100;
+    for (let i = 0; i < data.length; i += BATCH) {
+      await this.prisma.screeningBenchmark.createMany({
+        data: data.slice(i, i + BATCH),
+      });
+    }
+
     return {
       success: true,
       imported: records.length,
@@ -306,11 +334,119 @@ export class ResumeService {
   }
 
   /**
-   * 筛选评估 — 使用 AI 对候选人档案进行评分
+   * 为当前用户导入默认基准数据（不传 records 时使用系统内置的 CSV 数据集）
    */
-  async evaluateScreening(dto: ScreeningEvaluateDto) {
+  async seedDefaultBenchmarks(
+    userId: string,
+    customRecords?: ScreeningBenchmarkRecordDto[],
+  ) {
+    try {
+      if (customRecords && customRecords.length > 0) {
+        return this.importScreeningBenchmark(customRecords, userId);
+      }
+
+      // 尝试从服务端 datasets 目录读取 CSV
+      const csvPath = this.resolveDatasetCsvPath();
+      this.logger.log(`🔍 seedDefaultBenchmarks: csvPath resolved to ${csvPath}`);
+      if (!csvPath) {
+        // 没有服务端 CSV → 让客户端通过 import_benchmark.py 上传
+        return {
+          success: false,
+          message:
+            '服务端未找到数据集文件，请使用 import_benchmark.py 脚本导入',
+        };
+      }
+
+      this.logger.log(`🔍 Reading CSV from: ${csvPath}, exists: ${fs.existsSync(csvPath)}`);
+      const records = this.parseCsvRecords(csvPath);
+      this.logger.log(`🔍 Parsed ${records.length} records from CSV`);
+      return this.importScreeningBenchmark(records, userId);
+    } catch (err) {
+      this.logger.error(`❌ seedDefaultBenchmarks 失败: ${(err as Error).message}`);
+      this.logger.error(`❌ Stack: ${(err as Error).stack}`);
+      throw err;
+    }
+  }
+
+  /**
+   * 获取当前用户指定岗位的基准统计（用于评估时参考对照）
+   */
+  async getBenchmarkStats(userId: string, jobRole: string) {
+    const benchmarks = await this.prisma.screeningBenchmark.findMany({
+      where: { userId, jobRole },
+      orderBy: { aiScore: 'desc' },
+    });
+
+    if (benchmarks.length === 0) {
+      return { jobRole, total: 0, message: '暂无该岗位的基准数据' };
+    }
+
+    const scores = benchmarks.map((b) => b.aiScore);
+    const avgScore =
+      scores.reduce((a, b) => a + b, 0) / scores.length;
+    const decisions: Record<string, number> = {};
+    for (const b of benchmarks) {
+      decisions[b.recruiterDecision] =
+        (decisions[b.recruiterDecision] || 0) + 1;
+    }
+
+    return {
+      jobRole,
+      total: benchmarks.length,
+      avgAiScore: Math.round(avgScore * 10) / 10,
+      minScore: Math.min(...scores),
+      maxScore: Math.max(...scores),
+      decisionDistribution: decisions,
+      topCandidates: benchmarks.slice(0, 5).map((b) => ({
+        name: b.name,
+        aiScore: b.aiScore,
+        decision: b.recruiterDecision,
+        experienceYears: b.experienceYears,
+        education: b.education,
+      })),
+    };
+  }
+
+  /**
+   * 获取当前用户所有岗位的基准统计
+   */
+  async getAllBenchmarkStats(userId: string) {
+    const roles = await this.prisma.screeningBenchmark.findMany({
+      where: { userId },
+      select: { jobRole: true },
+      distinct: ['jobRole'],
+    });
+
+    if (roles.length === 0) {
+      return { roles: [], message: '暂无基准数据，请先调用 benchmark-seed 导入' };
+    }
+
+    const stats = await Promise.all(
+      roles.map((r) => this.getBenchmarkStats(userId, r.jobRole)),
+    );
+
+    return { roles: stats };
+  }
+
+  /**
+   * 筛选评估 — 使用 AI 对候选人档案进行评分，并返回同岗位基准对照
+   */
+  async evaluateScreening(dto: ScreeningEvaluateDto, userId: string) {
     this.logger.log(`🔍 执行筛选评估: role=${dto.jobRole}`);
 
+    // 1. 获取同岗位基准数据作为参考
+    const benchmarkStats = await this.getBenchmarkStats(userId, dto.jobRole);
+
+    const benchmarkContext =
+      benchmarkStats && 'total' in benchmarkStats && benchmarkStats.total > 0
+        ? `\n\n📊 同岗位基准参考（基于 ${benchmarkStats.total} 份历史数据）：
+- 平均 AI 评分: ${benchmarkStats.avgAiScore}
+- AI 评分范围: ${benchmarkStats.minScore} ~ ${benchmarkStats.maxScore}
+- 招聘决策分布: ${JSON.stringify(benchmarkStats.decisionDistribution)}
+- 最高分候选人经验年限: ${(benchmarkStats.topCandidates ?? []).map((c) => c.name + '(' + c.experienceYears + '年)').join('、')}`
+        : '';
+
+    // 2. 构建提示词
     const prompt = `你是一个专业的 AI 招聘筛选助手。请根据以下职位要求和候选人信息，给出综合评分和评估意见。
 
 职位: ${dto.jobRole}
@@ -318,7 +454,7 @@ export class ResumeService {
 经验年限: ${dto.experienceYears} 年
 教育背景: ${dto.education}
 ${dto.certifications ? `证书: ${dto.certifications}` : ''}
-${dto.projectsCount ? `项目数量: ${dto.projectsCount}` : ''}
+${dto.projectsCount ? `项目数量: ${dto.projectsCount}` : ''}${benchmarkContext}
 
 请从以下几个维度评估（每项 0-100 分）：
 1. 技能匹配度 (skillMatch)
@@ -340,16 +476,109 @@ ${dto.projectsCount ? `项目数量: ${dto.projectsCount}` : ''}
 }`;
 
     try {
-      const result = await this.aiService.callLLM(
+      const aiResult = await this.aiService.callLLM(
         '你是一个专业的 AI 招聘筛选助手。',
         prompt,
         0.3,
         'resume:screening',
       );
-      return result;
+
+      // 3. 返回 AI 评分 + 基准对照
+      return {
+        evaluation: aiResult,
+        benchmark: benchmarkStats,
+      };
     } catch (err) {
       this.logger.error(`AI 筛选评估失败: ${(err as Error).message}`);
       throw new BadRequestException('AI 筛选评估失败，请稍后重试');
     }
+  }
+
+  // ================== 内部辅助方法 ==================
+
+  /**
+   * 解析数据集 CSV 文件路径
+   */
+  private resolveDatasetCsvPath(): string | null {
+    // 尝试多个可能路径
+    const candidates = [
+      // 相对于后端运行目录
+      '../datasets/AI_Resume_Screening/AI_Resume_Screening.csv',
+      // 相对于 backend 目录
+      '../../datasets/AI_Resume_Screening/AI_Resume_Screening.csv',
+      // 基于 __dirname 的深度优先路径
+      path.join(__dirname, '../../../datasets/AI_Resume_Screening/AI_Resume_Screening.csv'),
+      // 绝对路径
+      'D:\\gitclone\\软件工程实训（二）\\career-copilot\\datasets\\AI_Resume_Screening\\AI_Resume_Screening.csv',
+      // 环境变量
+      process.env.BENCHMARK_CSV_PATH,
+    ].filter(Boolean) as string[];
+
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        this.logger.log(`✅ CSV 路径解析成功: ${p}`);
+        return p;
+      }
+    }
+    this.logger.warn(`❌ 所有 CSV 候选路径均不存在: ${JSON.stringify(candidates)}`);
+    return null;
+  }
+
+  /**
+   * 解析 CSV 文件为 ScreeningBenchmarkRecordDto[]
+   */
+  /**
+   * 解析一行 CSV（支持双引号包裹的字段，如 Skills 中的逗号）
+   */
+  private parseCsvLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (const ch of line) {
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  private parseCsvRecords(csvPath: string): ScreeningBenchmarkRecordDto[] {
+    const content = fs.readFileSync(csvPath, 'utf-8').trim();
+    const lines = content.split('\n');
+    const headers = this.parseCsvLine(lines[0]);
+    const records: ScreeningBenchmarkRecordDto[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = this.parseCsvLine(lines[i]);
+      if (values.length < headers.length) continue;
+
+      const row: Record<string, string> = {};
+      headers.forEach((h, idx) => (row[h] = values[idx]));
+
+      records.push({
+        resumeId: parseInt(row['Resume_ID'] || '0'),
+        name: row['Name'] || '',
+        skills: (row['Skills'] || '').split(',').map((s) => s.trim()),
+        experienceYears: parseFloat(row['Experience (Years)'] || '0'),
+        education: row['Education'] || '',
+        certifications:
+          row['Certifications'] && row['Certifications'] !== 'None'
+            ? row['Certifications']
+            : undefined,
+        jobRole: row['Job Role'] || '',
+        recruiterDecision: row['Recruiter Decision'] || '',
+        salaryExpectation: parseInt(row['Salary Expectation ($)'] || '0'),
+        projectsCount: parseInt(row['Projects Count'] || '0'),
+        aiScore: parseInt(row['AI Score (0-100)'] || '0'),
+      });
+    }
+
+    return records;
   }
 }

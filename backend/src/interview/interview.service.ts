@@ -330,6 +330,18 @@ export class InterviewService {
       };
     }
 
+    // 提前检查对话是否充足（排除 system 消息）
+    const nonSystemMessages = interview.messages.filter(
+      (m) => m.role !== 'system',
+    );
+    if (nonSystemMessages.length < 2) {
+      return {
+        type: 'failed',
+        status: 'failed',
+        message: '对话记录不足，无法生成报告',
+      };
+    }
+
     // 入队列
     const job = await this.queueService.addFeedbackJob(id, userId);
 

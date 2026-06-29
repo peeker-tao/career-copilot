@@ -55,8 +55,9 @@ export class ScreeningBenchmarkRecordDto {
  * 基准评估批量导入请求
  */
 export class ScreeningBenchmarkImportDto {
+  @IsOptional()
   @IsArray()
-  records: ScreeningBenchmarkRecordDto[];
+  records?: ScreeningBenchmarkRecordDto[];
 }
 
 /**

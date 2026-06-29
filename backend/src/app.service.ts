@@ -86,7 +86,6 @@ export class AppService {
       date: item.completedAt!.toISOString().split('T')[0],
       score: item.score!,
     }));
-
     return {
       stats: {
         totalInterviews,
