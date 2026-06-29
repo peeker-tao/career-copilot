@@ -10,12 +10,19 @@ import './CareerPlanDetail.css'
 
 const MarketInsightPage = () => {
   const navigate = useNavigate()
-  const [position, setPosition] = useState('后端开发工程师')
+  const [position, setPosition] = useState('')
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<MarketInsight | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    if (!position || position.trim() === '') {
+      setTimeout(() => {
+        setData(null)
+        setLoading(false)
+      },0)
+      return
+    }
     // Debounce 800ms to avoid too many API calls while typing
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(async () => {
@@ -23,6 +30,7 @@ const MarketInsightPage = () => {
       try {
         const res = await getMarketInsight(position)
         if (res.code === 200) {
+          console.log('Market insight data:', res.data)
           setData(res.data)
         }
       } catch (err) {

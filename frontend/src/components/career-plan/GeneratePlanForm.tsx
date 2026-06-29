@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TagsOutlined, FileTextOutlined, PlusOutlined, LoadingOutlined } from '@ant-design/icons'
+import { TagsOutlined, FileTextOutlined, PlusOutlined, LoadingOutlined, AimOutlined } from '@ant-design/icons'
 import { generateCareerPlan } from '@/api/career'
 import { useResumeStore } from '@/store/useResumeStore'
 import { toast } from '@/store/useToastStore'
@@ -111,7 +111,7 @@ export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps)
 
   return (
     <div className="generate-section">
-      <h2 className="section-title">🎯 生成新职业规划</h2>
+      <h2 className="section-title"><AimOutlined /> 生成新职业规划</h2>
       <p className="section-subtitle">输入目标岗位，AI 将为你定制专属学习路线</p>
 
       <div className="generate-form">

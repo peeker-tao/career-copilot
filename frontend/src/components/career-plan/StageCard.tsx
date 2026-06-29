@@ -30,7 +30,7 @@ export interface StageCardProps {
 
 export default function StageCard({ stage, index, onToggleLearn }: StageCardProps) {
   const [expanded, setExpanded] = useState(false)
-
+  console.log(`Rendering StageCard for stage`, stage)
   return (
     <div className={`stage-card ${stage.learned ? 'learned' : ''}`}>
       <div className="stage-header" onClick={() => setExpanded(!expanded)}>
