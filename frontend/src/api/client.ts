@@ -8,7 +8,7 @@ declare module 'axios' {
 }
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_API_URL || '/api',
+  baseURL: (import.meta.env.VITE_BACKEND_API_BASE_URL ?? '') + (import.meta.env.VITE_BACKEND_API_PATH ?? ''),
   timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
@@ -65,6 +65,11 @@ apiClient.interceptors.response.use(
   (response) => response.data,
   async (error) => {
     const originalRequest = error.config
+
+    // 用户主动取消的请求（cancel/abort）→ 静默处理
+    if (axios.isCancel(error)) {
+      return Promise.reject(error)
+    }
 
     // 网络错误（无响应）→ 显示气泡提示
     if (!error.response) {

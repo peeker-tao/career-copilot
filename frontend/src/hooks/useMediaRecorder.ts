@@ -65,9 +65,12 @@ export function useMediaRecorder(): UseMediaRecorderReturn {
       const msg =
         (err as DOMException).name === 'NotAllowedError'
           ? '麦克风权限被拒绝'
-          : (err as Error).message
-      setError(msg)
-      useVoiceStore.getState().setError(msg)
+          : (err as Error).message;
+      
+      setError(msg);
+        
+      (useVoiceStore.getState() as unknown as { setError: (msg: string) => void }).setError(msg)
+      
     }
   }, [])
 

@@ -17,6 +17,8 @@ export interface VoiceState {
   error: string | null
   /** 设置 */
   settings: VoiceSettings
+  /** 设置语音开关 */
+  setEnabled: (v: boolean) => void
 
   /** 切换语音开关 */
   toggleEnabled: () => void
@@ -56,7 +58,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
     speed: 1.0,
     voice: 'zh-CN-XiaoxiaoNeural',
   },
-
+  setEnabled: (v) => set({enabled: v}),
   toggleEnabled: () => set((s) => ({ enabled: !s.enabled })),
   toggleAutoSend: () =>
     set((s) => ({ settings: { ...s.settings, autoSend: !s.settings.autoSend } })),

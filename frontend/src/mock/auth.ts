@@ -8,7 +8,7 @@ export const MOCK_USER: UserInfo = {
   phone: '138****8888',
   education: '华中科技大学 · 软件工程 · 本科',
   targetPosition: '后端开发工程师',
-  bio: '热爱编程，正在为梦想努力 💪',
+  bio: '热爱编程，正在为梦想努力',
   role: 'user',
   createdAt: '2026-01-15',
 }
