@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeftOutlined,
@@ -36,7 +36,6 @@ export default function InterviewRoomPage() {
   const finalizeWSMessage = useInterviewStore((s) => s.finalizeWSMessage)
   const handleWSError = useInterviewStore((s) => s.handleWSError)
   const report = useInterviewStore((s) => s.report)
-  const fetchReport = useInterviewStore((s) => s.fetchReport)
 
   // Resume store
   const resumes = useResumeStore((s) => s.resumes)
@@ -49,6 +48,8 @@ export default function InterviewRoomPage() {
   const [starting, setStarting] = useState(false)
   const [setupError, setSetupError] = useState<string | null>(null)
   const [showResumeDropdown, setShowResumeDropdown] = useState(false)
+  // 防止 finishInterview 被重复调用
+  const finishingRef = useRef(false)
 
   // 进入新面试页时加载简历列表
   useEffect(() => {
@@ -77,12 +78,13 @@ export default function InterviewRoomPage() {
     console.log(`WebSocket ${wsEnabled ? 'enabled' : 'disabled'} for interview room`)
   }, [wsEnabled, setUseWebSocket])
 
-  // 被动结束（如题目答完）时自动拉取报告
+  // 被动结束（如题目答完）时自动完成面试并拉取报告
   useEffect(() => {
-    if (isFinished && id && !isNew && !report) {
-      fetchReport(id)
+    if (isFinished && id && !isNew && !report && !finishingRef.current) {
+      finishingRef.current = true
+      finishInterview(id)
     }
-  }, [isFinished, id, isNew, report, fetchReport])
+  }, [isFinished, id, isNew, report, finishInterview])
 
   const { sendAnswer: wsSendAnswer, connected: wsConnected } = useInterviewWebSocket({
     interviewId: id,
@@ -134,6 +136,7 @@ export default function InterviewRoomPage() {
     const confirmed = window.confirm('确定要结束当前面试吗？结束后将自动生成面试报告。')
     if (!confirmed) return
 
+    finishingRef.current = true
     await finishInterview(id!)
   }, [id, finishInterview])
 

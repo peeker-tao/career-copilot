@@ -75,18 +75,7 @@ export async function getInterviewMessages(id: string): Promise<ApiResponse<Inte
     await delay(300)
     return { code: 200, message: 'success', data: MOCK_INITIAL_MESSAGES }
   }
-  const response: any = await apiClient.get(`/interviews/${id}/messages`)
-  // 后端 Prisma 返回 createdAt，前端类型需要 timestamp，做字段映射
-  const raw = Array.isArray(response.data) ? response.data : []
-  const messages: InterviewMessage[] = raw.map((msg: any) => ({
-    id: msg.id,
-    role: msg.role,
-    content: msg.content,
-    timestamp: msg.timestamp || msg.createdAt,
-    rating: msg.rating ?? msg.score ?? null,
-    questionType: msg.questionType,
-  }))
-  return { code: response.code, message: response.message, data: messages }
+  return apiClient.get(`/interviews/${id}/messages`)
 }
 
 /** 创建面试会话 */
@@ -143,7 +132,65 @@ export async function submitAnswer(
   return apiClient.post(`/interviews/${interviewId}/answer`, { content })
 }
 
-/** 获取面试报告 */
+// 后端 FeedbackReport 原始结构（来自 AI prompt 输出 + interview-report.service）
+interface BackendFeedbackReport {
+  overallScore: number
+  overallRating: string
+  summary: string
+  questionScores: Array<{ questionIndex: number; score: number; comment: string; strength: string; weakness: string }>
+  dimensions: Array<{ name: string; score: number; comment: string; suggestions: string }>
+  strengths: string[]
+  weaknesses: string[]
+  learningSuggestions: Array<{ area: string; priority: string; reason: string; resources: string[] }>
+}
+
+// 异步反馈任务响应
+interface FeedbackAsyncResponse {
+  type: 'cached' | 'queued'
+  data?: BackendFeedbackReport
+  jobId?: string
+  message?: string
+}
+
+// 轮询状态响应
+interface FeedbackStatusResponse {
+  status: string
+  data?: BackendFeedbackReport
+}
+
+/** 轮询等待报告生成完成 */
+async function pollUntilReady(interviewId: string, jobId: string, maxRetries = 30): Promise<BackendFeedbackReport> {
+  for (let i = 0; i < maxRetries; i++) {
+    const pollRes: ApiResponse<FeedbackStatusResponse> = await apiClient.get(
+      `/interviews/${interviewId}/feedback/status`,
+      { params: { jobId } },
+    )
+    if (pollRes.data?.status === 'completed' && pollRes.data?.data) {
+      return pollRes.data.data
+    }
+    if (pollRes.data?.status === 'failed') {
+      throw new Error('报告生成失败')
+    }
+    // 等待 2 秒再试
+    await delay(2000)
+  }
+  throw new Error('报告生成超时，请稍后重试')
+}
+
+/** 将后端 FeedbackReport 映射为前端 InterviewReport */
+function mapToInterviewReport(fb: BackendFeedbackReport): InterviewReport {
+  return {
+    overallRating: fb.overallRating || '',
+    overallScore: fb.overallScore ?? 0,
+    summary: fb.summary || '',
+    strengths: fb.strengths || [],
+    weaknesses: fb.weaknesses || [],
+    suggestions: (fb.learningSuggestions || []).map((s) => s.area),
+    skillScores: fb.dimensions || [],
+  }
+}
+
+/** 获取面试报告（支持异步生成+轮询） */
 export async function getInterviewReport(id: string): Promise<ApiResponse<InterviewReport | null>> {
   if (useMock) {
     await delay(600)
@@ -155,10 +202,7 @@ export async function getInterviewReport(id: string): Promise<ApiResponse<Interv
         overallScore: 85,
         strengths: ['技术基础扎实', '表达清晰', '逻辑思维强'],
         weaknesses: ['系统设计经验不足', '部分细节理解不够深入'],
-        suggestions: [
-          '加强系统设计方面的练习',
-          '多了解分布式系统的实际案例',
-        ],
+        suggestions: ['加强系统设计方面的练习', '多了解分布式系统的实际案例'],
         skillScores: [
           { name: 'Java', score: 85, comment: '基础知识扎实', suggestions: '可以进一步深入学习高级特性' },
           { name: 'Spring Boot', score: 80, comment: '能够熟练使用', suggestions: '建议多关注最新版本的特性和最佳实践' },
@@ -170,35 +214,36 @@ export async function getInterviewReport(id: string): Promise<ApiResponse<Interv
       },
     }
   }
-  // 后端 POST /interviews/:id/feedback，NestJS ResponseInterceptor 返回 code=201
-  const response: any = await apiClient.post(`/interviews/${id}/feedback`)
-  console.log('Raw interview report response from backend:', response)
-  const fb = response.data.data
+
+  // Step 1: POST /interviews/:id/feedback → 返回 202 { type: 'cached' | 'queued', data?, jobId? }
+  const response: ApiResponse<FeedbackAsyncResponse> = await apiClient.post(`/interviews/${id}/feedback`)
+  const payload = response.data
+
   if (response.code !== 200 && response.code !== 201 && response.code !== 202) {
     throw new Error(response.message || '获取报告失败')
   }
-  if (!fb) {
-    return {
-      code: response.code,
-      message: response.message,
-      data: null
-    }
+
+  if (!payload) {
+    return { code: response.code, message: response.message, data: null }
   }
-  // console.log('Fetched interview report from backend:', fb)
+
+  let fb: BackendFeedbackReport
+
+  if (payload.type === 'cached') {
+    // 已有缓存，直接使用
+    fb = payload.data as BackendFeedbackReport
+  } else if (payload.type === 'queued' && payload.jobId) {
+    // 异步生成中，轮询等待
+    fb = await pollUntilReady(id, payload.jobId)
+  } else {
+    // 兼容旧版同步返回
+    fb = payload as unknown as BackendFeedbackReport
+  }
+
   return {
     code: response.code,
     message: response.message,
-    data: {
-      overallRating: fb.overallRating,
-      overallScore: fb.overallScore,
-      strengths: fb.strengths || [],
-      weaknesses: fb.weaknesses || [],
-      suggestions: (fb.learningSuggestions || []).map(
-        (s: { area: string }) => s.area
-      ),
-      skillScores: fb.dimensions ?? [],
-      summary: fb.summary || '',
-    },
+    data: mapToInterviewReport(fb),
   }
 }
 
