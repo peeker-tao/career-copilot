@@ -93,6 +93,7 @@ export class InterviewService {
         firstQuestion: {
           content: firstQuestion.content,
           questionType: firstQuestion.questionType,
+          referenceAnswer: firstQuestion.referenceAnswer,
         },
       };
     } catch (err) {
@@ -225,7 +226,7 @@ export class InterviewService {
     // 5. 根据 nextAction 处理后续（使用共享归一化函数）
     const action = normalizeNextAction(evaluation.nextAction || '');
 
-    let nextQuestion: { content: string; questionType: string } | undefined;
+    let nextQuestion: { content: string; questionType: string; referenceAnswer?: string } | undefined;
     let isComplete = false;
 
     if (action === 'followUp' && evaluation.followUpContent) {
@@ -258,7 +259,11 @@ export class InterviewService {
           questionType: qType,
         },
       });
-      nextQuestion = { content: qContent, questionType: qType };
+      nextQuestion = {
+        content: qContent,
+        questionType: qType,
+        referenceAnswer: evaluation.nextQuestionReferenceAnswer,
+      };
       await this.prisma.interview.update({
         where: { id },
         data: { questionCount: { increment: 1 } },

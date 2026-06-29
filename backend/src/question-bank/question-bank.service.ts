@@ -87,7 +87,7 @@ export class QuestionBankService {
 题型: ${dto.type || 'mixed'}`;
 
     try {
-      const raw = await this.aiService.callLLM(systemPrompt, userPrompt);
+      const raw = await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'question:generate');
       let questions: any[];
       try {
         questions = typeof raw === 'string' ? JSON.parse(raw) : raw;

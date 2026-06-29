@@ -26,7 +26,7 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
-  @Throttle({ limit: 5, windowSeconds: 3600 }) // 每小时最多 5 次注册
+  @Throttle({ limit: 5, windowSeconds: 1 }) // 每秒最多 5 次注册
   @UseGuards(ThrottleGuard)
   @ApiOperation({ summary: '用户注册', description: '邮箱+密码注册，返回 Token 对' })
   register(@Body() dto: RegisterDto) {
@@ -34,7 +34,7 @@ export class AuthController {
   }
 
   @Post('login')
-  @Throttle({ limit: 10, windowSeconds: 60 }) // 每分钟最多 10 次登录尝试
+  @Throttle({ limit: 10, windowSeconds: 1 }) // 每秒最多 10 次登录尝试
   @UseGuards(ThrottleGuard)
   @ApiOperation({ summary: '用户登录', description: '邮箱+密码登录，返回 Token 对' })
   login(@Body() dto: LoginDto) {
@@ -79,7 +79,7 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(200)
-  @Throttle({ limit: 3, windowSeconds: 3600 }) // 每小时最多 3 次
+  @Throttle({ limit: 3, windowSeconds: 1 }) // 每秒最多 3 次
   @UseGuards(ThrottleGuard)
   @ApiOperation({ summary: '忘记密码', description: '发送密码重置邮件' })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
@@ -88,7 +88,7 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(200)
-  @Throttle({ limit: 5, windowSeconds: 3600 }) // 每小时最多 5 次
+  @Throttle({ limit: 5, windowSeconds: 1 }) // 每秒最多 5 次
   @UseGuards(ThrottleGuard)
   @ApiOperation({ summary: '重置密码', description: '使用令牌重置密码' })
   async resetPassword(@Body() dto: ResetPasswordDto) {

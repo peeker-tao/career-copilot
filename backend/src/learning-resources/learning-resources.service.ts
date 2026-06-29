@@ -133,7 +133,7 @@ export class LearningResourcesService {
 已经有的资源: ${dbResources.length > 0 ? dbResources.map((r) => r.title).join(', ') : '无'}
 需要补充推荐 ${Math.max((dto.count || 5) - dbResources.length, 1)} 条。`;
 
-      const raw = await this.aiService.callLLM(systemPrompt, userPrompt);
+      const raw = await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'learning:recommend');
       let aiResources: any[];
       try {
         aiResources = typeof raw === 'string' ? JSON.parse(raw) : raw;

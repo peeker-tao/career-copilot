@@ -50,7 +50,8 @@ ${resumeContext ? `6. 应聘者简历信息（请基于此出题）：\n${resume
 {
   "type": "question",
   "content": "题目的详细描述，包含场景和要求",
-  "questionType": "technical | behavioral | project"
+  "questionType": "technical | behavioral | project",
+  "referenceAnswer": "该题目的参考回答要点，列出核心得分点"
 }
 
 ### 评估回答（应聘者回答后，LLM 评估并决定后续动作）
@@ -77,7 +78,8 @@ ${resumeContext ? `6. 应聘者简历信息（请基于此出题）：\n${resume
 当 nextAction 为 "nextQuestion" 时，必须额外包含：
 {
   "nextQuestion": "下一道题目的完整内容",
-  "nextQuestionType": "technical | behavioral | project"
+  "nextQuestionType": "technical | behavioral | project",
+  "nextQuestionReferenceAnswer": "下一道题目的参考回答要点，列出核心得分点"
 }
 
 当 nextAction 为 "complete" 时，还需包含：
