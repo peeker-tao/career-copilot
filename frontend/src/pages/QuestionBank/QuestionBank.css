@@ -1,0 +1,337 @@
+/* 面试题库页 */
+.question-bank-page {
+  padding: 28px 32px;
+  max-width: 960px;
+  margin: 0 auto;
+  text-align: left;
+  animation: fade-in-up 0.4s ease-out;
+}
+
+/* 筛选栏 */
+.qb-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.qb-filter-select {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text-h);
+  background: var(--bg);
+  cursor: pointer;
+  outline: none;
+  font-family: var(--sans);
+}
+
+.qb-filter-select:focus { border-color: var(--accent); }
+
+/* AI生成区 */
+.qb-generate-section {
+  background: linear-gradient(135deg, var(--accent-bg) 0%, rgba(124, 58, 237, 0.03) 100%);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.qb-generate-section h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qb-gen-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.qb-gen-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qb-gen-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.qb-gen-input {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text-h);
+  background: var(--bg);
+  outline: none;
+  min-width: 160px;
+  font-family: var(--sans);
+}
+
+.qb-gen-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+.qb-gen-input.short { width: 80px; min-width: 80px; }
+
+.qb-gen-select {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text-h);
+  background: var(--bg);
+  cursor: pointer;
+  outline: none;
+  font-family: var(--sans);
+}
+
+.qb-gen-select:focus { border-color: var(--accent); }
+
+.qb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-h);
+}
+
+.qb-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.qb-btn-primary {
+  background: var(--accent-gradient-strong);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+}
+
+.qb-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.35);
+  color: #fff;
+}
+
+.qb-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 生成结果 */
+.qb-generated-list {
+  margin-top: 16px;
+}
+
+.qb-gen-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.qb-gen-result-header span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.qb-gen-item {
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border-light);
+}
+
+.qb-gen-item-q {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.qb-gen-item-answer {
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+/* 题目卡片列表 */
+.qb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qb-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: all 0.25s ease;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.qb-card:hover {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow);
+}
+
+.qb-card-question {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.qb-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.qb-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.qb-tag.easy { background: var(--success-bg); color: var(--success); }
+.qb-tag.medium { background: var(--warning-bg); color: var(--warning); }
+.qb-tag.hard { background: var(--danger-bg); color: var(--danger); }
+
+/* 分页 */
+.qb-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.qb-pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-h);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+}
+
+.qb-pagination-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.qb-pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.qb-pagination-info {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* 弹窗 */
+.qb-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fade-in 0.2s ease;
+}
+
+.qb-modal {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 28px;
+  max-width: 580px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+}
+
+.qb-modal h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 16px 0;
+}
+
+.qb-modal-body {
+  font-size: 15px;
+  color: var(--text-h);
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+
+.qb-modal-hint {
+  padding: 10px 14px;
+  background: var(--warning-bg);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--warning);
+  margin-bottom: 12px;
+}
+
+.qb-modal-answer {
+  padding: 14px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.8;
+}
+
+.qb-modal-close {
+  margin-top: 20px;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .qb-gen-form { flex-direction: column; align-items: stretch; }
+  .qb-gen-input { min-width: auto; width: 100%; }
+  .qb-gen-input.short { width: 100%; }
+}
