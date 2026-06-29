@@ -101,3 +101,30 @@ export async function getUserStats(): Promise<ApiResponse<UserStats>> {
     }
   }
 }
+
+/** 忘记密码 - 发送重置邮件 */
+export async function forgotPassword(email: string): Promise<ApiResponse<null>> {
+  if (useMock) {
+    await delay(600)
+    return { code: 200, message: '重置链接已发送至邮箱', data: null }
+  }
+  return apiClient.post('/auth/forgot-password', { email }, { __skipAuthRedirect: true })
+}
+
+/** 重置密码 */
+export async function resetPassword(token: string, password: string): Promise<ApiResponse<null>> {
+  if (useMock) {
+    await delay(600)
+    return { code: 200, message: '密码重置成功', data: null }
+  }
+  return apiClient.post('/auth/reset-password', { token, password }, { __skipAuthRedirect: true })
+}
+
+/** 更新模型配置 */
+export async function updateModelConfig(config: {
+  provider?: string
+  model?: string
+  apiKey?: string
+}): Promise<ApiResponse<null>> {
+  return apiClient.patch('/auth/model-config', config)
+}
