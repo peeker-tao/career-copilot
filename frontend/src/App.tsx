@@ -20,6 +20,10 @@ const ResumeComparePage = lazy(() => import('./pages/Resume/ResumeComparePage'))
 const ResumeDetailPage = lazy(() => import('./pages/Resume/ResumeDetailPage'))
 const ResumeListPage = lazy(() => import('./pages/Resume/ResumeListPage'))
 const ResumeUploadPage = lazy(() => import('./pages/Resume/ResumeUploadPage'))
+const ResumeRewritePage = lazy(() => import('./pages/Resume/ResumeRewritePage'))
+const JobMatchingPage = lazy(() => import('./pages/JobMatching/JobMatchingPage'))
+const LearningResourcesPage = lazy(() => import('./pages/LearningResources/LearningResourcesPage'))
+const QuestionBankPage = lazy(() => import('./pages/QuestionBank/QuestionBankPage'))
 
 import './App.css'
 import './styles/utils.css'
@@ -63,6 +67,10 @@ const App: React.FC = () => {
           <Route path="/resume/compare" element={<ResumeComparePage />} />
           <Route path="/resume/upload" element={<ResumeUploadPage />} />
           <Route path="/resume/:id" element={<ResumeDetailPage />} />
+          <Route path="/resume/:id/rewrite" element={<ResumeRewritePage />} />
+          <Route path="/job-matching" element={<JobMatchingPage />} />
+          <Route path="/resources" element={<LearningResourcesPage />} />
+          <Route path="/question-bank" element={<QuestionBankPage />} />
         </Route>
       </Routes>
       <ToastContainer />
