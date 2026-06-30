@@ -43,10 +43,14 @@ export interface InterviewMessage {
   audioUrl?: string
   /** 发送状态：sending=发送中，sent=成功，failed=失败 */
   status?: MessageStatus
-  /** AI 评价文本（评价+对话+答案模式） */
+  /** AI 评价文本 */
   feedback?: string
   /** 参考答案 */
   referenceAnswer?: string[]
+  /** AI 评估的优点列表 */
+  strengths?: string[]
+  /** AI 评估的待改进列表 */
+  weaknesses?: string[]
 }
 
 /** 创建面试请求 */

@@ -252,11 +252,19 @@ export const useInterviewStore = create<InterviewState>((set) => ({
         set({ isFinished: true })
       }
 
-      // 更新用户消息：用识别文本替换内容，标记为 sent
+      // 更新用户消息：用识别文本替换内容，标记为 sent，附上 AI 评价
       set((state) => ({
         currentMessages: state.currentMessages.map((m) =>
           m.id === msgId
-            ? { ...m, content: recognizedText, status: 'sent' as const }
+            ? {
+                ...m,
+                content: recognizedText,
+                status: 'sent' as const,
+                feedback: result.evaluation?.feedback || undefined,
+                rating: result.evaluation?.score ?? null,
+                strengths: result.evaluation?.strengths || undefined,
+                weaknesses: result.evaluation?.weaknesses || undefined,
+              }
             : m
         ),
       }))
@@ -269,8 +277,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
           ? rawRef.split('\n').map((s) => s.trim()).filter(Boolean)
           : undefined
 
-      // 评价+对话+答案模式：合并为一条 AI 消息
-      // content 只放下一题内容；若追问内容与 feedback 相同则跳过（避免重复）
+      // AI 消息只含下一题内容，不包含评价文本（评价已附在用户消息上）
       const qContent = (result.nextQuestion?.content || '').trim()
       const fbContent = (result.evaluation?.feedback || '').trim()
       const aiContent = qContent && qContent !== fbContent ? qContent : ''
@@ -279,9 +286,8 @@ export const useInterviewStore = create<InterviewState>((set) => ({
         role: 'ai',
         content: aiContent,
         timestamp: new Date().toISOString(),
-        rating: result.evaluation?.score ?? null,
+        rating: null,
         questionType: result.nextQuestion?.questionType,
-        feedback: result.evaluation?.feedback || undefined,
         referenceAnswer: refAnswer,
       }
 
@@ -451,20 +457,41 @@ export const useInterviewStore = create<InterviewState>((set) => ({
 
     set((state) => {
       const messages = [...state.currentMessages]
-      const idx = messages.findIndex((m) => m.id === data.messageId)
-      if (idx >= 0) {
-        // 统一 referenceAnswer 为 string[]（后端发来的是 string | null）
+
+      // AI 消息更新：替换为最终内容，附带参考答案
+      const aiIdx = messages.findIndex((m) => m.id === data.messageId)
+      if (aiIdx >= 0) {
         const rawRef = data.nextQuestionReferenceAnswer
         const refAnswer: string[] | undefined =
           typeof rawRef === 'string' && rawRef.length > 0
             ? rawRef.split('\n').map((s) => s.trim()).filter(Boolean)
             : undefined
 
-        messages[idx] = {
-          ...messages[idx],
-          rating: data.score,
-          feedback: data.feedback || undefined,
+        messages[aiIdx] = {
+          ...messages[aiIdx],
+          content: data.fullContent,
           referenceAnswer: refAnswer,
+        }
+      }
+
+      // 用户消息更新：将评价信息更新到最后一条用户消息上
+      if (data.feedback || data.score !== undefined) {
+        // 从后往前找最后一条用户消息（兼容 ES2022）
+        let lastUserIdx = -1
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].role === 'user') {
+            lastUserIdx = i
+            break
+          }
+        }
+        if (lastUserIdx >= 0) {
+          messages[lastUserIdx] = {
+            ...messages[lastUserIdx],
+            feedback: data.feedback || undefined,
+            rating: data.score,
+            strengths: data.strengths || undefined,
+            weaknesses: data.weaknesses || undefined,
+          }
         }
       }
 

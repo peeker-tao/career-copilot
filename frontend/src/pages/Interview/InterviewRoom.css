@@ -808,6 +808,11 @@
   margin-bottom: 10px;
 }
 
+/* 参考答案卡片紧跟评价卡片时缩小间距 */
+.eval-card--after-eval {
+  margin-top: 4px;
+}
+
 .eval-header {
   display: flex;
   align-items: center;
@@ -875,6 +880,32 @@ details[open] .eval-ref-summary::before {
 .eval-ref-summary:hover {
   opacity: 0.8;
 }
+/* 优点/待提升 */
+.eval-strengths,
+.eval-weaknesses {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #fde68a;
+}
+.eval-sub-label {
+  font-size: 12px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 2px;
+}
+.eval-strengths .eval-sub-label {
+  color: #15803d;
+}
+.eval-weaknesses .eval-sub-label {
+  color: #b45309;
+}
+.eval-strengths p,
+.eval-weaknesses p {
+  font-size: 13px;
+  margin: 0 0 2px 0;
+  line-height: 1.5;
+}
+
 .eval-ref-body {
   margin-top: 6px;
   font-size: 13px;

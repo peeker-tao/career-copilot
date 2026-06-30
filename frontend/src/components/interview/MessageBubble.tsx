@@ -15,6 +15,13 @@ export interface MessageBubbleProps {
   onRetry?: (message: InterviewMessage) => void
   /** 语音面试模式：AI 消息显示 TTS 播放按钮 */
   voiceInterviewMode?: boolean
+  /** 前一条用户回答的 AI 评价信息（在 AI 消息侧展示） */
+  prevUserEval?: {
+    feedback: string
+    rating?: number | null
+    strengths?: string[]
+    weaknesses?: string[]
+  } | null
 }
 
 /** 安全解析时间戳，兼容 ISO 字符串、MySQL datetime 等格式 */
@@ -30,7 +37,7 @@ function safeFormatTime(timestamp: string): string {
   return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function MessageBubble({ message, isStreaming, instantStreaming, onRetry, voiceInterviewMode }: MessageBubbleProps) {
+export default function MessageBubble({ message, isStreaming, instantStreaming, onRetry, voiceInterviewMode, prevUserEval }: MessageBubbleProps) {
   const isAI = message.role === 'ai' || message.role === 'assistant'
   const isVoice = message.type === 'voice' && !!message.audioUrl
   const isFailed = message.status === 'failed'
@@ -180,31 +187,52 @@ export default function MessageBubble({ message, isStreaming, instantStreaming, 
           <div className="message-sender">AI 面试官</div>
         )}
 
-        {/* 评价卡片（评价+对话+答案模式） */}
-        {isAI && message.feedback && (
+        {/* 评价卡片：展示上一条用户回答的 AI 评估结果（面试官的评价） */}
+        {isAI && prevUserEval?.feedback && (
           <div className="eval-card">
             <div className="eval-header">
               <span className="eval-label">📊 回答评价</span>
-              {message.rating != null && (
-                <span className="eval-score">得分：{message.rating}</span>
+              {prevUserEval.rating != null && (
+                <span className="eval-score">得分：{prevUserEval.rating}</span>
               )}
             </div>
             <div className="eval-body">
-              {message.feedback.split('\n').map((line, i) => (
+              {prevUserEval.feedback.split('\n').map((line, i) => (
                 <p key={i}>{line || '\u00A0'}</p>
               ))}
             </div>
-            {/* 参考答案（可折叠） */}
-            {message.referenceAnswer && message.referenceAnswer.length > 0 && (
-              <details className="eval-ref">
-                <summary className="eval-ref-summary"><span>💡 参考答案</span></summary>
-                <div className="eval-ref-body">
-                  {message.referenceAnswer.map((point, i) => (
-                    <p key={i}>{i + 1}. {point || '\u00A0'}</p>
-                  ))}
-                </div>
-              </details>
+            {/* 优点 */}
+            {prevUserEval.strengths && prevUserEval.strengths.length > 0 && (
+              <div className="eval-strengths">
+                <span className="eval-sub-label">✅ 优点</span>
+                {prevUserEval.strengths.map((s, i) => (
+                  <p key={i}>{s}</p>
+                ))}
+              </div>
             )}
+            {/* 待改进 */}
+            {prevUserEval.weaknesses && prevUserEval.weaknesses.length > 0 && (
+              <div className="eval-weaknesses">
+                <span className="eval-sub-label">📌 待提升</span>
+                {prevUserEval.weaknesses.map((w, i) => (
+                  <p key={i}>{w}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 参考答案（AI 消息自带，独立于评价卡片；首题无 prevUserEval 时也会显示） */}
+        {isAI && message.referenceAnswer && message.referenceAnswer.length > 0 && (
+          <div className={`eval-card ${prevUserEval?.feedback ? 'eval-card--after-eval' : ''}`}>
+            <details className="eval-ref" open={!prevUserEval?.feedback}>
+              <summary className="eval-ref-summary"><span>💡 参考答案</span></summary>
+              <div className="eval-ref-body">
+                {message.referenceAnswer.map((point, i) => (
+                  <p key={i}>{i + 1}. {point || '\u00A0'}</p>
+                ))}
+              </div>
+            </details>
           </div>
         )}
 
