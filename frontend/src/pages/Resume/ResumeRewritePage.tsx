@@ -6,11 +6,13 @@ import {
   CheckOutlined,
   ReloadOutlined,
   ThunderboltOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons'
 import { getResumeById, getRewriteSuggestions, rewriteSection, type RewriteSuggestion } from '@/api/resumes'
 import type { ResumeDetail, ParsedResumeData } from '@/types/resume'
 import Loading from '@/components/common/Loading'
 import EmptyState from '@/components/common/EmptyState'
+import { toast } from '@/store/useToastStore'
 import './ResumeRewrite.css'
 
 type RewriteSection = 'summary' | 'experience' | 'skills' | 'projects'
@@ -22,19 +24,16 @@ const SECTION_LABELS: Record<RewriteSection, string> = {
   projects: '项目经历',
 }
 
+const ALL_SECTIONS: RewriteSection[] = ['summary', 'experience', 'projects', 'skills']
+
 function getSectionContent(data: ParsedResumeData | undefined, section: RewriteSection): string {
   if (!data) return ''
   switch (section) {
-    case 'summary':
-      return data.basicInfo?.name ? `${data.basicInfo.name}的简历` : ''
-    case 'experience':
-      return data.experience?.map((e) => `${e.company} - ${e.position}: ${e.description}`).join('\n') ?? ''
-    case 'skills':
-      return data.skills?.join(', ') ?? ''
-    case 'projects':
-      return data.projects?.map((p) => `${p.name}(${p.role}): ${p.description}`).join('\n') ?? ''
-    default:
-      return ''
+    case 'summary': return data.basicInfo?.name ? `${data.basicInfo.name}的简历` : ''
+    case 'experience': return data.experience?.map((e) => `${e.company} - ${e.position}: ${e.description}`).join('\n') ?? ''
+    case 'skills': return data.skills?.join(', ') ?? ''
+    case 'projects': return data.projects?.map((p) => `${p.name}(${p.role}): ${p.description}`).join('\n') ?? ''
+    default: return ''
   }
 }
 
@@ -45,28 +44,25 @@ export default function ResumeRewritePage() {
   const [resume, setResume] = useState<ResumeDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // 改写状态
   const [targetPosition, setTargetPosition] = useState('')
   const [activeSection, setActiveSection] = useState<RewriteSection>('summary')
   const [suggestions, setSuggestions] = useState<RewriteSuggestion[]>([])
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
 
-  // 手动改写
   const [manualContent, setManualContent] = useState('')
   const [manualResult, setManualResult] = useState<{ rewritten: string; changes: string[] } | null>(null)
   const [manualLoading, setManualLoading] = useState(false)
 
-  // 替换追踪
   const [replacedIndexes, setReplacedIndexes] = useState<Set<number>>(new Set())
+
+  const [batchProgress, setBatchProgress] = useState<{ total: number; done: number; section: string } | null>(null)
 
   useEffect(() => {
     if (!id) return
     setLoading(true)
     getResumeById(id)
       .then((res) => setResume(res.data))
-      .catch(() => {
-        // 静默失败
-      })
+      .catch(() => toast.error('加载简历失败'))
       .finally(() => setLoading(false))
   }, [id])
 
@@ -75,10 +71,13 @@ export default function ResumeRewritePage() {
     setSuggestionsLoading(true)
     try {
       const res = await getRewriteSuggestions(id, targetPosition.trim())
-      setSuggestions(res.data?.suggestions ?? [])
+      const list = res.data?.suggestions ?? []
+      setSuggestions(list)
       setReplacedIndexes(new Set())
+      if (list.length === 0) toast.success('已获取改写建议，暂无具体优化项')
+      else toast.success(`已获取 ${list.length} 条改写建议`)
     } catch {
-      // 静默失败
+      toast.error('获取改写建议失败，请检查 AI 服务配置')
     } finally {
       setSuggestionsLoading(false)
     }
@@ -94,11 +93,40 @@ export default function ResumeRewritePage() {
         content: manualContent.trim(),
       })
       setManualResult(res.data)
+      toast.success(`${SECTION_LABELS[activeSection]}改写成功`)
     } catch {
-      // 静默失败
+      toast.error('改写失败，请检查 AI 服务配置')
     } finally {
       setManualLoading(false)
     }
+  }
+
+  const handleBatchRewrite = async () => {
+    if (!id || !targetPosition.trim()) return
+    const sectionsToRewrite = ALL_SECTIONS
+    setBatchProgress({ total: sectionsToRewrite.length, done: 0, section: '' })
+
+    for (let i = 0; i < sectionsToRewrite.length; i++) {
+      const sec = sectionsToRewrite[i]
+      setBatchProgress({ total: sectionsToRewrite.length, done: i, section: sec })
+      const content = getSectionContent(resume?.parsedData, sec)
+      if (!content.trim()) {
+        setBatchProgress((p) => p ? { ...p, done: p.done + 1 } : null)
+        continue
+      }
+      try {
+        await rewriteSection(id, {
+          section: sec,
+          targetPosition: targetPosition.trim(),
+          content,
+        })
+      } catch {
+        // 单章失败继续下一章
+      }
+      setBatchProgress((p) => p ? { ...p, done: p.done + 1 } : null)
+    }
+    setBatchProgress(null)
+    toast.success('全部章节改写完成！可返回简历详情查看')
   }
 
   const handleApplySuggestion = (index: number) => {
@@ -119,30 +147,30 @@ export default function ResumeRewritePage() {
 
       <h1 className="rrw-title">简历改写 - {resume.title}</h1>
 
-      {/* 目标岗位输入 */}
+      {/* 目标岗位 + 获取建议 */}
       <div className="rrw-section">
         <div className="rrw-form-row">
           <div className="rrw-form-field">
             <label className="rrw-form-label">目标岗位</label>
-            <input
-              className="rrw-form-input"
-              placeholder="输入您要投递的目标岗位"
-              value={targetPosition}
-              onChange={(e) => setTargetPosition(e.target.value)}
-            />
+            <input className="rrw-form-input" placeholder="输入您要投递的目标岗位" value={targetPosition} onChange={(e) => setTargetPosition(e.target.value)} />
           </div>
-          <button
-            className="rrw-btn-primary"
-            disabled={!targetPosition.trim() || suggestionsLoading}
-            onClick={handleGetSuggestions}
-          >
-            <ThunderboltOutlined />
-            {suggestionsLoading ? '获取中...' : '获取AI改写建议'}
+          <button className="rrw-btn-primary" disabled={!targetPosition.trim() || suggestionsLoading} onClick={handleGetSuggestions}>
+            <ThunderboltOutlined />{suggestionsLoading ? '获取中...' : '获取AI改写建议'}
           </button>
         </div>
+
+        {suggestions.length > 0 && (
+          <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', padding: '12px 14px', background: 'var(--accent-bg)', borderRadius: 'var(--radius-sm)' }}>
+            <span style={{ fontSize: 13, color: 'var(--text)' }}>已获取 {suggestions.length} 条建议</span>
+            <button className="rrw-btn-primary" disabled={batchProgress !== null} onClick={handleBatchRewrite} style={{ padding: '6px 16px', fontSize: 13 }}>
+              {batchProgress ? <LoadingOutlined /> : <ThunderboltOutlined />}
+              {batchProgress ? `改写中 ${batchProgress.done + 1}/${batchProgress.total}` : '一键全部改写'}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 段落选择 */}
+      {/* 段落切换 + 建议 */}
       <div className="rrw-section">
         <h3 className="rrw-section-title">选择改写段落</h3>
         <div className="rrw-tabs">
@@ -150,47 +178,32 @@ export default function ResumeRewritePage() {
             <button
               key={key}
               className={`rrw-tab ${activeSection === key ? 'active' : ''}`}
-              onClick={() => {
-                setActiveSection(key)
-                setManualResult(null)
-              }}
+              onClick={() => { setActiveSection(key); setManualResult(null) }}
             >
               {label}
+              {suggestions.filter((s) => s.section === key).length > 0 && (
+                <span style={{ marginLeft: 4, fontSize: 11, background: 'var(--accent)', color: '#fff', borderRadius: 10, padding: '1px 6px' }}>
+                  {suggestions.filter((s) => s.section === key).length}
+                </span>
+              )}
             </button>
           ))}
         </div>
 
-        {/* AI 改写建议 */}
         {sectionSuggestions.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-h)', marginBottom: 16 }}>
-              <ThunderboltOutlined style={{ marginRight: 6 }} />AI 改写建议
-            </h3>
+          <div>
             {sectionSuggestions.map((suggestion, index) => {
               const globalIndex = suggestions.indexOf(suggestion)
               const isReplaced = replacedIndexes.has(globalIndex)
               return (
                 <div key={index} className="rrw-compare-card" style={{ opacity: isReplaced ? 0.6 : 1 }}>
                   <div className="rrw-compare-num">建议 {index + 1}</div>
-                  <div className="rrw-original">
-                    <strong>原文：</strong>{suggestion.original}
-                  </div>
-                  <div className="rrw-suggested">
-                    <strong>改写：</strong>{suggestion.suggested}
-                  </div>
-                  <div className="rrw-reason">
-                    <strong>理由：</strong>{suggestion.reason}
-                  </div>
-                  <div>
-                    <button
-                      className="rrw-btn-apply"
-                      disabled={isReplaced}
-                      onClick={() => handleApplySuggestion(globalIndex)}
-                    >
-                      <CheckOutlined />
-                      {isReplaced ? '已应用' : '应用此建议'}
-                    </button>
-                  </div>
+                  <div className="rrw-original"><strong>原文：</strong>{suggestion.original}</div>
+                  <div className="rrw-suggested"><strong>改写：</strong>{suggestion.suggested}</div>
+                  <div className="rrw-reason"><strong>理由：</strong>{suggestion.reason}</div>
+                  <button className="rrw-btn-apply" disabled={isReplaced} onClick={() => handleApplySuggestion(globalIndex)}>
+                    <CheckOutlined />{isReplaced ? '已应用' : '应用此建议'}
+                  </button>
                 </div>
               )
             })}
@@ -204,24 +217,11 @@ export default function ResumeRewritePage() {
           <EditOutlined style={{ marginRight: 6 }} />手动改写 {SECTION_LABELS[activeSection]}
         </h3>
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-h)', marginBottom: 8 }}>
-            原始内容
-          </label>
-          <textarea
-            rows={5}
-            value={sectionContent || manualContent}
-            onChange={(e) => setManualContent(e.target.value)}
-            placeholder={`请输入需要改写的${SECTION_LABELS[activeSection]}内容`}
-          />
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-h)', marginBottom: 8 }}>原始内容</label>
+          <textarea rows={5} value={sectionContent || manualContent} onChange={(e) => setManualContent(e.target.value)} placeholder={`请输入需要改写的${SECTION_LABELS[activeSection]}内容`} />
         </div>
-        <button
-          className="rrw-btn-primary"
-          disabled={!targetPosition.trim() || manualLoading}
-          onClick={handleManualRewrite}
-          style={{ fontSize: 13, padding: '8px 18px' }}
-        >
-          <ReloadOutlined />
-          {manualLoading ? '改写中...' : 'AI 改写此段落'}
+        <button className="rrw-btn-primary" disabled={!targetPosition.trim() || manualLoading} onClick={handleManualRewrite} style={{ fontSize: 13, padding: '8px 18px' }}>
+          <ReloadOutlined />{manualLoading ? '改写中...' : 'AI 改写此段落'}
         </button>
 
         {manualResult && (
@@ -229,17 +229,8 @@ export default function ResumeRewritePage() {
             <strong>改写结果：</strong>{manualResult.rewritten}
             {manualResult.changes?.length > 0 && (
               <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-muted)' }}>
-                修改说明：
-                {manualResult.changes.map((c, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      display: 'inline-block', marginLeft: 6, padding: '2px 10px',
-                      borderRadius: 20, fontSize: 12, background: 'var(--accent-bg)', color: 'var(--accent)',
-                    }}
-                  >
-                    {c}
-                  </span>
+                修改说明：{manualResult.changes.map((c, i) => (
+                  <span key={i} style={{ display: 'inline-block', marginLeft: 6, padding: '2px 10px', borderRadius: 20, fontSize: 12, background: 'var(--accent-bg)', color: 'var(--accent)' }}>{c}</span>
                 ))}
               </div>
             )}

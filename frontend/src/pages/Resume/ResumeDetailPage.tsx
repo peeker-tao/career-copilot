@@ -15,6 +15,7 @@ import {
   CodeOutlined,
   CloseOutlined,
   EyeOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '@/components/common'
 import { EditModal, SkillRadar } from '@/components/resume'
@@ -203,6 +204,12 @@ const ResumeDetailPage = () => {
             onClick={() => setShowEdit(true)}
           >
             <EditOutlined /> 编辑
+          </button>
+          <button
+            className="detail-action-btn"
+            onClick={() => navigate(`/resume/${id}/rewrite`)}
+          >
+            <ThunderboltOutlined /> AI 改写
           </button>
           <button
             className="detail-action-btn"
