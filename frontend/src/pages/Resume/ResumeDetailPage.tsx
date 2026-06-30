@@ -292,7 +292,7 @@ const ResumeDetailPage = () => {
           <h3 className="detail-section-title">
             <BuildOutlined className="section-icon" /> 工作经历
           </h3>
-          {(parsed.experience || []).length === 0 ? (
+          {(!Array.isArray(parsed.experience) || parsed.experience.length === 0) ? (
             <div style={{ fontSize: 13, color: 'var(--text)', padding: '8px 0' }}>暂无工作经历信息</div>
           ) : (
             parsed.experience!.map((exp, i) => (
@@ -309,7 +309,7 @@ const ResumeDetailPage = () => {
           <h3 className="detail-section-title">
             <ProjectOutlined className="section-icon" /> 项目经验
           </h3>
-          {(parsed.projects || []).length === 0 ? (
+          {(!Array.isArray(parsed.projects) || parsed.projects.length === 0) ? (
             <div className="empty-text">暂无项目经验</div>
           ) : (
             parsed.projects!.map((proj, i) => (
@@ -328,7 +328,7 @@ const ResumeDetailPage = () => {
           <h3 className="detail-section-title">
             <CodeOutlined className="section-icon" /> 技能标签
           </h3>
-          {(parsed.skills || []).length === 0 ? (
+          {(!Array.isArray(parsed.skills) || parsed.skills.length === 0) ? (
             <div className="empty-text">暂无技能标签</div>
           ) : (
             <div className="skills-cloud">
