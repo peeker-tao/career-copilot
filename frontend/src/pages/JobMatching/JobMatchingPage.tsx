@@ -8,6 +8,7 @@ import {
   ArrowLeftOutlined,
   RightOutlined,
   DatabaseOutlined,
+  DownOutlined,
 } from '@ant-design/icons'
 import type { JobRecommendation, JobMatch, JobMatchStatus, MatchAnalysis } from '@/types/job-matching'
 import * as jobMatchingApi from '@/api/job-matching'
@@ -34,6 +35,7 @@ export default function JobMatchingPage() {
   // 智能推荐
   const [recommendations, setRecommendations] = useState<JobRecommendation[]>([])
   const [recLoading, setRecLoading] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   // 匹配分析
   const [selectedResumeId, setSelectedResumeId] = useState<string>('')
@@ -42,6 +44,21 @@ export default function JobMatchingPage() {
   const [analysisLoading, setAnalysisLoading] = useState(false)
 
   const [seedLoading, setSeedLoading] = useState(false)
+  const [seedResult, setSeedResult] = useState<string | null>(null)
+
+  // CSV 导入
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [csvLoading, setCsvLoading] = useState(false)
+  const [csvResult, setCsvResult] = useState<string | null>(null)
+
+  // 手动录入
+  const [manualPosition, setManualPosition] = useState('')
+  const [manualCompany, setManualCompany] = useState('')
+  const [manualLocation, setManualLocation] = useState('')
+  const [manualScore, setManualScore] = useState('80')
+  const [manualSkills, setManualSkills] = useState('')
+  const [manualLoading, setManualLoading] = useState(false)
+  const [manualResult, setManualResult] = useState<string | null>(null)
 
   // 已保存岗位
   const [savedMatches, setSavedMatches] = useState<JobMatch[]>([])
@@ -70,7 +87,7 @@ export default function JobMatchingPage() {
   const loadSavedMatches = useCallback(async () => {
     setSavedLoading(true)
     try {
-      const res = await jobMatchingApi.getMatches({ page: 1, limit: 50 })
+      const res = await jobMatchingApi.getMatches({ page: 1, limit: 50, status: 'saved' })
       setSavedMatches(res.data?.list ?? res.data ?? [])
     } catch {
       setSavedMatches([])
@@ -100,16 +117,31 @@ export default function JobMatchingPage() {
   const handleSaveRecommendation = async (id: string) => {
     try {
       await jobMatchingApi.updateMatchStatus(id, 'saved')
+      toast.success('已收藏该岗位')
+      setExpandedId(null)
       loadSavedMatches()
-    } catch {}
+    } catch {
+      toast.error('收藏失败，请重试')
+    }
   }
 
   const handleStatusChange = async (id: string, status: JobMatchStatus) => {
     try {
       await jobMatchingApi.updateMatchStatus(id, status)
+      toast.success('状态已更新')
       loadSavedMatches()
     } catch {
-      // 静默失败
+      toast.error('状态更新失败')
+    }
+  }
+
+  const handleUnsave = async (id: string) => {
+    try {
+      await jobMatchingApi.updateMatchStatus(id, 'pending')
+      toast.success('已取消收藏')
+      loadSavedMatches()
+    } catch {
+      toast.error('操作失败')
     }
   }
 
@@ -146,6 +178,12 @@ export default function JobMatchingPage() {
           >
             <StarOutlined /> 已保存 ({savedMatches.length})
           </button>
+          <button
+            className={`jm-tab ${tab === 'import' ? 'active' : ''}`}
+            onClick={() => setTab('import')}
+          >
+            <DatabaseOutlined /> 导入数据
+          </button>
           </div>
 
       {/* 智能推荐 */}
@@ -180,39 +218,60 @@ export default function JobMatchingPage() {
           </div>
           ) : (
             <div className="jm-recommend-grid">
-              {recommendations.map((item) => (
-                <div key={item.id} className="jm-rec-card">
-                  <div className="jm-rec-top">
-                    <div>
-                      <h3 className="jm-rec-position">{item.position}</h3>
-                      <p className="jm-rec-company">
-                        {item.company}
-                        {item.location && (
-                          <span className="jm-rec-company-location">
-                            <EnvironmentOutlined style={{ marginRight: 2 }} />{item.location}
-                          </span>
+              {recommendations.map((item) => {
+                const isExpanded = expandedId === item.id
+                return (
+                  <div
+                    key={item.id}
+                    className={`jm-rec-card ${isExpanded ? 'expanded' : 'collapsed'}`}
+                    onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                  >
+                    <div className="jm-rec-top">
+                      <div>
+                        <h3 className="jm-rec-position">{item.position}</h3>
+                        <p className="jm-rec-company">
+                          {item.company}
+                          {item.location && (
+                            <span className="jm-rec-company-location">
+                              <EnvironmentOutlined style={{ marginRight: 2 }} />{item.location}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className={`jm-rec-score ${getScoreClass(item.matchScore)}`}>
+                          {formatScore(item.matchScore)}
+                        </div>
+                        <DownOutlined
+                          style={{
+                            fontSize: 12,
+                            color: 'var(--text-muted)',
+                            transform: isExpanded ? 'rotate(180deg)' : 'none',
+                            transition: 'transform 0.2s',
+                          }}
+                        />
+                      </div>
+                    </div>
+                    {isExpanded && (
+                      <>
+                        {item.reason && <p className="jm-rec-reason">{item.reason}</p>}
+                        {item.skills && item.skills.length > 0 && (
+                          <div className="jm-rec-skills">
+                            {item.skills.map((s) => (
+                              <span key={s} className="jm-skill-tag">{s}</span>
+                            ))}
+                          </div>
                         )}
-                      </p>
-                    </div>
-                    <div className={`jm-rec-score ${getScoreClass(item.matchScore)}`}>
-                      {formatScore(item.matchScore)}
-                    </div>
+                        <div className="jm-rec-actions" onClick={(e) => e.stopPropagation()}>
+                          <button className="jm-btn-save" onClick={() => handleSaveRecommendation(item.id)}>
+                            <StarOutlined /> 保存
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  {item.reason && <p className="jm-rec-reason">{item.reason}</p>}
-                  {item.skills && item.skills.length > 0 && (
-                    <div className="jm-rec-skills">
-                      {item.skills.map((s) => (
-                        <span key={s} className="jm-skill-tag">{s}</span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="jm-rec-actions">
-                    <button className="jm-btn-save" onClick={() => handleSaveRecommendation(item.id)}>
-                      <StarOutlined /> 保存
-                    </button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -343,6 +402,127 @@ export default function JobMatchingPage() {
         </div>
       )}
 
+      {/* 导入数据 */}
+      {tab === 'import' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* A. 一键导入默认数据 */}
+          <div className="jm-section">
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-h)', marginBottom: 12 }}>
+              <DatabaseOutlined style={{ marginRight: 6 }} />一键导入默认数据
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+              从 Kaggle 简历数据集导入 9,544 条岗位推荐数据，覆盖 300+ 岗位类型
+            </p>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <button className="jm-btn-primary" disabled={seedLoading} onClick={async () => {
+                setSeedLoading(true); setSeedResult(null)
+                try {
+                  const res = await jobMatchingApi.seedDefaultJobMatches()
+                  setSeedResult(`导入成功: ${res.data?.success || 0} 条`)
+                  loadSavedMatches()
+                } catch { setSeedResult('导入失败，请检查后端 CSV 文件是否存在') }
+                finally { setSeedLoading(false) }
+              }}>
+                <DatabaseOutlined /> {seedLoading ? '导入中...' : '导入默认数据'}
+              </button>
+              {seedResult && <span style={{ fontSize: 13, color: seedResult.includes('失败') ? 'var(--danger)' : 'var(--success)' }}>{seedResult}</span>}
+            </div>
+          </div>
+
+          {/* B. CSV 文件导入 */}
+          <div className="jm-section">
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-h)', marginBottom: 12 }}>
+              <DatabaseOutlined style={{ marginRight: 6 }} />从 CSV 文件导入
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>
+              CSV 格式要求（UTF-8 编码，逗号分隔）：
+            </p>
+            <pre style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 12px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', marginBottom: 12, whiteSpace: 'pre-wrap' }}>
+position,company,location,matchScore,skills
+{"Java后端工程师,字节跳动,北京,92,Java Spring MySQL Redis"}
+{"前端开发工程师,美团,上海,88,React TypeScript Vue"}</pre>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input type="file" accept=".csv" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} style={{ fontSize: 13 }} />
+              <button className="jm-btn-primary" disabled={!csvFile || csvLoading} onClick={async () => {
+                if (!csvFile) return; setCsvLoading(true); setCsvResult(null)
+                try {
+                  const text = await csvFile.text()
+                  const lines = text.split('\n').filter(Boolean)
+                  const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+                  const posIdx = headers.indexOf('position'); const compIdx = headers.indexOf('company')
+                  const locIdx = headers.indexOf('location'); const scoreIdx = headers.indexOf('matchscore')
+                  if (posIdx === -1 || scoreIdx === -1) { throw new Error('CSV 必须包含 position 和 matchScore 列') }
+                  let imported = 0; let errors = 0
+                  for (let i = 1; i < lines.length; i++) {
+                    const cols = lines[i].split(',').map(c => c.trim())
+                    if (cols.length < Math.max(posIdx, scoreIdx) + 1) continue
+                    try {
+                      await jobMatchingApi.importJobMatch({
+                        position: cols[posIdx], company: cols[compIdx] || undefined,
+                        location: cols[locIdx] || undefined, matchScore: Math.min(100, Math.max(0, Number(cols[scoreIdx]) || 0)),
+                      })
+                      imported++
+                    } catch { errors++ }
+                  }
+                  setCsvResult(`导入完成: 成功 ${imported} 条${errors > 0 ? `, 失败 ${errors} 条` : ''}`)
+                  loadSavedMatches()
+                } catch (err) { setCsvResult('导入失败: ' + ((err as Error).message || '格式错误')) }
+                finally { setCsvLoading(false) }
+              }}>
+                <DatabaseOutlined /> {csvLoading ? '导入中...' : '导入 CSV'}
+              </button>
+              {csvResult && <span style={{ fontSize: 13, color: csvResult.includes('失败') ? 'var(--danger)' : 'var(--success)' }}>{csvResult}</span>}
+            </div>
+          </div>
+
+          {/* C. 手动录入 */}
+          <div className="jm-section">
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-h)', marginBottom: 12 }}>
+              <DatabaseOutlined style={{ marginRight: 6 }} />手动录入
+            </h3>
+            <div className="jm-analyze-form">
+              <div className="jm-form-field">
+                <label className="jm-form-label">岗位名称 *</label>
+                <input className="jm-form-input" placeholder="如：Java后端工程师" value={manualPosition} onChange={(e) => setManualPosition(e.target.value)} />
+              </div>
+              <div className="jm-form-field">
+                <label className="jm-form-label">公司名称</label>
+                <input className="jm-form-input" placeholder="如：字节跳动" value={manualCompany} onChange={(e) => setManualCompany(e.target.value)} />
+              </div>
+              <div className="jm-form-field">
+                <label className="jm-form-label">工作地点</label>
+                <input className="jm-form-input" placeholder="如：北京" value={manualLocation} onChange={(e) => setManualLocation(e.target.value)} />
+              </div>
+              <div className="jm-form-field">
+                <label className="jm-form-label">匹配度 (0-100) *</label>
+                <input className="jm-form-input short" type="number" min={0} max={100} value={manualScore} onChange={(e) => setManualScore(e.target.value)} />
+              </div>
+              <div className="jm-form-field" style={{ flexBasis: '100%' }}>
+                <label className="jm-form-label">技能标签（逗号分隔）</label>
+                <input className="jm-form-input" placeholder="Java, Spring, MySQL" value={manualSkills} onChange={(e) => setManualSkills(e.target.value)} />
+              </div>
+              <button className="jm-btn-primary" disabled={!manualPosition.trim() || manualLoading} onClick={async () => {
+                setManualLoading(true); setManualResult(null)
+                try {
+                  await jobMatchingApi.importJobMatch({
+                    position: manualPosition.trim(), company: manualCompany.trim() || undefined,
+                    location: manualLocation.trim() || undefined, matchScore: Number(manualScore) || 80,
+                  })
+                  setManualResult('录入成功')
+                  setManualPosition(''); setManualCompany(''); setManualLocation(''); setManualScore('80'); setManualSkills('')
+                  loadSavedMatches()
+                } catch { setManualResult('录入失败') }
+                finally { setManualLoading(false) }
+              }}>
+                <DatabaseOutlined /> {manualLoading ? '录入中...' : '录入'}
+              </button>
+              {manualResult && <span style={{ fontSize: 13, color: manualResult.includes('失败') ? 'var(--danger)' : 'var(--success)', marginLeft: 12 }}>{manualResult}</span>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 已保存岗位 */}
       {tab === 'saved' && (
         <div>
@@ -357,25 +537,28 @@ export default function JobMatchingPage() {
           ) : (
             <div className="jm-saved-list">
               {savedMatches.map((item) => (
-                <div key={item.id} className="jm-saved-item">
-                  <div className="jm-saved-position">
-                    <h4>{item.position}</h4>
-                    <span>{item.company}</span>
+<div key={item.id} className="jm-saved-item">
+                    <div className="jm-saved-position">
+                      <h4>{item.position}</h4>
+                      <span>{item.company}</span>
+                    </div>
+                    <div className="jm-saved-actions">
+                      <select
+                        className="jm-saved-select"
+                        title="修改投递状态"
+                        value={item.status}
+                        onChange={(e) => handleStatusChange(item.id, e.target.value as JobMatchStatus)}
+                      >
+                        {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                          <option key={k} value={k}>{v}</option>
+                        ))}
+                      </select>
+                      <span className="jm-saved-score">{item.matchScore}</span>
+                      <button className="jm-btn-unsave" onClick={() => handleUnsave(item.id)} title="取消收藏">
+                        <StarOutlined /> 取消
+                      </button>
+                    </div>
                   </div>
-                  <div className="jm-saved-actions">
-                    <select
-                      className="jm-saved-select"
-                      title="修改投递状态"
-                      value={item.status}
-                      onChange={(e) => handleStatusChange(item.id, e.target.value as JobMatchStatus)}
-                    >
-                      {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                        <option key={k} value={k}>{v}</option>
-                      ))}
-                    </select>
-                    <span className="jm-saved-score">{item.matchScore}</span>
-                  </div>
-                </div>
               ))}
             </div>
           )}
