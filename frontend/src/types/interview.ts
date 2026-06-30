@@ -26,6 +26,9 @@ export interface Interview {
   currentRound?: number
 }
 
+/** 消息发送状态 */
+export type MessageStatus = 'sending' | 'sent' | 'failed'
+
 /** 面试消息 */
 export interface InterviewMessage {
   id: string
@@ -38,6 +41,12 @@ export interface InterviewMessage {
   type?: MessageType
   /** 语音消息的音频 URL（用于播放） */
   audioUrl?: string
+  /** 发送状态：sending=发送中，sent=成功，failed=失败 */
+  status?: MessageStatus
+  /** AI 评价文本（评价+对话+答案模式） */
+  feedback?: string
+  /** 参考答案 */
+  referenceAnswer?: string[]
 }
 
 /** 创建面试请求 */
@@ -70,7 +79,13 @@ export interface SubmitAnswerResult {
   nextQuestion?: {
     content: string
     questionType?: string
+    referenceAnswer?: string[]
   }
   isComplete: boolean
   summary?: string
+}
+
+/** 语音提交回答的结果（含识别文本） */
+export interface VoiceAnswerResult extends SubmitAnswerResult {
+  recognizedText: string
 }
