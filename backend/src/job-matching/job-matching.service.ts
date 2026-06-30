@@ -274,7 +274,7 @@ export class JobMatchingService {
    * 从前端一键导入 Kaggle resume 数据集作为默认基准数据
    * 读取 datasets/resume_datasets/resume_data.csv 并批量导入 job_matches 表
    */
-  async seedDefaultData(): Promise<{
+  async seedDefaultData(userId: string): Promise<{
     total: number;
     success: number;
     skipped: number;
@@ -311,22 +311,6 @@ export class JobMatchingService {
     });
 
     this.logger.log(`CSV 解析完成，共 ${records.length} 行`);
-
-    // 确保系统用户存在
-    const dataEmail = 'kaggle_data@import.local';
-    let systemUser = await this.prisma.user.findUnique({
-      where: { email: dataEmail },
-    });
-    if (!systemUser) {
-      systemUser = await this.prisma.user.create({
-        data: {
-          email: dataEmail,
-          name: 'Kaggle Data Import',
-          passwordHash: '$2b$10$imported',
-        },
-      });
-      this.logger.log(`已创建系统导入用户: ${systemUser.id}`);
-    }
 
     // 批量导入统计
     let success = 0;
@@ -407,7 +391,7 @@ export class JobMatchingService {
 
         await this.prisma.jobMatch.create({
           data: {
-            userId: systemUser.id,
+            userId,
             position,
             company: cleanCompany,
             location: location || null,
