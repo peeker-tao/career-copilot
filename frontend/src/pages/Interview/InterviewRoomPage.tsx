@@ -3,13 +3,17 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeftOutlined,
   ApiOutlined,
+  SettingOutlined,
+  SoundOutlined,
   ExclamationCircleOutlined,
   FileTextOutlined,
 } from '@ant-design/icons'
-import type { MessageType } from '@/types/interview'
+import type { MessageType, InterviewMessage } from '@/types/interview'
 import { EmptyState } from '@/components/common'
-import { ChatMessages, InputArea, InterviewTimer, InterviewerAvatar } from '@/components/interview'
+import { ChatMessages, InputArea, InterviewTimer, InterviewerAvatar, VoiceSettings } from '@/components/interview'
 import { useInterviewStore } from '@/store/useInterviewStore'
+import { useVoiceStore } from '@/store/useVoiceStore'
+import { VOICE_DISPLAY_NAMES } from '@/api/voice'
 import { useInterviewWebSocket } from '@/hooks/useInterviewWebSocket'
 import { useResumeStore } from '@/store/useResumeStore'
 import './InterviewRoom.css'
@@ -51,6 +55,27 @@ export default function InterviewRoomPage() {
   const [showResumeDropdown, setShowResumeDropdown] = useState(false)
   // 防止 finishInterview 被重复调用
   const finishingRef = useRef(false)
+  // 语音音色设置弹窗
+  const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false)
+  // 面试语音预设
+  const [setupVoiceMode, setSetupVoiceMode] = useState(false)
+  const [setupTtsEnabled, setSetupTtsEnabled] = useState(false)
+  const [setupVoice, setSetupVoice] = useState('alloy')
+  const [showVoiceSetup, setShowVoiceSetup] = useState(false)
+  const [showVoiceDropdown, setShowVoiceDropdown] = useState(false)
+  const voiceSelectRef = useRef<HTMLDivElement>(null)
+
+  // 语音下拉菜单点击外部关闭
+  useEffect(() => {
+    if (!showVoiceDropdown) return
+    const handler = (e: MouseEvent) => {
+      if (voiceSelectRef.current && !voiceSelectRef.current.contains(e.target as Node)) {
+        setShowVoiceDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showVoiceDropdown])
 
   // 进入新面试页时加载简历列表
   useEffect(() => {
@@ -110,34 +135,87 @@ export default function InterviewRoomPage() {
         selectedResumeId || undefined,
       )
       if (newId) {
+        // 应用语音预设
+        const voiceStore = useVoiceStore.getState()
+        if (setupVoiceMode && !voiceStore.voiceInterviewMode) {
+          voiceStore.toggleVoiceInterviewMode()
+        }
+        if (setupTtsEnabled && !voiceStore.ttsEnabled) {
+          voiceStore.toggleTtsEnabled()
+        }
+        voiceStore.setVoice(setupVoice)
         // 创建面试成功后立即加载消息
         await store.loadMessages(newId)
         navigate(`/interview/${newId}`, { replace: true })
-      } else {
-        setSetupError('面试创建失败，请重试')
       }
     } catch (err) {
-      setSetupError((err as Error).message || '面试创建失败，请重试')
+      const msg = (err as Error).message || '面试创建失败'
+      // 超时场景给出具体提示
+      if (/timeout|timed out|超时/i.test(msg)) {
+        setSetupError(
+          '⏱️ 首题生成超时，可能是 AI 响应较慢。\n' +
+          '请稍后点击下方按钮重试，或在设置中调整后重新开始。',
+        )
+      } else {
+        setSetupError(msg)
+      }
     } finally {
       setStarting(false)
     }
   }
 
-  const handleSend = useCallback((content: string, type?: MessageType, audioUrl?: string) => {
+  const addMessage = useInterviewStore((s) => s.addMessage)
+
+  // handleSend 从 store 中获取最新引用
+  const handleSend = useCallback((content: string, type?: MessageType, audioUrl?: string, audioBlob?: Blob) => {
     if (id && !isNew) {
-      sendMessage(id, content, type || 'text', audioUrl)
+      // 1. 同步添加消息（永远成功，消息立刻出现在列表中）
+      const msgId = addMessage(content, type || 'text', audioUrl)
+      sendMessage(id, msgId, content, type || 'text', audioUrl, audioBlob)
       // WebSocket 模式下才真正发出
       if (wsEnabled) {
         wsSendAnswer(content)
       }
     }
-  }, [id, isNew, sendMessage, wsEnabled, wsSendAnswer])
+  }, [id, isNew, addMessage, sendMessage, wsEnabled, wsSendAnswer])
 
   // 最后一条 AI 消息内容，用于 TTS 朗读
   const lastAIContent = useMemo(() => {
     const aiMsgs = messages.filter((m) => m.role === 'ai')
     return aiMsgs.length > 0 ? aiMsgs[aiMsgs.length - 1].content : ''
   }, [messages])
+
+  // Voice store for TTS
+  const speakText = useVoiceStore((s) => s.speakText)
+  const stopSpeaking = useVoiceStore((s) => s.stopSpeaking)
+  const ttsEnabled = useVoiceStore((s) => s.ttsEnabled)
+  const toggleTtsEnabled = useVoiceStore((s) => s.toggleTtsEnabled)
+  const isSpeaking = useVoiceStore((s) => s.isSpeaking)
+  const voiceInterviewMode = useVoiceStore((s) => s.voiceInterviewMode)
+  const toggleVoiceInterviewMode = useVoiceStore((s) => s.toggleVoiceInterviewMode)
+
+  // 自动 TTS: 新 AI 消息到达时自动朗读
+  const prevTtsContentRef = useRef('')
+  useEffect(() => {
+    if (ttsEnabled && lastAIContent && lastAIContent !== prevTtsContentRef.current) {
+      prevTtsContentRef.current = lastAIContent
+      speakText(lastAIContent)
+    }
+  }, [lastAIContent, ttsEnabled, speakText])
+
+  // 切换 TTS 时如果关闭则停止朗读
+  useEffect(() => {
+    if (!ttsEnabled && isSpeaking) {
+      stopSpeaking()
+    }
+  }, [ttsEnabled, isSpeaking, stopSpeaking])
+
+  // 重试发送失败的消息：先更新状态为 sending，再重新发送
+  const handleRetry = useCallback((message: InterviewMessage) => {
+    if (id && !isNew) {
+      sendMessage(id, message.id, message.content, message.type, message.audioUrl)
+    }
+  }, [id, isNew, sendMessage])
 
   const handleEnd = useCallback(async () => {
     const confirmed = window.confirm('确定要结束当前面试吗？结束后将自动生成面试报告。')
@@ -236,6 +314,70 @@ export default function InterviewRoomPage() {
               </div>
             </div>
 
+            {/* 语音设置 */}
+            <div className="setup-field">
+              <div
+                className="setup-collapsible-header"
+                onClick={() => setShowVoiceSetup(!showVoiceSetup)}
+              >
+                <SoundOutlined />
+                <span>语音设置</span>
+                <span className={`setup-collapsible-arrow ${showVoiceSetup ? 'open' : ''}`}>
+                  ▼
+                </span>
+              </div>
+              <div className={`setup-voice-body ${showVoiceSetup ? 'open' : ''}`}>
+                <label className="setup-voice-row">
+                  <span className="setup-voice-label">语音面试模式</span>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      aria-label="启用语音面试模式"
+                      checked={setupVoiceMode}
+                      onChange={(e) => setSetupVoiceMode(e.target.checked)}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </label>
+                <label className="setup-voice-row">
+                  <span className="setup-voice-label">AI 自动朗读</span>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      aria-label="启用 AI 自动朗读"
+                      checked={setupTtsEnabled}
+                      onChange={(e) => setSetupTtsEnabled(e.target.checked)}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </label>
+                <div className="setup-voice-row">
+                  <span className="setup-voice-label">语音音色</span>
+                  <div className="setup-voice-custom-select" ref={voiceSelectRef}>
+                    <button
+                      type="button"
+                      className="setup-voice-select-trigger"
+                      onClick={() => setShowVoiceDropdown(!showVoiceDropdown)}
+                    >
+                      <span>{VOICE_DISPLAY_NAMES[setupVoice] || setupVoice}</span>
+                      <span className={`setup-voice-select-arrow ${showVoiceDropdown ? 'open' : ''}`}>▼</span>
+                    </button>
+                    <div className={`setup-voice-dropdown ${showVoiceDropdown ? 'open' : ''}`}>
+                      {Object.entries(VOICE_DISPLAY_NAMES).map(([key, name]) => (
+                        <div
+                          key={key}
+                          className={`setup-voice-option ${setupVoice === key ? 'active' : ''}`}
+                          onClick={() => { setSetupVoice(key); setShowVoiceDropdown(false) }}
+                        >
+                          {name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {setupError && <p className="setup-error">{setupError}</p>}
 
             <button
@@ -273,8 +415,37 @@ export default function InterviewRoomPage() {
     )
   }
 
-  // 错误或不存在的面试
-  if (error || (!loading && !interview && !isNew)) {
+  // 消息加载失败（面试存在但消息获取出错）
+  if (error && interview && !isNew) {
+    return (
+      <div className="room-page page-full">
+        <div className="room-topbar">
+          <Link to="/interview" className="topbar-back">
+            <ArrowLeftOutlined />
+          </Link>
+          <div className="topbar-info">
+            <span className="topbar-position">{interview?.targetPosition || '-'}</span>
+          </div>
+        </div>
+        <div className="room-body-error">
+          <EmptyState
+            icon={<ExclamationCircleOutlined />}
+            title="加载消息失败"
+            description={
+              /timeout|timed out|超时/i.test(error)
+                ? '⏱️ AI 首题生成超时，请稍后重试'
+                : error
+            }
+            actionText="重新加载"
+            onAction={() => loadMessages(id!)}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // 面试不存在
+  if (!loading && !interview && !isNew) {
     return (
       <div className="room-page page-full">
         <EmptyState
@@ -302,11 +473,26 @@ export default function InterviewRoomPage() {
           </span>
         </div>
         <div className="topbar-right">
-          {isFinished && (
-            <Link to={`/interview/${id}/report`} className="topbar-report-link">
-              查看报告
-            </Link>
-          )}
+          {/* AI 自动朗读开关 */}
+          <label className="toggle-switch" title={ttsEnabled ? '关闭 AI 自动朗读' : '开启 AI 自动朗读'}>
+            <input type="checkbox" checked={ttsEnabled} onChange={toggleTtsEnabled} />
+            <span className="toggle-slider" />
+            <span className="toggle-label">自动朗读</span>
+          </label>
+          {/* 语音面试开关 */}
+          <label className="toggle-switch" title={voiceInterviewMode ? '关闭语音面试模式' : '开启语音面试模式'}>
+            <input type="checkbox" checked={voiceInterviewMode} onChange={toggleVoiceInterviewMode} />
+            <span className="toggle-slider" />
+            <span className="toggle-label">语音面试</span>
+          </label>
+          {/* 音色设置 */}
+          <button
+            className="btn-voice-settings"
+            onClick={() => setVoiceSettingsOpen(true)}
+            title="语音音色设置"
+          >
+            <SettingOutlined />
+          </button>
           <span className={`connection-status ${wsConnected ? 'connected' : 'disconnected'}`} title={wsConnected ? 'WebSocket 已连接' : 'WebSocket 未连接'}>
             <ApiOutlined />
           </span>
@@ -321,7 +507,15 @@ export default function InterviewRoomPage() {
           finished={isFinished}
           position={interview?.targetPosition}
         />
-        <ChatMessages messages={messages} aiStreamingId={streamingId} instantStreaming={wsEnabled} />
+        <ChatMessages
+          messages={messages}
+          aiStreamingId={streamingId}
+          instantStreaming={wsEnabled}
+          onRetry={handleRetry}
+          voiceInterviewMode={voiceInterviewMode}
+          onRetryLoadMessages={id ? () => loadMessages(id) : undefined}
+          loading={loading}
+        />
       </div>
 
       <InputArea
@@ -331,6 +525,12 @@ export default function InterviewRoomPage() {
         onSend={handleSend}
         lastAIContent={lastAIContent}
         onEnd={handleEnd}
+      />
+
+      {/* 语音音色设置弹窗 */}
+      <VoiceSettings
+        open={voiceSettingsOpen}
+        onClose={() => setVoiceSettingsOpen(false)}
       />
     </div>
   )

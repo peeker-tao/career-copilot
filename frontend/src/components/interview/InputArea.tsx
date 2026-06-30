@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { SendOutlined, StopOutlined, CheckCircleOutlined, LoadingOutlined, AudioOutlined, AudioMutedOutlined, SoundOutlined } from '@ant-design/icons'
+import { SendOutlined, StopOutlined, CheckCircleOutlined, LoadingOutlined, AudioOutlined, SoundOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import type { MessageType } from '@/types/interview'
 import { useVoiceStore } from '@/store/useVoiceStore'
@@ -11,7 +11,7 @@ export interface InputAreaProps {
   isFinished?: boolean
   interviewId?: string
   /** 发送消息，type 默认为 'text'，语音识别后传 'voice' */
-  onSend: (text: string, type?: MessageType, audioUrl?: string) => void
+  onSend: (text: string, type?: MessageType, audioUrl?: string, audioBlob?: Blob) => void
   onEnd: () => void
   /** 最后一条 AI 消息内容（用于 TTS 朗读） */
   lastAIContent?: string
@@ -23,6 +23,7 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const audioUrlRef = useRef<string | null>(null)
+  const audioBlobRef = useRef<Blob | null>(null)
 
   // Voice store
   const voiceStore = useVoiceStore()
@@ -32,9 +33,7 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
   const speakText = useVoiceStore((s) => s.speakText)
   const stopSpeaking = useVoiceStore((s) => s.stopSpeaking)
   const isSpeaking = useVoiceStore((s) => s.isSpeaking)
-  const toggleEnabled = useVoiceStore((s) => s.toggleEnabled)
   const settings = useVoiceStore((s) => s.settings)
-  const recognizeSpeech = useVoiceStore((s) => s.recognizeSpeech)
   const setRecording = useVoiceStore((s) => s.setRecording)
   const resetRecording = useVoiceStore((s) => s.resetRecording)
 
@@ -78,15 +77,14 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
     }
   }, [recorder.isRecording])
 
-  // 识别完成后自动填入文本并发送（携带音频 URL）
+  // 录音完成+ASR 识别后自动发送语音消息
   useEffect(() => {
-    if (recognizedText && settings.autoSend) {
+    if (recognizedText !== null && settings.autoSend) {
       const trimmed = recognizedText.trim()
-      if (trimmed) {
-        const url = audioUrlRef.current
-        audioUrlRef.current = null
-        onSend(trimmed, 'voice', url || undefined)
-      }
+      const url = audioUrlRef.current
+      audioUrlRef.current = null
+      audioBlobRef.current = null
+      onSend(trimmed, 'voice', url || undefined)
       resetRecording()
     }
   }, [recognizedText, settings.autoSend, onSend, resetRecording])
@@ -105,7 +103,7 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
     }
   }, [handleSend])
 
-  // 切换录音：停止后创建音频 URL 用于后续播放
+  // 切换录音：停止后调 ASR 识别语音，识别结果触发 useEffect 自动发送
   const handleVoiceToggle = useCallback(async () => {
     if (recorder.isRecording) {
       setRecording(false)
@@ -116,14 +114,16 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
           URL.revokeObjectURL(audioUrlRef.current)
         }
         audioUrlRef.current = URL.createObjectURL(blob)
-        await recognizeSpeech(blob)
+        audioBlobRef.current = blob
+        // 调 ASR 识别语音，识别完成后设置 recognizedText 触发自动发送
+        voiceStore.recognizeSpeech(blob)
       }
     } else {
       resetRecording()
       await recorder.start()
       setRecording(true)
     }
-  }, [recorder, setRecording, resetRecording, recognizeSpeech])
+  }, [recorder, voiceStore, setRecording, resetRecording])
 
   // TTS 朗读最后一条 AI 消息
   const handleSpeakLast = useCallback(() => {
@@ -211,15 +211,6 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
           </button>
         )}
 
-        {/* 语音开关 */}
-        {/* <button
-          className={`btn-voice-toggle ${voiceEnabled ? 'active' : ''}`}
-          onClick={toggleEnabled}
-          title={voiceEnabled ? '关闭语音输入' : '开启语音输入'}
-        >
-          {voiceEnabled ? <SoundOutlined /> : <AudioMutedOutlined />}
-        </button> */}
-
         <button
           className="btn-send"
           onClick={handleSend}
@@ -248,7 +239,7 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
           <button className="voice-status-btn" onClick={() => {
             const url = audioUrlRef.current
             audioUrlRef.current = null
-            onSend(recognizedText, 'voice', url || undefined)
+            onSend(recognizedText?.trim() || '', 'voice', url || undefined)
             resetRecording()
           }}>
             <SendOutlined /> 发送

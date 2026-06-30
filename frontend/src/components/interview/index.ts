@@ -21,3 +21,6 @@ export type { HistoryCardProps } from './HistoryCard'
 
 export { default as InterviewerAvatar } from './InterviewerAvatar'
 export type { InterviewerAvatarProps } from './InterviewerAvatar'
+
+export { default as VoiceSettings } from './VoiceSettings'
+export type { VoiceSettingsProps } from './VoiceSettings'

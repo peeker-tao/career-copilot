@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { RobotOutlined, UserOutlined, SoundOutlined, LoadingOutlined } from '@ant-design/icons'
+import { useState, useRef, useEffect } from 'react'
+import { RobotOutlined, UserOutlined, LoadingOutlined, ExclamationCircleOutlined, PlayCircleFilled, PauseCircleFilled } from '@ant-design/icons'
 import type { InterviewMessage } from '@/types/interview'
 import { useStreamingText } from '@/hooks/useStreamingText'
+import { textToSpeech } from '@/api/voice'
 import StarRating from './StarRating'
 
 export interface MessageBubbleProps {
@@ -9,6 +10,10 @@ export interface MessageBubbleProps {
   isStreaming?: boolean
   /** true=实时流式(WebSocket)，直接展示；false/undefined=打字机动画(REST) */
   instantStreaming?: boolean
+  /** 重试发送失败的消息 */
+  onRetry?: (message: InterviewMessage) => void
+  /** 语音面试模式：AI 消息显示 TTS 播放按钮 */
+  voiceInterviewMode?: boolean
 }
 
 /** 安全解析时间戳，兼容 ISO 字符串、MySQL datetime 等格式 */
@@ -24,10 +29,24 @@ function safeFormatTime(timestamp: string): string {
   return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function MessageBubble({ message, isStreaming, instantStreaming }: MessageBubbleProps) {
+export default function MessageBubble({ message, isStreaming, instantStreaming, onRetry, voiceInterviewMode }: MessageBubbleProps) {
   const isAI = message.role === 'ai' || message.role === 'assistant'
   const isVoice = message.type === 'voice' && !!message.audioUrl
+  const isFailed = message.status === 'failed'
+  const isSending = message.status === 'sending'
   const [voicePlaying, setVoicePlaying] = useState(false)
+  const [voiceDuration, setVoiceDuration] = useState(0)
+  const [currentTime, setCurrentTime] = useState(0)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const animFrameRef = useRef<number>(0)
+  // TTS 播放状态（语音面试模式）
+  const [ttsLoading, setTtsLoading] = useState(false)
+  const [ttsPlaying, setTtsPlaying] = useState(false)
+  const [ttsDuration, setTtsDuration] = useState(0)
+  const [ttsCurrentTime, setTtsCurrentTime] = useState(0)
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null)
+  const ttsAnimRef = useRef<number>(0)
+  const [textExpanded, setTextExpanded] = useState(false)
 
   // WebSocket 真实流式：speed=0 即时展示；REST 假流式：speed=25 打字机效果
   const streamingSpeed = instantStreaming ? 0 : 25
@@ -37,43 +56,222 @@ export default function MessageBubble({ message, isStreaming, instantStreaming }
   const isComplete = !isStreaming || streamingText.length >= message.content.length
   const formattedTime = safeFormatTime(message.timestamp)
 
-  const handlePlayVoice = () => {
-    if (!message.audioUrl) return
-    const audio = new Audio(message.audioUrl)
-    ;(window as any).__currentVoiceAudio?.pause()
-    ;(window as any).__currentVoiceAudio = audio
-    setVoicePlaying(true)
-    audio.onended = () => setVoicePlaying(false)
-    audio.onerror = () => setVoicePlaying(false)
-    audio.play()
+  // 清理音频资源
+  useEffect(() => {
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+      audioRef.current?.pause()
+      if (ttsAnimRef.current) cancelAnimationFrame(ttsAnimRef.current)
+      ttsAudioRef.current?.pause()
+    }
+  }, [])
+
+  const updateProgress = () => {
+    const audio = audioRef.current
+    if (!audio) return
+    setCurrentTime(audio.currentTime)
+    if (audio.currentTime < audio.duration) {
+      animFrameRef.current = requestAnimationFrame(updateProgress)
+    }
   }
 
+  const handlePlayVoice = () => {
+    if (!message.audioUrl) return
+    const prev = (window as any).__currentVoiceAudio
+    if (prev && prev !== audioRef.current) {
+      prev.pause()
+      // 触发其他 voice 条的同步
+      const evt = new CustomEvent('voice-stopped', { detail: prev })
+      window.dispatchEvent(evt)
+    }
+    if (audioRef.current && voicePlaying) {
+      audioRef.current.pause()
+      setVoicePlaying(false)
+      cancelAnimationFrame(animFrameRef.current)
+      return
+    }
+    if (!audioRef.current) {
+      const audio = new Audio(message.audioUrl)
+      audioRef.current = audio
+      audio.onloadedmetadata = () => setVoiceDuration(audio.duration)
+      audio.onended = () => { setVoicePlaying(false); setCurrentTime(0) }
+      audio.onerror = () => { setVoicePlaying(false); setCurrentTime(0) }
+    }
+    ;(window as any).__currentVoiceAudio = audioRef.current
+    audioRef.current.play()
+    setVoicePlaying(true)
+    animFrameRef.current = requestAnimationFrame(updateProgress)
+  }
+
+  /** TTS 播放进度更新 */
+  const updateTtsProgress = () => {
+    const audio = ttsAudioRef.current
+    if (!audio) return
+    setTtsCurrentTime(audio.currentTime)
+    if (audio.currentTime < audio.duration) {
+      ttsAnimRef.current = requestAnimationFrame(updateTtsProgress)
+    }
+  }
+
+  /** 语音面试模式：播放/暂停 AI 消息的 TTS 语音 */
+  const handleTtsPlay = async () => {
+    if (!message.content.trim()) return
+    // 如果已有音频且正在播放，暂停
+    if (ttsAudioRef.current && ttsPlaying) {
+      ttsAudioRef.current.pause()
+      setTtsPlaying(false)
+      cancelAnimationFrame(ttsAnimRef.current)
+      return
+    }
+    // 如果已有音频但已暂停，恢复播放
+    if (ttsAudioRef.current && !ttsPlaying) {
+      ttsAudioRef.current.play()
+      setTtsPlaying(true)
+      ttsAnimRef.current = requestAnimationFrame(updateTtsProgress)
+      return
+    }
+    // 否则生成新的 TTS 音频
+    setTtsLoading(true)
+    try {
+      const res = await textToSpeech(message.content)
+      const audio = new Audio(res.data.audioUrl)
+      ttsAudioRef.current = audio
+      audio.onloadedmetadata = () => setTtsDuration(audio.duration)
+      audio.onended = () => { setTtsPlaying(false); setTtsCurrentTime(0) }
+      audio.onerror = () => { setTtsPlaying(false); setTtsCurrentTime(0); setTtsLoading(false) }
+      setTtsLoading(false)
+      audio.play()
+      setTtsPlaying(true)
+      ttsAnimRef.current = requestAnimationFrame(updateTtsProgress)
+    } catch {
+      setTtsLoading(false)
+    }
+  }
+
+  /** 格式化时间 mm:ss */
+  const fmtDur = (sec: number) => {
+    const m = Math.floor(sec / 60)
+    const s = Math.floor(sec % 60)
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
+
+  /** 生成波形条（6 条柱状条） */
+  const ttsWaveformBars = () =>
+    Array.from({ length: 6 }, (_, i) => (
+      <span key={i} className={`vw-bar vw-bar-${i} ${ttsPlaying ? 'active' : ''}`} />
+    ))
+
+  const waveformBars = () =>
+    Array.from({ length: 6 }, (_, i) => (
+      <span key={i} className={`vw-bar vw-bar-${i} ${voicePlaying ? 'active' : ''}`} />
+    ))
+
   return (
-    <div className={`message-row ${isAI ? 'ai' : 'user'}`}>
+    <div className={`message-row ${isAI ? 'ai' : 'user'} ${isFailed ? 'failed' : ''} ${isSending ? 'sending' : ''}`}>
       <div className="message-avatar">
         {isAI ? <RobotOutlined /> : <UserOutlined />}
       </div>
-      <div className={`message-bubble ${isAI ? 'ai-bubble' : 'user-bubble'}`}>
+      <div className={`message-bubble ${isAI ? 'ai-bubble' : 'user-bubble'} ${isFailed ? 'bubble-failed' : ''}`}>
         {isAI && (
           <div className="message-sender">AI 面试官</div>
         )}
-        <div className="message-content">
-          {displayContent.split('\n').map((line, i) => (
-            <p key={i}>{line || '\u00A0'}</p>
-          ))}
-          {isStreaming && !isComplete && (
-            <span className="streaming-cursor">|</span>
-          )}
-        </div>
-        {isVoice && (
+
+        {/* 评价卡片（评价+对话+答案模式） */}
+        {isAI && message.feedback && (
+          <div className="eval-card">
+            <div className="eval-header">
+              <span className="eval-label">📊 回答评价</span>
+              {message.rating != null && (
+                <span className="eval-score">得分：{message.rating}</span>
+              )}
+            </div>
+            <div className="eval-body">
+              {message.feedback.split('\n').map((line, i) => (
+                <p key={i}>{line || '\u00A0'}</p>
+              ))}
+            </div>
+            {/* 参考答案（可折叠） */}
+            {message.referenceAnswer && message.referenceAnswer.length > 0 && (
+              <details className="eval-ref">
+                <summary className="eval-ref-summary"><span>💡 参考答案</span></summary>
+                <div className="eval-ref-body">
+                  {message.referenceAnswer.map((point, i) => (
+                    <p key={i}>{i + 1}. {point || '\u00A0'}</p>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+        )}
+
+        {/* 语音面试模式：AI 消息 — TTS 播放器在上，文字默认折叠 */}
+        {isAI && voiceInterviewMode && !isFailed && (
+          <>
+            <div className={`voice-wave-wrapper voice-wave-tts ${ttsPlaying ? 'playing' : ''}`} onClick={handleTtsPlay}>
+              <span className="voice-play-btn">
+                {ttsLoading ? <LoadingOutlined /> : ttsPlaying ? <PauseCircleFilled /> : <PlayCircleFilled />}
+              </span>
+              <span className="voice-wave-bars">
+                {ttsWaveformBars()}
+              </span>
+              <span className="voice-duration">
+                {ttsPlaying ? fmtDur(ttsCurrentTime) : fmtDur(ttsDuration || 0)}
+              </span>
+            </div>
+            <div className={`message-content message-content-collapsed ${textExpanded ? 'expanded' : ''}`}>
+              <div className="content-text">
+                {displayContent.split('\n').map((line, i) => (
+                  <p key={i}>{line || '\u00A0'}</p>
+                ))}
+                {isStreaming && !isComplete && (
+                  <span className="streaming-cursor">|</span>
+                )}
+                {isSending && (
+                  <span className="sending-indicator"><LoadingOutlined /> 发送中...</span>
+                )}
+              </div>
+              <button className="btn-text-toggle" onClick={() => setTextExpanded((v) => !v)}>
+                {textExpanded ? '隐藏文本' : '显示文本'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* 非语音面试模式：正常显示文字 */}
+        {(!isAI || !voiceInterviewMode) && (displayContent.trim() || !isVoice) && (
+          <div className="message-content">
+            {displayContent.split('\n').map((line, i) => (
+              <p key={i}>{line || '\u00A0'}</p>
+            ))}
+            {isStreaming && !isComplete && (
+              <span className="streaming-cursor">|</span>
+            )}
+            {isSending && (
+              <span className="sending-indicator"><LoadingOutlined /> 发送中...</span>
+            )}
+          </div>
+        )}
+        {isVoice && !isFailed && (
+          <div className={`voice-wave-wrapper ${voicePlaying ? 'playing' : ''}`} onClick={handlePlayVoice}>
+            <span className="voice-play-btn">
+              {voicePlaying ? <PauseCircleFilled /> : <PlayCircleFilled />}
+            </span>
+            <span className="voice-wave-bars">
+              {waveformBars()}
+            </span>
+            <span className="voice-duration">
+              {voicePlaying ? fmtDur(currentTime) : fmtDur(voiceDuration)}
+            </span>
+          </div>
+        )}
+        {isFailed && !isAI && (
           <button
-            className="btn-play-voice"
-            onClick={handlePlayVoice}
-            disabled={voicePlaying}
-            title="播放语音"
+            className="btn-retry"
+            onClick={() => onRetry?.(message)}
+            title="点击重试"
           >
-            {voicePlaying ? <LoadingOutlined /> : <SoundOutlined />}
-            <span className="voice-label">播放语音</span>
+            <ExclamationCircleOutlined />
+            <span className="retry-label">发送失败，点击重试</span>
           </button>
         )}
         <div className="message-footer">
