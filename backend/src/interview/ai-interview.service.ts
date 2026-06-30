@@ -62,13 +62,21 @@ export class AiInterviewService {
 
     const result = await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'interview:question');
 
+    // 标准化 referenceAnswer: 如果 LLM 返回数组则合并为字符串
+    const rawAnswer = result.referenceAnswer;
+    const referenceAnswer = Array.isArray(rawAnswer)
+      ? rawAnswer.join('\n')
+      : typeof rawAnswer === 'string'
+        ? rawAnswer
+        : undefined;
+
     return {
       content:
         (result.content as string) ||
         (result.question as string) ||
         '请介绍一下你的项目经验',
       questionType: (result.questionType as string) || 'technical',
-      referenceAnswer: result.referenceAnswer as string | undefined,
+      referenceAnswer,
     };
   }
 
@@ -104,6 +112,13 @@ export class AiInterviewService {
     // 容错归一化 nextAction（大小写 / 下划线 / 连字符变体）
     const normalized = normalizeNextAction(result.nextAction as string);
 
+    const rawRef = result.nextQuestionReferenceAnswer;
+    const nextQuestionReferenceAnswer = Array.isArray(rawRef)
+      ? rawRef.join('\n')
+      : typeof rawRef === 'string' && rawRef.length > 0
+        ? rawRef
+        : undefined;
+
     return {
       score: typeof result.score === 'number' ? result.score : 70,
       feedback: (result.feedback as string) || '回答已记录',
@@ -114,7 +129,7 @@ export class AiInterviewService {
       followUpContent: result.followUpContent as string | undefined,
       nextQuestion: result.nextQuestion as string | undefined,
       nextQuestionType: result.nextQuestionType as string | undefined,
-      nextQuestionReferenceAnswer: result.nextQuestionReferenceAnswer as string | undefined,
+      nextQuestionReferenceAnswer,
       summary: result.summary as string | undefined,
     };
   }

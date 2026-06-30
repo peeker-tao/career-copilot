@@ -71,9 +71,15 @@ ${resumeContext ? `6. 应聘者简历信息（请基于此出题）：\n${resume
 - strengths/weaknesses: 各自最多2项
 - isFollowUp: 是否继续追问同一话题
 - nextAction:
-  · "followUp" → 继续追问（自动附带追问内容）
-  · "nextQuestion" → 进入下一题（**必须同时附带 nextQuestion 字段**）
+  · "followUp" → 继续追问（**必须同时附带 followUpContent 字段**）
+  · "nextQuestion" → 进入下一题（**必须同时附带 nextQuestion 等字段**）
   · "complete" → 面试结束（达到目标轮数）
+
+当 nextAction 为 "followUp" 时，必须额外包含：
+{
+  "followUpContent": "追问的问题内容，基于应聘者刚才的回答进行深入追问",
+  "nextQuestionReferenceAnswer": "该追问问题的参考回答要点，列出核心得分点"
+}
 
 当 nextAction 为 "nextQuestion" 时，必须额外包含：
 {
