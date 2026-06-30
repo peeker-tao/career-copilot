@@ -315,8 +315,8 @@ export class JobMatchingController {
     type: SeedDefaultResponseDto,
   })
   @HttpCode(HttpStatus.CREATED)
-  async seedDefaultData() {
-    return this.jobMatchingService.seedDefaultData();
+  async seedDefaultData(@CurrentUser('id') userId: string) {
+    return this.jobMatchingService.seedDefaultData(userId);
   }
 
   @Get('stats')
