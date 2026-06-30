@@ -294,11 +294,13 @@ export class JobMatchingController {
   @ApiOperation({ summary: '导入外部岗位匹配数据（Kaggle 数据集等）' })
   @ApiCreatedResponse({ description: '返回新创建的岗位匹配记录' })
   @HttpCode(HttpStatus.CREATED)
-  async importMatch(@Body() dto: ImportJobMatchDto) {
-    // 使用数据导入专用账号
+  async importMatch(
+    @CurrentUser('id') userId: string,
+    @Body() dto: ImportJobMatchDto,
+  ) {
     return this.jobMatchingService.importJobMatch({
       ...dto,
-      userId: 'kaggle_data@import.local',
+      userId,
     });
   }
 
