@@ -11,7 +11,7 @@ export interface InputAreaProps {
   isFinished?: boolean
   interviewId?: string
   /** 发送消息，type 默认为 'text'，语音识别后传 'voice' */
-  onSend: (text: string, type?: MessageType) => void
+  onSend: (text: string, type?: MessageType, audioUrl?: string) => void
   onEnd: () => void
   /** 最后一条 AI 消息内容（用于 TTS 朗读） */
   lastAIContent?: string
@@ -22,6 +22,7 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
   const [recordingTime, setRecordingTime] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const audioUrlRef = useRef<string | null>(null)
 
   // Voice store
   const voiceStore = useVoiceStore()
@@ -50,6 +51,15 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
     }
   }, [disabled, isFinished])
 
+  // 组件卸载时清理音频 URL
+  useEffect(() => {
+    return () => {
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current)
+      }
+    }
+  }, [])
+
   // 录音计时器
   useEffect(() => {
     if (recorder.isRecording) {
@@ -68,12 +78,14 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
     }
   }, [recorder.isRecording])
 
-  // 识别完成后自动填入文本并发送
+  // 识别完成后自动填入文本并发送（携带音频 URL）
   useEffect(() => {
     if (recognizedText && settings.autoSend) {
       const trimmed = recognizedText.trim()
       if (trimmed) {
-        onSend(trimmed, 'voice')
+        const url = audioUrlRef.current
+        audioUrlRef.current = null
+        onSend(trimmed, 'voice', url || undefined)
       }
       resetRecording()
     }
@@ -93,12 +105,17 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
     }
   }, [handleSend])
 
-  // 切换录音
+  // 切换录音：停止后创建音频 URL 用于后续播放
   const handleVoiceToggle = useCallback(async () => {
     if (recorder.isRecording) {
       setRecording(false)
       const blob = await recorder.stop()
       if (blob) {
+        // 先清理之前的 URL
+        if (audioUrlRef.current) {
+          URL.revokeObjectURL(audioUrlRef.current)
+        }
+        audioUrlRef.current = URL.createObjectURL(blob)
         await recognizeSpeech(blob)
       }
     } else {
@@ -228,7 +245,12 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
       {recognizedText && !settings.autoSend && (
         <div className="voice-status recognized">
           <span>识别: {recognizedText}</span>
-          <button className="voice-status-btn" onClick={() => { onSend(recognizedText, 'voice'); resetRecording() }}>
+          <button className="voice-status-btn" onClick={() => {
+            const url = audioUrlRef.current
+            audioUrlRef.current = null
+            onSend(recognizedText, 'voice', url || undefined)
+            resetRecording()
+          }}>
             <SendOutlined /> 发送
           </button>
           <button className="voice-status-btn cancel" onClick={handleCancelRecognition}>

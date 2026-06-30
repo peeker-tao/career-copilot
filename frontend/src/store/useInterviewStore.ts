@@ -34,7 +34,7 @@ interface InterviewState {
   fetchInterview: (id: string) => Promise<void>
   startInterview: (position: string, difficulty: string, resumeId?: string) => Promise<string | null>
   loadMessages: (id: string) => Promise<void>
-  sendMessage: (interviewId: string, content: string, type?: MessageType) => Promise<void>
+  sendMessage: (interviewId: string, content: string, type?: MessageType, audioUrl?: string) => Promise<void>
   finishInterview: (interviewId: string) => Promise<void>
   fetchReport: (interviewId: string) => Promise<void>
   deleteInterview: (id: string) => Promise<void>
@@ -150,7 +150,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
     }
   },
 
-  sendMessage: async (interviewId, content, type) => {
+  sendMessage: async (interviewId, content, type, audioUrl) => {
     const userMsg: InterviewMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -158,6 +158,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       timestamp: new Date().toISOString(),
       rating: null,
       type: type || 'text',
+      audioUrl: audioUrl,
     }
 
     set((state) => ({

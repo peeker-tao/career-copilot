@@ -123,9 +123,9 @@ export default function InterviewRoomPage() {
     }
   }
 
-  const handleSend = useCallback((content: string, type?: MessageType) => {
+  const handleSend = useCallback((content: string, type?: MessageType, audioUrl?: string) => {
     if (id && !isNew) {
-      sendMessage(id, content, type || 'text')
+      sendMessage(id, content, type || 'text', audioUrl)
       // WebSocket 模式下才真正发出
       if (wsEnabled) {
         wsSendAnswer(content)
