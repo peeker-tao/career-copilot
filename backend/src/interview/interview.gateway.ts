@@ -202,7 +202,7 @@ export class InterviewGateway
         updateData.status = 'completed';
         updateData.completedAt = new Date();
         updateData.score = evaluation.score;
-        updateData.feedback = evaluation.feedback;
+        updateData.overallFeedback = evaluation.feedback;
       }
       await this.prisma.interview.update({
         where: { id: data.interviewId },
