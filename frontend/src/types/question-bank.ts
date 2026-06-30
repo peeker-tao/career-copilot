@@ -12,6 +12,7 @@ export interface QuestionBankItem {
   category: string
   difficulty: QuestionDifficulty
   tags: string[]
+  options?: string[]
   answer?: string
   hint?: string
 }
