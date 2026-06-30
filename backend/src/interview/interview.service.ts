@@ -25,7 +25,7 @@ export class InterviewService {
 
   async create(
     userId: string,
-    data: { targetPosition: string; difficulty?: string; resumeId?: string },
+    data: { targetPosition: string; difficulty?: string; resumeId?: string; type?: string },
   ) {
     // 0. 如果传了 resumeId，先验证简历存在且属于当前用户
     if (data.resumeId) {
@@ -46,6 +46,7 @@ export class InterviewService {
         targetPosition: data.targetPosition,
         difficulty: data.difficulty || 'medium',
         resumeId: data.resumeId || null,
+        type: data.type || 'text',
       },
     });
 
@@ -125,6 +126,7 @@ export class InterviewService {
           id: true,
           targetPosition: true,
           difficulty: true,
+          type: true,
           status: true,
           score: true,
           questionCount: true,

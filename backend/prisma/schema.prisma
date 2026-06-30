@@ -23,7 +23,6 @@ model User {
   resumes             Resume[]
   interviews          Interview[]
   careerPlans         CareerPlan[]
-  voiceInterviewSessions VoiceInterviewSession[]
   passwordResetTokens PasswordResetToken[]
   jobMatches          JobMatch[]
   resumeBookmarks     ResumeBookmark[]
@@ -60,6 +59,7 @@ model Interview {
   targetPosition  String    @map("target_position")
   difficulty      String    @default("medium")
   status          String    @default("in_progress")
+  type            String    @default("text") @map("type")
   questionCount   Int       @default(0) @map("question_count")
   score           Int?
   startedAt       DateTime  @default(now()) @map("started_at")
@@ -107,33 +107,6 @@ model CareerPlan {
   @@index([userId, createdAt])
   @@map("career_plans")
 }
-
-// ============================================================
-// 新功能模型
-// ============================================================
-
-model VoiceInterviewSession {
-  id              String    @id @default(cuid())
-  userId          String    @map("user_id")
-  interviewId     String?   @map("interview_id")
-  targetPosition  String    @map("target_position")
-  difficulty      String    @default("medium")
-  resumeId        String?   @map("resume_id")
-  status          String    @default("recording") // recording | paused | completed | cancelled
-  audioUrl        String?   @map("audio_url")
-  durationSeconds Int       @default(0) @map("duration_seconds")
-  transcript      Json?     // [{ timestamp, speaker, text }]
-  startedAt       DateTime  @default(now()) @map("started_at")
-  completedAt     DateTime? @map("completed_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, status])
-  @@map("voice_interview_sessions")
-}
-
 model PasswordResetToken {
   id        String    @id @default(cuid())
   userId    String    @map("user_id")

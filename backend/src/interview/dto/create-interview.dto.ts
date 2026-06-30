@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateInterviewDto {
@@ -19,4 +19,13 @@ export class CreateInterviewDto {
   @IsOptional()
   @IsString()
   resumeId?: string;
+
+  @ApiPropertyOptional({
+    description: '面试类型: text(文字面试) / audio(语音面试)',
+    example: 'text',
+    enum: ['text', 'audio'],
+  })
+  @IsOptional()
+  @IsIn(['text', 'audio'], { message: 'type 必须是 text 或 audio' })
+  type?: string;
 }
