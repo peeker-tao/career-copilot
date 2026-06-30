@@ -100,10 +100,11 @@ tsconfig.tsbuildinfo
 我的任务.md
 
 backend/generated
-/datasets
+/datasets/opensporks_resumes
 .conda
 
 **/.yarn/*
 career-copilot/.yarn/install-state.gz
 
 /frontend
+.VSCodeCounter

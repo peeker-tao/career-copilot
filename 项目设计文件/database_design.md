@@ -1,8 +1,8 @@
 # Career-Copilot 数据库设计文档
 
-> 版本：v1.1 | 日期：2026-06-28
+> 版本：v1.2 | 日期：2026-06-28
 > 数据库：PostgreSQL 15+ | 缓存：Redis 7+
-> 状态：✅ 已实现 ⏳ 待测试 | 🆕 v1.1 新增
+> 状态：✅ 已实现 ⏳ 待测试 | 🆕 v1.1 新增 · 🆕 v1.2 缓存与 RAG
 
 ---
 
@@ -923,6 +923,8 @@ career-copilot:<模块>:<业务>:<ID>
 | `career-copilot:voice-session:{sessionId}` 🆕 | `String (JSON)` | 2h | 语音面试会话状态缓存 |
 | `career-copilot:question-bank:{category}` 🆕 | `String (JSON)` | 1h | 面试题库分类缓存 |
 | `career-copilot:learning:{category}` 🆕 | `String (JSON)` | 1h | 学习资源分类缓存 |
+| `career-copilot:ai:cache:{sha256}` 🆕 | `String (JSON)` | 见 TTL 表 | AI 调用请求-响应对缓存（按场景区分 TTL） |
+| `career-copilot:rag:embedding:{namespace}` 🆕 | `Sorted Set` | 永久 | RAG 知识库嵌入向量存储（cosine 相似度检索） |
 
 ### 5.3 面试会话缓存结构
 

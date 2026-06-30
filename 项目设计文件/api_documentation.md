@@ -1,8 +1,8 @@
 # Career-Copilot API 接口文档
 
-> 版本：v1.1 | 日期：2026-06-27
+> 版本：v1.2 | 日期：2026-07-02
 > 状态：✅ 已实现 ⏳ 待测试
-> 基础 URL：`/api/v1`
+> 基础 URL：`/api`（实际路由，部分旧文档仍标 `/api/v1`，以实际为准）
 
 ---
 
@@ -464,9 +464,28 @@ Authorization: Bearer <access_token>
 }
 ```
 
-### POST `/resumes/screening/benchmark-import` — 导入岗位筛选基准数据
+### POST `/resumes/screening/benchmark-seed` — 导入默认基准数据集
 
-> ⚠️ 无需认证，用于批量导入 Kaggle 等外部简历筛选基准数据集
+> 从系统内置 CSV 数据集（`datasets/AI_Resume_Screening/AI_Resume_Screening.csv`）自动导入 **1000 条** 岗位筛选基准记录，覆盖 4 类岗位：Software Engineer、Data Scientist、AI Researcher、Cybersecurity Analyst。
+>
+> **无需请求体**，调用即导入（追加模式，不会覆盖已有数据）。
+
+**响应 `201`：**
+
+```json
+{
+  "code": 201,
+  "message": "成功导入 1000 条基准评估记录",
+  "data": {
+    "imported": 1000,
+    "roles": ["Software Engineer", "Data Scientist", "AI Researcher", "Cybersecurity Analyst"]
+  }
+}
+```
+
+### POST `/resumes/screening/benchmark-import` — 导入自定义基准数据
+
+> 用于批量导入自定义简历筛选基准记录（**追加模式**，不会覆盖已有数据）。
 
 **请求体：**
 
@@ -474,11 +493,16 @@ Authorization: Bearer <access_token>
 {
   "records": [
     {
-      "resumeId": "ext_001",
-      "position": "Data Scientist",
+      "resumeId": 1,
+      "name": "张三",
       "skills": ["Python", "Machine Learning", "SQL"],
-      "experience": 3,
-      "education": "Master",
+      "experienceYears": 3,
+      "education": "硕士",
+      "certifications": "PMP",
+      "jobRole": "Data Scientist",
+      "recruiterDecision": "Shortlist",
+      "salaryExpectation": 120000,
+      "projectsCount": 6,
       "aiScore": 92
     }
   ]
@@ -487,14 +511,30 @@ Authorization: Bearer <access_token>
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|:----:|------|
-| `records` | array | ✅ | 基准记录列表 |
+| `records` | `ScreeningBenchmarkRecordDto[]` | ✅ | 基准记录列表 |
+
+**`ScreeningBenchmarkRecordDto` 字段：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `resumeId` | number | ✅ | 简历编号 |
+| `name` | string | ✅ | 候选人姓名 |
+| `skills` | string[] | ✅ | 技能列表 |
+| `experienceYears` | number | ✅ | 工作经验年数（0-50） |
+| `education` | string | ✅ | 学历（如 本科/硕士/博士） |
+| `certifications` | string | | 证书（可选） |
+| `jobRole` | string | ✅ | 岗位名称 |
+| `recruiterDecision` | string | ✅ | 招聘决策（Shortlist/Review/Reject） |
+| `salaryExpectation` | number | ✅ | 期望薪资 |
+| `projectsCount` | number | ✅ | 项目数量 |
+| `aiScore` | number | ✅ | AI 评分（0-100） |
 
 **响应 `201`：**
 
 ```json
 {
   "code": 201,
-  "message": "导入成功",
+  "message": "成功导入 50 条基准评估记录",
   "data": {
     "imported": 50,
     "total": 50
@@ -502,29 +542,15 @@ Authorization: Bearer <access_token>
 }
 ```
 
-### POST `/resumes/screening/evaluate` — AI 简历筛选评估
+### GET `/resumes/screening/benchmark-stats` — 获取基准统计数据
 
-> ⚠️ 无需认证，基于 5 个维度对简历进行 AI 打分
+> 返回当前用户指定岗位的 AI 评分分布、招聘决策分布等统计。不传 `jobRole` 则返回所有岗位的汇总统计。
 
-**请求体：**
-
-```json
-{
-  "resumeText": "...",
-  "position": "Data Scientist",
-  "criteria": {
-    "skills": ["Python", "Machine Learning"],
-    "minExperience": 2,
-    "minEducation": "Bachelor"
-  }
-}
-```
+**查询参数：**
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|:----:|------|
-| `resumeText` | string | ✅ | 简历文本内容 |
-| `position` | string | ✅ | 目标岗位 |
-| `criteria` | object | ✅ | 筛选标准 |
+| `jobRole` | string | | 岗位名称（不传则返回全部岗位的统计） |
 
 **响应 `200`：**
 
@@ -533,16 +559,86 @@ Authorization: Bearer <access_token>
   "code": 200,
   "message": "success",
   "data": {
-    "overallScore": 85,
-    "dimensions": {
-      "skillsMatch": 90,
-      "experience": 80,
-      "education": 100,
-      "keywordCoverage": 85,
-      "formatQuality": 70
+    "jobRole": "Software Engineer",
+    "totalCount": 250,
+    "aiScoreDistribution": {
+      "min": 15,
+      "max": 98,
+      "avg": 65.4,
+      "median": 68
     },
-    "recommendation": "recommend",
-    "summary": "候选人技能匹配度高，建议进入面试环节"
+    "decisionDistribution": {
+      "Shortlist": 80,
+      "Review": 100,
+      "Reject": 70
+    },
+    "educationDistribution": {
+      "本科": 120,
+      "硕士": 90,
+      "博士": 40
+    },
+    "avgExperience": 4.2,
+    "avgSalary": 95000
+  }
+}
+```
+
+### POST `/resumes/screening/evaluate` — AI 简历筛选评估
+
+> 基于岗位基准数据对候选人进行 AI 多维打分与匹配分析。
+
+**请求体：**
+
+```json
+{
+  "jobRole": "Software Engineer",
+  "skills": ["Python", "TypeScript", "React", "Docker", "AWS"],
+  "experienceYears": 6,
+  "education": "硕士",
+  "certifications": "AWS Certified Developer",
+  "projectsCount": 10
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `jobRole` | string | ✅ | 目标岗位（需与基准数据中的岗位名称一致） |
+| `skills` | string[] | ✅ | 技能列表 |
+| `experienceYears` | number | ✅ | 工作经验年数（0-50） |
+| `education` | string | ✅ | 学历 |
+| `certifications` | string | | 证书（可选） |
+| `projectsCount` | number | | 项目数量（可选） |
+
+> **Swagger 示例数据：** 在 `/api-docs` 中该接口已预置 3 组示例：
+> - 🏆 **高匹配候选人** — Software Engineer，6 年经验，技能匹配度高
+> - 📊 **中等匹配候选人** — Data Scientist，3 年经验，部分技能匹配
+> - 🌱 **入门级候选人** — Cybersecurity Analyst，1 年经验，基础技能
+
+**响应 `201`：**
+
+```json
+{
+  "code": 201,
+  "message": "评估完成",
+  "data": {
+    "overallScore": 72.5,
+    "dimensions": {
+      "skillsMatch": 85.0,
+      "experienceMatch": 62.5,
+      "educationMatch": 80.0,
+      "certificationsBonus": 5.0,
+      "projectsBonus": 5.0
+    },
+    "benchmarkContext": {
+      "matchedCount": 180,
+      "totalInRole": 250,
+      "avgScore": 65.4,
+      "avgExperience": 4.2,
+      "topSkills": ["Java", "Spring Boot", "TypeScript", "Python", "AWS"],
+      "percentile": 70
+    },
+    "recommendation": "建议面试",
+    "summary": "候选人技能栈与岗位匹配度良好，经验水平略低于岗位平均水平但综合评分处于中上水平。"
   }
 }
 ```

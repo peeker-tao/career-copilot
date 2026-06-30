@@ -1,7 +1,7 @@
 # Career-Copilot 项目架构规划
 
-> 版本：v1.1 | 日期：2026-06-27
-> 状态：✅ 已实现 ⏳ 待测试
+> 版本：v1.3 | 日期：2026-07-15
+> 状态：✅ 已实现 ⏳ 待测试 ✅ RAG 已实现
 > AI 模拟面试官 + 智能职业规划平台
 
 ---
@@ -30,8 +30,11 @@
 | 框架 | **NestJS** | 模块化架构、装饰器、TS 原生支持 |
 | 数据库 | **PostgreSQL** | 关系型数据存储 |
 | ORM | **Prisma** | TS 优先、类型安全 |
-| 缓存 | **Redis** | 面试会话缓存、token 存储 |
-| AI/LLM | **OpenAI API / 通义千问 API / DeepSeek API** | 面试题生成、追问、反馈 |
+| 缓存 | **Redis** | 面试会话缓存、token 存储、LLM 响应缓存 |
+| AI/LLM | **DeepSeek API / 通义千问 API** | 面试题生成、追问、反馈（OpenAI 兼容接口） |
+| AI 缓存 | **AiCacheService (SHA256)** | LLM 请求去重，按场景 TTL 自动过期 |
+| RAG | **SimpleRagService + LocalEmbedderService** | 本地 BGE 模型 + Python Worker 嵌入 + Redis 向量检索 |
+| RAG 模型 | **BAAI/bge-small-zh-v1.5 (fastembed / ONNX)** | 轻量中文 Embedding 模型，约 30MB，512 维向量 |
 | 语音 | **Azure Speech Services / 阿里云语音** | 语音合成（TTS）+ 语音识别（ASR） |
 | 认证 | **JWT (Access + Refresh Token)** | 用户鉴权 |
 | 消息队列 | **Bull (基于 Redis)** | 异步任务（简历解析） |
@@ -70,8 +73,12 @@
 │ (用户/简历/ │ │ (会话缓存/ │ │  ├─ LLM (面试生成)     │
 │  面试/题库) │ │  消息队列) │ │  ├─ 语音识别 (ASR)     │
 │  岗位/资源) │ │            │ │  ├─ 语音合成 (TTS)     │
-└─────────────┘ └────────────┘ │  └─ NER 实体识别       │
-                               └────────────────────────┘
+│            │ │            │ │  ├─ NER 实体识别       │
+│            │ │            │ │  ├─ AI Cache (SHA256)  │
+│            │ │            │ │  ├─ RAG (Embedding)    │
+│            │ │            │ │  └─ Python Worker      │
+│            │ │            │ │     (embed_worker.py)  │
+└─────────────┘ └────────────┘ └────────────────────────┘
 ```
 
 ---
@@ -488,6 +495,121 @@ BIO 字典匹配 + 规则引擎
 - 覆盖 10+ 类简历实体
 - 结果缓存至 ResumeNerCache 表
 
+### 5.10 AI 缓存与 RAG 增强 ✅ 已实现 (v1.2)
+
+**架构理念：**
+
+```
+┌──────────────┐    ┌──────────────────┐    ┌──────────────┐
+│  调用方       │    │  AiService        │    │  LLM Provider │
+│ (各 Service)  │───▶│  callLLM()        │───▶│  (DeepSeek/   │
+│              │    │                   │    │   通义千问等)  │
+└──────────────┘    └───────┬───────────┘    └──────────────┘
+                            │
+               ┌────────────┼────────────┐
+               ▼            ▼            ▼
+        ┌──────────┐ ┌──────────┐ ┌──────────────────────────┐
+        │ Redis    │ │  AiCache │ │  SimpleRagService         │
+        │ Service  │ │  Service │ │  ├─ LocalEmbedderService  │
+        │ (ioredis)│ │ (SHA256) │ │  │   (Python Worker)     │
+        └──────────┘ └──────────┘ │  └─ Redis 向量检索       │
+                                  └──────────────────────────┘
+                                               │
+                                    ┌──────────▼──────────┐
+                                    │  embed_worker.py     │
+                                    │  (child_process)     │
+                                    │  ┌────────────────┐  │
+                                    │  │ BAAI/bge-small │  │
+                                    │  │ -zh-v1.5       │  │
+                                    │  │ (ONNX Runtime) │  │
+                                    │  └────────────────┘  │
+                                    │  stdin/stdout JSON    │
+                                    │  行协议               │
+                                    └───────────────────────┘
+```
+
+**缓存层 (AiCacheService)：**
+
+| 特性 | 说明 |
+|------|------|
+| 缓存键 | `SHA256(systemPrompt + userMessage)` — 内容寻址，相同请求命中相同缓存 |
+| 存储后端 | Redis，通过 `RedisService` 统一存取 |
+| 场景 TTL | 每类请求独立过期时间，精确控制缓存有效期 |
+| 降级策略 | `@Optional()` 注入 —— 无可用缓存时直接调用 LLM，零侵入 |
+
+**TTL 策略：**
+
+| 缓存前缀 | TTL | 说明 |
+|:--------:|:---:|------|
+| `resume:parse` | 7 天 | 简历解析结果长期稳定 |
+| `resume:rewrite` | 7 天 | 简历润色/分析结果 |
+| `resume:screening` | 1 小时 | 简历筛选需实时准确 |
+| `interview:question` | 24 小时 | 同岗位题目可复用 |
+| `interview:evaluate` | 1 小时 | 评估结果需最新判断 |
+| `interview:report` | 1 小时 | 报告生成需最新评分 |
+| `interview:voice` | 24 小时 | 语音分析结果 |
+| `career:plan` | 24 小时 | 职业规划可复用 |
+| `career:insight` | 24 小时 | 市场洞察数据 |
+| `learning:recommend` | 24 小时 | 学习资源推荐 |
+| `job:matching` | 1 小时 | 匹配度需实时准确 |
+| `job:recommend` | 24 小时 | 岗位推荐 |
+| `question:generate` | 24 小时 | 题库生成 |
+| `general` | 1 小时 | 默认 TTL（兜底） |
+
+**RAG 增强层 (SimpleRagService)：**
+
+| 特性 | 说明 |
+|------|------|
+| 嵌入模型 | **`BAAI/bge-small-zh-v1.5`** (本地模型) |
+| 运行方式 | **Python Worker 子进程** — `LocalEmbedderService` 通过 `child_process.spawn` 启动 `embed_worker.py`，模型常驻进程内存 |
+| Embedding 库 | **fastembed** (ONNX Runtime) — 无需 PyTorch，模型约 30MB |
+| 向量维度 | **512 维** (ONNX 版本输出，非官方 384 维) |
+| 存储后端 | **Redis** — 每个文档存两条：`{namespace}:{key}`(内容+向量+元数据) + `{namespace}:vec:{key}`(向量+内容+元数据) |
+| 相似度算法 | **Cosine Similarity** (全量扫描计算) |
+| 检索策略 | **Top-K** (默认 K=3) — 返回最相似的 3 条知识片段 |
+| 增强方式 | 检索到的知识作为额外上下文拼入 System Prompt，格式：`[参考 N]\n（相似度: X%）\n{content}` |
+| 命名空间 | 支持按场景隔离 — `rag:interview`(面试问答)、`rag:career`(职业规划)、`rag:resume`(简历模板) |
+| 已填充数据 | **29 条面试题目** (覆盖 Java、Python、前端、系统设计、行为、数据库、网络等类别) |
+
+**Python Worker 通信协议：**
+
+```
+Node.js (LocalEmbedderService)                 Python (embed_worker.py)
+         │                                            │
+         │  spawn( )                                   │
+         │─────────────────────────────────────────────▶│ 加载模型
+         │                                            │
+         │  ← {"ok":true,"ready":true,"model":"..."}   │ 就绪通知
+         │                                            │
+         │  {"text":"要嵌入的文本","id":"1"}\n          │
+         │─────────────────────────────────────────────▶│
+         │                                            │ 生成向量
+         │  ← {"ok":true,"embedding":[...],"id":"1"}   │
+         │                                            │
+         │  {"text":"另一段文本","id":"2"}\n            │
+         │─────────────────────────────────────────────▶│
+         │  ← {"ok":true,"embedding":[...],"id":"2"}   │
+         │  ... (复用同一进程，不清除模型)                ...
+```
+
+> **Windows 兼容性说明：** Windows 下 Python `sys.stdin` 默认使用系统编码 (CP936/GBK)。Node.js 发送的 UTF-8 中文数据会被错误解码。修复方式：`sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')` (stdout 同理)。
+
+**调用流程（`callLLM` 方法）：**
+
+```
+1. 计算 SHA256(systemPrompt + userMessage)
+2. 查缓存 → 命中直接返回
+3. (可选) RAG 增强：调用 SimpleRagService.augmentCall()
+   ├─ 查询向量化 (LocalEmbedderService → Python Worker)
+   ├─ Redis 检索 top-3 相似文档 (全量余弦相似度)
+   └─ 将结果追加到 systemPrompt
+4. 调用 LLM → 解析 JSON
+5. 写入缓存 (SETEX)
+6. 返回结果
+```
+
+> 所有接入方只需传入 `cachePrefix` 和可选的 `ragNamespace` 参数，即可自动获得缓存加速和 RAG 增强能力。
+
 ---
 
 ## 六、项目目录结构
@@ -530,6 +652,11 @@ career-copilot/
 ├── backend/                     # 后端项目 (NestJS)
 │   ├── prisma/
 │   │   └── schema.prisma        # 数据库模型
+│   ├── scripts/                 # 数据初始化 & Embedding 脚本
+│   │   ├── embed_worker.py      # Embedding Worker (fastembed/BGE)
+│   │   ├── seed-questionbank.ts # 题库填充脚本
+│   │   ├── seed-knowledge.ts    # RAG 知识库向量化脚本
+│   │   └── test-rag-e2e.ts      # RAG 端到端测试
 │   ├── src/
 │   │   ├── auth/                # 认证模块
 │   │   │   ├── auth.controller.ts
@@ -582,12 +709,16 @@ career-copilot/
 │   │   │   └── ner-python-client.ts    # Python 服务客户端
 │   │   ├── ai/                  # AI 统一入口
 │   │   │   ├── ai.module.ts
-│   │   │   ├── ai.service.ts
+│   │   │   ├── ai.service.ts         # callLLM() — 缓存优先 + RAG 增强
+│   │   │   ├── ai-cache.service.ts   # SHA256 缓存 + 场景 TTL
 │   │   │   ├── ai.controller.ts       # 5 个 AI 端点
 │   │   │   ├── llm.provider.ts       # LLM 适配器
 │   │   │   ├── dto/
 │   │   │   ├── providers/            # LLM Provider 实现
-│   │   │   └── prompts/              # 5 个 Prompt 模板
+│   │   │   ├── prompts/              # 5 个 Prompt 模板
+│   │   │   └── rag/                  # RAG 向量检索
+│   │   │       ├── simple-rag.service.ts      # Embedding + Cosine 检索
+│   │   │       └── local-embedder.service.ts  # Python Worker 进程管理
 │   │   ├── queue/               # 消息队列
 │   │   │   ├── queue.module.ts       # BullMQ 配置
 │   │   │   └── queue.service.ts      # 作业调度
@@ -770,12 +901,14 @@ career-copilot/
 - [x] 管理员后台模块
 - [x] 简历 NER 实体识别服务（Python）
 
-### 第六阶段：优化与部署（1 周） ⏳ 待测试
+### 第六阶段：优化与部署（1 周） ✅ 已实现
 
 - [x] 语音合成/识别集成
 - [x] 响应式适配
 - [x] Docker 部署
 - [x] 项目文档完善
+- [x] RAG 知识库搭建（本地 BGE 模型 + 29 条面试题向量填充）
+- [x] AI 缓存体系 (AiCacheService + SHA256)
 
 ---
 
