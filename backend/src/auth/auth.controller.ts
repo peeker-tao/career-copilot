@@ -90,8 +90,8 @@ export class AuthController {
   @HttpCode(200)
   @Throttle({ limit: 5, windowSeconds: 1 }) // 每秒最多 5 次
   @UseGuards(ThrottleGuard)
-  @ApiOperation({ summary: '重置密码', description: '使用令牌重置密码' })
+  @ApiOperation({ summary: '重置密码', description: '使用邮箱验证码重置密码' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.authService.resetPassword(dto.token, dto.newPassword);
+    return this.authService.resetPassword(dto.email, dto.code, dto.newPassword);
   }
 }

@@ -157,42 +157,38 @@ export class AuthService {
       return { message: '如果该邮箱已注册，您将收到密码重置邮件' };
     }
 
-    // 生成随机令牌
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 分钟有效
+    // 生成 6 位数字验证码
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 分钟有效
 
-    // 删除旧令牌
+    // 删除旧的验证码
     await this.prisma.passwordResetToken.deleteMany({
       where: { userId: user.id },
     });
 
-    // 保存新令牌
+    // 保存新验证码
     await this.prisma.passwordResetToken.create({
-      data: { userId: user.id, token, expiresAt },
+      data: { userId: user.id, email, token: code, expiresAt },
     });
 
     // 发送邮件
-    await this.emailService.sendPasswordResetEmail(email, token);
+    await this.emailService.sendPasswordResetEmail(email, code);
 
     return { message: '如果该邮箱已注册，您将收到密码重置邮件' };
   }
 
-  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
-    const record = await this.prisma.passwordResetToken.findUnique({
-      where: { token },
+  async resetPassword(
+    email: string,
+    code: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const record = await this.prisma.passwordResetToken.findFirst({
+      where: { email, token: code, used: false, expiresAt: { gt: new Date() } },
       include: { user: true },
     });
 
     if (!record) {
-      throw new BadRequestException('重置令牌无效');
-    }
-
-    if (record.used) {
-      throw new BadRequestException('该重置令牌已被使用');
-    }
-
-    if (new Date() > record.expiresAt) {
-      throw new BadRequestException('重置令牌已过期');
+      throw new BadRequestException('验证码无效或已过期');
     }
 
     // 更新密码
@@ -202,7 +198,7 @@ export class AuthService {
       data: { passwordHash },
     });
 
-    // 标记令牌已使用
+    // 标记验证码已使用
     await this.prisma.passwordResetToken.update({
       where: { id: record.id },
       data: { used: true },

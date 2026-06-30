@@ -1,14 +1,20 @@
-import { Controller, Get, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Res, Inject } from '@nestjs/common';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CurrentUser } from './auth/decorators/current-user.decorator';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { UseGuards } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
+import { readFileSync } from 'fs';
 
 @ApiTags('Dashboard')
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Get()
   getHello(): string {
@@ -16,9 +22,17 @@ export class AppController {
   }
 
   @Get('reset-password.html')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getResetPasswordPage(@Res() res: any) {
-    res.sendFile(join(__dirname, '..', '..', 'public', 'reset-password.html'));
+    const filePath = join(__dirname, '..', '..', 'public', 'reset-password.html');
+    let html = readFileSync(filePath, 'utf-8');
+
+    const apiUrl = this.configService.get<string>(
+      'RESET_PASSWORD_API_URL',
+      'http://localhost:3002/api/auth',
+    );
+    html = html.replace(/\{\{RESET_PASSWORD_API_URL\}\}/g, apiUrl);
+
+    res.type('text/html').send(html);
   }
 
   @ApiBearerAuth()

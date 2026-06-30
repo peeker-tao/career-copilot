@@ -76,15 +76,19 @@ model Interview {
 }
 
 model InterviewMessage {
-  id          String    @id @default(cuid())
-  interviewId String    @map("interview_id")
-  role        String
-  content     String
-  questionType String?  @map("question_type")
-  feedback    String?
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id              String    @id @default(cuid())
+  interviewId     String    @map("interview_id")
+  role            String
+  content         String
+  questionType    String?   @map("question_type")
+  referenceAnswer String?   @map("reference_answer")
+  feedback        String?
+  score           Int?
+  strengths       Json?
+  weaknesses      Json?
+  createdAt       DateTime  @default(now()) @map("created_at")
 
-  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  interview       Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
 
   @@index([interviewId, createdAt])
   @@map("interview_messages")
@@ -110,14 +114,15 @@ model CareerPlan {
 model PasswordResetToken {
   id        String    @id @default(cuid())
   userId    String    @map("user_id")
-  token     String    @unique
+  email     String    @map("email")
+  token     String    @map("token")
   expiresAt DateTime  @map("expires_at")
   used      Boolean   @default(false)
   createdAt DateTime  @default(now()) @map("created_at")
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([token])
+  @@index([email, token])
   @@index([userId])
   @@map("password_reset_tokens")
 }

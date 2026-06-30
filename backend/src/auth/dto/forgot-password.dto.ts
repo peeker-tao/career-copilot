@@ -9,9 +9,14 @@ export class ForgotPasswordDto {
 }
 
 export class ResetPasswordDto {
-  @ApiProperty({ description: '重置令牌' })
+  @ApiProperty({ example: 'user@example.com', description: '注册邮箱' })
+  @IsEmail()
   @IsNotEmpty()
-  token: string;
+  email: string;
+
+  @ApiProperty({ example: '482936', description: '邮箱验证码' })
+  @IsNotEmpty()
+  code: string;
 
   @ApiProperty({ example: 'NewP@ss123', description: '新密码' })
   @IsNotEmpty()
