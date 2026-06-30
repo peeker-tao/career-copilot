@@ -85,16 +85,10 @@ export const VOICE_DISPLAY_NAMES: Record<string, string> = {
 }
 
 /**
- * 获取可用 TTS 语音列表
- * GET /api/voice/voices-list → string[]
+ * 可用 TTS 语音键列表（目前由前端静态管理，后续如需后端动态下发再做调整）
  */
-export async function getVoiceList(): Promise<string[]> {
-  if (useMock) {
-    await delay(200)
-    return Object.keys(VOICE_DISPLAY_NAMES)
-  }
-  const result = await apiClient.get('/voice/voices-list') as ApiResponse<string[]>
-  return result.data ?? result
+export function getVoiceList(): string[] {
+  return Object.keys(VOICE_DISPLAY_NAMES)
 }
 
 /**
