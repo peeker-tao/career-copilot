@@ -208,12 +208,13 @@ const CareerPlanDetailPage = () => {
           setDeleting(true)
           try {
             await deleteCareerPlan(id)
+            setShowDeleteConfirm(false)
+            navigate('/career-plan')
           } catch (err) {
             toast.error('删除规划失败: ' + (err as Error).message)
+            setDeleting(false)
+            setShowDeleteConfirm(false)
           }
-          setDeleting(false)
-          setShowDeleteConfirm(false)
-          navigate('/career-plan')
         }}
         loading={deleting}
         onCancel={() => setShowDeleteConfirm(false)}

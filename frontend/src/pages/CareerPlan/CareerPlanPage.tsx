@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { RightOutlined, ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '../../components/common'
 import { PlanCard, GeneratePlanForm } from '../../components/career-plan'
-import { getCareerPlans } from '@/api/career'
+import { getCareerPlans, deleteCareerPlan } from '@/api/career'
 import { toast } from '@/store/useToastStore'
 import './CareerPlan.css'
 
@@ -37,8 +37,13 @@ const CareerPlanPage = () => {
     return () => { mounted = false }
   }, [])
 
-  const handleDelete = (id: string) => {
-    setPlans((prev) => prev.filter((p) => p.id !== id))
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteCareerPlan(id)
+      setPlans((prev) => prev.filter((p) => p.id !== id))
+    } catch (err) {
+      toast.error('删除规划失败: ' + (err as Error).message)
+    }
     setDeleteTarget(null)
   }
 
