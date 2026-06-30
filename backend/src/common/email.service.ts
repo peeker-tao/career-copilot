@@ -40,31 +40,25 @@ export class EmailService {
     }
   }
 
-  async sendPasswordResetEmail(to: string, token: string): Promise<void> {
+  async sendPasswordResetEmail(to: string, code: string): Promise<void> {
     // 确保 transporter 已就绪
     await this.ready;
     if (!this.transporter) {
       throw new Error('邮件服务未就绪');
     }
-    const resetUrl = `${this.configService.get<string>('FRONTEND_URL', 'http://localhost:3002')}/reset-password.html?token=${token}`;
 
     const info = await this.transporter.sendMail({
       from: `"Career Copilot" <${this.configService.get<string>('SMTP_FROM', 'noreply@career-copilot.com')}>`,
       to,
-      subject: '重置您的密码 - Career Copilot',
+      subject: '密码重置验证码 - Career Copilot',
       html: `
         <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;">
           <h2 style="color:#4F46E5;">Career Copilot</h2>
-          <p>您收到了重置密码的请求。请点击下方链接重置密码：</p>
-          <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#4F46E5;color:white;text-decoration:none;border-radius:6px;margin:16px 0;">
-            重置密码
-          </a>
-          <p style="color:#6B7280;font-size:14px;">此链接有效期为 30 分钟。如果您没有请求重置密码，请忽略此邮件。</p>
-          <hr style="border:none;border-top:1px solid #E5E7EB;margin:20px 0;" />
-          <p style="color:#6B7280;font-size:12px;">
-            ⚠️ 如果上方按钮无法点击（QQ邮箱可能拦截外部链接），请复制下方链接并在浏览器中打开：<br />
-            <span style="color:#4F46E5;word-break:break-all;">${resetUrl}</span>
-          </p>
+          <p>您收到了密码重置的请求。请使用以下验证码重置密码：</p>
+          <div style="text-align:center;margin:24px 0;padding:16px;background:#F3F4F6;border-radius:8px;letter-spacing:8px;font-size:32px;font-weight:bold;color:#4F46E5;">
+            ${code}
+          </div>
+          <p style="color:#6B7280;font-size:14px;">此验证码有效期为 10 分钟。如果您没有请求重置密码，请忽略此邮件。</p>
         </div>
       `,
     });
@@ -77,7 +71,7 @@ export class EmailService {
       }
     }
 
-    this.logger.log(`密码重置邮件已发送至 ${to}`);
-    this.logger.log(`🔗 重置链接: ${resetUrl}`);
+    this.logger.log(`密码重置验证码已发送至 ${to}`);
+    this.logger.log(`🔑 验证码: ${code}`);
   }
 }

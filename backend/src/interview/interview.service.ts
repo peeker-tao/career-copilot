@@ -10,6 +10,9 @@ import { AiInterviewService, InterviewContext } from './ai-interview.service';
 import { InterviewReportService } from './interview-report.service';
 import { QueueService } from '../queue/queue.service';
 import { normalizeNextAction } from './interview.utils';
+import { readdir, stat } from 'fs/promises';
+import { join, extname } from 'path';
+import { existsSync } from 'fs';
 
 @Injectable()
 export class InterviewService {
@@ -72,13 +75,14 @@ export class InterviewService {
       const firstQuestion =
         await this.aiInterviewService.generateFirstQuestion(context);
 
-      // 4. 保存面试官的第一道题
+      // 4. 保存面试官的第一道题（含标准答案）
       await this.prisma.interviewMessage.create({
         data: {
           interviewId: interview.id,
           role: 'assistant',
           content: firstQuestion.content,
           questionType: firstQuestion.questionType,
+          referenceAnswer: firstQuestion.referenceAnswer,
         },
       });
 
@@ -163,7 +167,21 @@ export class InterviewService {
 
   async getMessages(id: string, userId: string) {
     const interview = await this.findOne(id, userId);
-    return interview.messages;
+    return {
+      interview: {
+        id: interview.id,
+        targetPosition: interview.targetPosition,
+        difficulty: interview.difficulty,
+        type: interview.type,
+        status: interview.status,
+        score: interview.score,
+        questionCount: interview.questionCount,
+        startedAt: interview.startedAt,
+        completedAt: interview.completedAt,
+        overallFeedback: interview.overallFeedback,
+      },
+      messages: interview.messages,
+    };
   }
 
   async submitAnswer(id: string, userId: string, content: string) {
@@ -225,6 +243,24 @@ export class InterviewService {
       };
     }
 
+    // 4b. 更新用户回答消息，附上 AI 评价（score/feedback/strengths/weaknesses）
+    // 获取刚保存的用户回答消息（最新一条 role=user 的消息）
+    const userMessage = await this.prisma.interviewMessage.findFirst({
+      where: { interviewId: id, role: 'user' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (userMessage) {
+      await this.prisma.interviewMessage.update({
+        where: { id: userMessage.id },
+        data: {
+          feedback: evaluation.feedback,
+          score: evaluation.score,
+          strengths: evaluation.strengths ?? undefined,
+          weaknesses: evaluation.weaknesses ?? undefined,
+        },
+      });
+    }
+
     // 5. 根据 nextAction 处理后续（使用共享归一化函数）
     const action = normalizeNextAction(evaluation.nextAction || '');
 
@@ -259,6 +295,7 @@ export class InterviewService {
           role: 'assistant',
           content: qContent,
           questionType: qType,
+          referenceAnswer: evaluation.nextQuestionReferenceAnswer,
         },
       });
       nextQuestion = {
@@ -403,6 +440,54 @@ export class InterviewService {
         targetPosition: interview.targetPosition,
         status: interview.status,
       },
+    };
+  }
+
+  /**
+   * 获取语音文件列表
+   */
+  async findVoiceList(options: { page?: number; limit?: number; baseUrl?: string }) {
+    const { page = 1, limit = 10, baseUrl = '' } = options;
+    const audioDir = join(process.cwd(), 'uploads', 'audio');
+
+    // 确保目录存在
+    if (!existsSync(audioDir)) {
+      return { items: [], total: 0, page, limit, totalPages: 0 };
+    }
+
+    const files = await readdir(audioDir);
+    const audioExts = ['.mp3', '.wav', '.ogg', '.webm', '.mp4', '.m4a', '.flac'];
+    const audioFiles = files.filter((f) => audioExts.includes(extname(f).toLowerCase()));
+
+    // 获取文件详细信息
+    const items = await Promise.all(
+      audioFiles.map(async (name) => {
+        const filePath = join(audioDir, name);
+        const fileStat = await stat(filePath);
+        return {
+          name,
+          size: fileStat.size,
+          createdAt: fileStat.birthtime,
+          modifiedAt: fileStat.mtime,
+          url: `${baseUrl}/uploads/audio/${name}`,
+        };
+      }),
+    );
+
+    // 按创建时间降序排列
+    items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    const total = items.length;
+    const totalPages = Math.ceil(total / limit);
+    const skip = (page - 1) * limit;
+    const paginatedItems = items.slice(skip, skip + limit);
+
+    return {
+      items: paginatedItems,
+      total,
+      page,
+      limit,
+      totalPages,
     };
   }
 }

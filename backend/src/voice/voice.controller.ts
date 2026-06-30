@@ -2,11 +2,13 @@ import {
   Controller,
   Post,
   Body,
+  Req,
   UseGuards,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -86,7 +88,10 @@ export class VoiceController {
     summary: '语音合成 (TTS)',
     description: '将文字合成为语音，返回音频文件 URL（使用 OpenAI TTS 模型）',
   })
-  async tts(@Body() dto: TtsDto) {
-    return this.voiceService.textToSpeech(dto.text, dto.voice);
+  async tts(@Body() dto: TtsDto, @Req() request: Request) {
+    const protocol = request.headers['x-forwarded-proto'] || request.protocol;
+    const host = request.headers['x-forwarded-host'] || request.headers.host;
+    const baseUrl = `${protocol}://${host}`;
+    return this.voiceService.textToSpeech(dto.text, dto.voice, baseUrl);
   }
 }

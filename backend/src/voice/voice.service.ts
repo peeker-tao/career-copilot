@@ -352,7 +352,8 @@ export class VoiceService {
   async textToSpeech(
     text: string,
     voice: string = 'longanyang',
-  ): Promise<{ url: string; path: string }> {
+    baseUrl: string = '',
+  ): Promise<{ url: string }> {
     if (!text || text.trim().length === 0) {
       throw new BadRequestException('文本内容不能为空');
     }
@@ -361,10 +362,10 @@ export class VoiceService {
     }
 
     if (this.useDashScope && this.dashScopeApiKey) {
-      return this.dashScopeTts(text, voice);
+      return this.dashScopeTts(text, voice, baseUrl);
     }
     if (this.openai) {
-      return this.openaiTts(text, voice);
+      return this.openaiTts(text, voice, baseUrl);
     }
     throw new BadRequestException('语音服务未配置（缺少 API Key）');
   }
@@ -377,7 +378,7 @@ export class VoiceService {
    *   body: { model, input: { text, voice, format, sample_rate } }
    *   response: { output: { audio: { url, id, expires_at } } }
    */
-  private async dashScopeTts(text: string, voice: string): Promise<{ url: string; path: string }> {
+  private async dashScopeTts(text: string, voice: string, baseUrl: string = ''): Promise<{ url: string }> {
     const dashScopeVoice = DASHSCOPE_VOICE_MAP[voice] || 'longanyang';
 
     // 构造 Workspace 专属端点
@@ -409,7 +410,7 @@ export class VoiceService {
         },
       );
 
-      // 2) 从响应中提取音频 URL
+      // 2) 从响应中提取音频 URL（DashScope OSS 直链，可直接下载）
       const audioUrl: string | undefined =
         synthesisResponse.data?.output?.audio?.url;
 
@@ -418,22 +419,8 @@ export class VoiceService {
         throw new Error('合成响应中未找到音频 URL');
       }
 
-      // 3) 下载音频文件
-      const audioResponse = await axios.get(audioUrl, {
-        responseType: 'arraybuffer',
-        headers: {
-          Authorization: `Bearer ${this.dashScopeApiKey}`,
-        },
-      });
-
-      const buffer = Buffer.from(audioResponse.data);
-      const filename = `${randomUUID()}.wav`;
-      const filePath = join(this.audioDir, filename);
-      await writeFile(filePath, buffer);
-
-      const url = `/uploads/audio/${filename}`;
-      this.logger.log(`✅ DashScope TTS 完成: "${text.slice(0, 50)}..." → ${filename} (来源: ${audioUrl})`);
-      return { url, path: filePath };
+      this.logger.log(`✅ DashScope TTS 完成: "${text.slice(0, 50)}..." → OSS URL`);
+      return { url: audioUrl };
     } catch (err) {
       // 尝试解析错误响应体
       if (axios.isAxiosError(err) && err.response?.data) {
@@ -456,7 +443,7 @@ export class VoiceService {
   /**
    * 通过 OpenAI TTS 合成语音（兜底）
    */
-  private async openaiTts(text: string, voice: string): Promise<{ url: string; path: string }> {
+  private async openaiTts(text: string, voice: string, baseUrl: string = ''): Promise<{ url: string }> {
     const validVoices = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
     const selectedVoice = validVoices.includes(voice) ? voice : 'alloy';
 
@@ -473,9 +460,9 @@ export class VoiceService {
       const filePath = join(this.audioDir, filename);
       await writeFile(filePath, buffer);
 
-      const url = `/uploads/audio/${filename}`;
+      const url = `${baseUrl}/uploads/audio/${filename}`;
       this.logger.log(`✅ OpenAI TTS 完成: "${text.slice(0, 50)}..." → ${filename}`);
-      return { url, path: filePath };
+      return { url };
     } catch (err) {
       this.logger.error(`OpenAI TTS 失败: ${(err as Error).message}`);
       throw new InternalServerErrorException('语音合成失败，请稍后重试');

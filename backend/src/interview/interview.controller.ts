@@ -5,10 +5,12 @@ import {
   Param,
   Body,
   Query,
+  Req,
   UseGuards,
   Delete,
   HttpCode,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -70,6 +72,35 @@ export class InterviewController {
     return this.interviewService.findAll(userId, { page, limit, status });
   }
 
+  @Get('voice-list')
+  @ApiOperation({
+    summary: '语音文件列表',
+    description: '获取上传的音频文件列表（用于 OCR 语音识别记录）',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: '页码（默认 1）',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: '每页条数（默认 10）',
+  })
+  findVoiceList(
+    @Req() request: Request,
+    @CurrentUser('id') userId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    const protocol = request.headers['x-forwarded-proto'] || request.protocol;
+    const host = request.headers['x-forwarded-host'] || request.headers.host;
+    const baseUrl = `${protocol}://${host}`;
+    return this.interviewService.findVoiceList({ page, limit, baseUrl });
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: '面试详情',
@@ -80,7 +111,10 @@ export class InterviewController {
   }
 
   @Get(':id/messages')
-  @ApiOperation({ summary: '面试对话', description: '获取面试的对话消息列表' })
+  @ApiOperation({
+    summary: '面试对话',
+    description: '获取面试的对话消息列表，包含每条消息的 AI 评价（评分/反馈/优势/不足）和标准答案',
+  })
   getMessages(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.interviewService.getMessages(id, userId);
   }
