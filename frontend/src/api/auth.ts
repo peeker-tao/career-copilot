@@ -117,7 +117,7 @@ export async function resetPassword(token: string, password: string): Promise<Ap
     await delay(600)
     return { code: 200, message: '密码重置成功', data: null }
   }
-  return apiClient.post('/auth/reset-password', { token, password }, { __skipAuthRedirect: true })
+  return apiClient.post('/auth/reset-password', { token, newPassword: password }, { __skipAuthRedirect: true })
 }
 
 /** 更新模型配置 */

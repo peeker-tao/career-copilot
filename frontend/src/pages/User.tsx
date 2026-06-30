@@ -11,6 +11,7 @@ import { AvatarUpload, ProfileStats, ProfileForm, AccountSecurity } from '@/comp
 import type { UserData } from '@/components/user'
 import './User.css'
 import { useAuthStore } from '@/store/useAuthStore'
+import { toast } from '@/store/useToastStore'
 
 const User: React.FC = () => {
   const navigate = useNavigate()
@@ -38,8 +39,19 @@ const User: React.FC = () => {
     fetchStats()
   }, [fetchProfile, fetchStats])
 
-  const handleAvatarUpload = (_url: string) => {
-    // Avatar upload API 暂未实现, TODO
+  const handleAvatarUpload = async (file: File) => {
+    try {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+      })
+      await updateProfile({ avatar: dataUrl })
+      toast.success('头像更新成功')
+    } catch {
+      toast.error('头像上传失败，请重试')
+    }
   }
 
   const handleSave = async (form: UserData) => {

@@ -12,15 +12,17 @@ export async function getResources(params?: {
   difficulty?: string
   type?: string
 }): Promise<ApiResponse<PaginationResult<LearningResource>>> {
-  const response: any = await apiClient.get('/learning-resources', { params })
+  const { keyword, ...rest } = params || {}
+  const queryParams = keyword ? { ...rest, search: keyword } : rest
+  const response: any = await apiClient.get('/learning-resources', { params: queryParams })
   return {
     code: response.code,
     message: response.message,
     data: {
-      list: response.data?.list ?? response.data ?? [],
-      page: response.data?.pagination?.page ?? 1,
-      pageSize: response.data?.pagination?.pageSize ?? 20,
-      total: response.data?.pagination?.total ?? 0,
+      list: response.data?.items ?? response.data?.list ?? [],
+      page: response.data?.pagination?.page ?? response.data?.page ?? 1,
+      pageSize: response.data?.pagination?.pageSize ?? response.data?.pagination?.limit ?? response.data?.limit ?? 20,
+      total: response.data?.pagination?.total ?? response.data?.total ?? 0,
     },
   }
 }
@@ -28,7 +30,12 @@ export async function getResources(params?: {
 /** 获取所有资源分类 */
 export async function getCategories(): Promise<ApiResponse<ResourceCategory[]>> {
   const response: any = await apiClient.get('/learning-resources/categories')
-  return { code: response.code, message: response.message, data: response.data ?? [] }
+  const cats = Array.isArray(response.data) ? response.data : []
+  return {
+    code: response.code,
+    message: response.message,
+    data: cats.map((c: any) => (typeof c === 'string' ? { name: c, count: 0 } : c)),
+  }
 }
 
 /** 获取单个资源详情 */
@@ -39,5 +46,9 @@ export async function getResourceById(id: string): Promise<ApiResponse<LearningR
 /** AI 个性化资源推荐 */
 export async function getRecommendations(data: ResourceRecommendationRequest): Promise<ApiResponse<RecommendedResource[]>> {
   const response: any = await apiClient.post('/learning-resources/recommendations', data)
-  return { code: response.code, message: response.message, data: response.data ?? [] }
+  return {
+    code: response.code,
+    message: response.message,
+    data: response.data?.recommendations ?? response.data ?? [],
+  }
 }
