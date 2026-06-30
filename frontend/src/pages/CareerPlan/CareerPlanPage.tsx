@@ -1,9 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { RightOutlined, ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons'
+import { RightOutlined, ArrowLeftOutlined, SearchOutlined, ThunderboltOutlined, StarOutlined, EnvironmentOutlined } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '../../components/common'
 import { PlanCard, GeneratePlanForm } from '../../components/career-plan'
 import { getCareerPlans, deleteCareerPlan } from '@/api/career'
+import * as jobMatchingApi from '@/api/job-matching'
+import type { JobRecommendation } from '@/types/job-matching'
 import { toast } from '@/store/useToastStore'
 import './CareerPlan.css'
 
@@ -16,6 +18,9 @@ const CareerPlanPage = () => {
   const [page, setPage] = useState(1)
   const [keyword, setKeyword] = useState('')
 
+  const [recommendations, setRecommendations] = useState<JobRecommendation[]>([])
+  const [recLoading, setRecLoading] = useState(false)
+
   useEffect(() => {
     let mounted = true
     setTimeout(async () => {
@@ -25,7 +30,6 @@ const CareerPlanPage = () => {
           if (response.code !== 200 && response.code !== 201) {
             throw new Error(response.message || 'Failed to fetch career plans')
           }
-          console.log('Fetched career plans:', response)
           setPlans(response.data)
         } catch (error) {
           toast.error('获取职业规划列表失败: ' + (error as Error).message)
@@ -36,6 +40,24 @@ const CareerPlanPage = () => {
     }, 400)
     return () => { mounted = false }
   }, [])
+
+  const loadRecommendations = useCallback(async () => {
+    setRecLoading(true)
+    try {
+      const res = await jobMatchingApi.getRecommendations(20)
+      setRecommendations(res.data ?? [])
+    } catch { setRecommendations([]) }
+    finally { setRecLoading(false) }
+  }, [])
+
+  useEffect(() => { loadRecommendations() }, [loadRecommendations])
+
+  const handleSaveRecommendation = async (id: string) => {
+    try {
+      await jobMatchingApi.updateMatchStatus(id, 'saved')
+      toast.success('已收藏')
+    } catch { toast.error('收藏失败') }
+  }
 
   const handleDelete = async (id: string) => {
     try {
@@ -173,6 +195,46 @@ const CareerPlanPage = () => {
           <GeneratePlanForm onGenerated={handleGenerated} />
         </div>
       </div>
+
+      {recLoading ? (
+        <div style={{ marginTop: 28, textAlign: 'center', padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>加载推荐岗位中...</div>
+      ) : recommendations.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <h2 className="section-title" style={{ marginBottom: 16 }}>
+            <ThunderboltOutlined style={{ marginRight: 6 }} />为你推荐岗位
+          </h2>
+          <div className="jm-recommend-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+            {recommendations.slice(0, 20).map((item) => (
+              <div key={item.id} className="jm-rec-card" style={{ cursor: 'default' }}>
+                <div className="jm-rec-top">
+                  <div>
+                    <h3 className="jm-rec-position">{item.position}</h3>
+                    <p className="jm-rec-company">
+                      {item.company}
+                      {item.location && <span className="jm-rec-company-location"><EnvironmentOutlined style={{ marginRight: 2 }} />{item.location}</span>}
+                    </p>
+                  </div>
+                  <div className={`jm-rec-score ${item.matchScore >= 80 ? 'high' : item.matchScore >= 60 ? 'medium' : 'low'}`}>
+                    {Math.round(item.matchScore)}
+                  </div>
+                </div>
+                {item.reason && <p className="jm-rec-reason">{item.reason}</p>}
+                {item.skills?.length > 0 && (
+                  <div className="jm-rec-skills" style={{ marginBottom: 10 }}>
+                    {item.skills.slice(0, 4).map((s) => <span key={s} className="jm-skill-tag">{s}</span>)}
+                  </div>
+                )}
+                <button className="jm-btn-save" onClick={() => handleSaveRecommendation(item.id)}>
+                  <StarOutlined /> 收藏
+                </button>
+              </div>
+            ))}
+          </div>
+          <div style={{ textAlign: 'right', marginTop: 12 }}>
+            <Link to="/job-matching" style={{ fontSize: 13, color: 'var(--accent)' }}>查看全部岗位推荐 →</Link>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         open={!!deleteTarget}
