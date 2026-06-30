@@ -45,7 +45,11 @@ export async function getResourceById(id: string): Promise<ApiResponse<LearningR
 
 /** AI 个性化资源推荐 */
 export async function getRecommendations(data: ResourceRecommendationRequest): Promise<ApiResponse<RecommendedResource[]>> {
-  const response: any = await apiClient.post('/learning-resources/recommendations', data)
+  const response: any = await apiClient.post('/learning-resources/recommendations', {
+    gapSkills: data.skillGaps,
+    targetPosition: data.targetPosition,
+    count: data.limit ?? 5,
+  })
   return {
     code: response.code,
     message: response.message,

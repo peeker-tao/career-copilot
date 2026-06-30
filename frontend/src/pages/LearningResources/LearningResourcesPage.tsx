@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   BookOutlined,
   PlayCircleOutlined,
@@ -14,6 +15,7 @@ import {
 } from '@ant-design/icons'
 import type { LearningResource, ResourceCategory, RecommendedResource, ResourceType } from '@/types/learning-resources'
 import * as resourcesApi from '@/api/learning-resources'
+import { toast } from '@/store/useToastStore'
 import Loading from '@/components/common/Loading'
 import EmptyState from '@/components/common/EmptyState'
 import './LearningResources.css'
@@ -33,6 +35,9 @@ const TYPE_LABELS: Record<ResourceType, string> = {
 }
 
 export default function LearningResourcesPage() {
+  const [searchParams] = useSearchParams()
+  const searchQuery = searchParams.get('search') || ''
+
   // 列表
   const [resources, setResources] = useState<LearningResource[]>([])
   const [loading, setLoading] = useState(false)
@@ -42,7 +47,7 @@ export default function LearningResourcesPage() {
 
   // 筛选
   const [categories, setCategories] = useState<ResourceCategory[]>([])
-  const [keyword, setKeyword] = useState('')
+  const [keyword, setKeyword] = useState(searchQuery)
   const [category, setCategory] = useState<string | undefined>()
   const [difficulty, setDifficulty] = useState<string | undefined>()
   const [type, setType] = useState<string | undefined>()
@@ -79,6 +84,11 @@ export default function LearningResourcesPage() {
   }, [page, keyword, category, difficulty, type])
 
   useEffect(() => {
+    const q = searchParams.get('search') || ''
+    if (q !== keyword) setKeyword(q)
+  }, [searchParams])
+
+  useEffect(() => {
     loadCategories()
   }, [loadCategories])
 
@@ -95,10 +105,14 @@ export default function LearningResourcesPage() {
         targetPosition: targetPosition.trim(),
         limit: 5,
       })
-      setRecommendations(res.data ?? [])
+      const items = res.data ?? []
+      setRecommendations(items)
       setShowSkillGapModal(false)
-    } catch {
-      // 静默失败
+      if (items.length === 0) {
+        toast.info('暂无匹配资源，请尝试调整技能缺口')
+      }
+    } catch (e) {
+      toast.error('获取推荐失败: ' + ((e as Error).message || '请稍后重试'))
     } finally {
       setRecLoading(false)
     }
