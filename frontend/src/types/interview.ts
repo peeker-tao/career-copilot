@@ -7,6 +7,9 @@ export type InterviewStatus = 'in_progress' | 'completed' | 'interrupted' | 'pen
 /** 消息角色 */
 export type MessageRole = 'ai' | 'user' | 'assistant'
 
+/** 消息类型 */
+export type MessageType = 'text' | 'voice'
+
 /** 面试会话 */
 export interface Interview {
   id: string
@@ -31,6 +34,10 @@ export interface InterviewMessage {
   timestamp: string
   rating?: number | null
   questionType?: string
+  /** 消息类型：text=文本，voice=语音 */
+  type?: MessageType
+  /** 语音消息的音频 URL（用于播放） */
+  audioUrl?: string
 }
 
 /** 创建面试请求 */

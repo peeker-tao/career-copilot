@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeftOutlined,
@@ -6,6 +6,7 @@ import {
   ExclamationCircleOutlined,
   FileTextOutlined,
 } from '@ant-design/icons'
+import type { MessageType } from '@/types/interview'
 import { EmptyState } from '@/components/common'
 import { ChatMessages, InputArea, InterviewTimer, InterviewerAvatar } from '@/components/interview'
 import { useInterviewStore } from '@/store/useInterviewStore'
@@ -122,15 +123,21 @@ export default function InterviewRoomPage() {
     }
   }
 
-  const handleSend = useCallback((content: string) => {
+  const handleSend = useCallback((content: string, type?: MessageType) => {
     if (id && !isNew) {
-      sendMessage(id, content)
+      sendMessage(id, content, type || 'text')
       // WebSocket 模式下才真正发出
       if (wsEnabled) {
         wsSendAnswer(content)
       }
     }
   }, [id, isNew, sendMessage, wsEnabled, wsSendAnswer])
+
+  // 最后一条 AI 消息内容，用于 TTS 朗读
+  const lastAIContent = useMemo(() => {
+    const aiMsgs = messages.filter((m) => m.role === 'ai')
+    return aiMsgs.length > 0 ? aiMsgs[aiMsgs.length - 1].content : ''
+  }, [messages])
 
   const handleEnd = useCallback(async () => {
     const confirmed = window.confirm('确定要结束当前面试吗？结束后将自动生成面试报告。')
@@ -322,6 +329,7 @@ export default function InterviewRoomPage() {
         isFinished={isFinished}
         interviewId={id}
         onSend={handleSend}
+        lastAIContent={lastAIContent}
         onEnd={handleEnd}
       />
     </div>

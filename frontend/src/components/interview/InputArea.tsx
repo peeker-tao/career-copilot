@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { SendOutlined, StopOutlined, CheckCircleOutlined, LoadingOutlined, AudioOutlined, AudioMutedOutlined, SoundOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
+import type { MessageType } from '@/types/interview'
 import { useVoiceStore } from '@/store/useVoiceStore'
 import { useMediaRecorder } from '@/hooks/useMediaRecorder'
 import { toast } from '@/store/useToastStore'
@@ -9,11 +10,14 @@ export interface InputAreaProps {
   disabled?: boolean
   isFinished?: boolean
   interviewId?: string
-  onSend: (text: string) => void
+  /** 发送消息，type 默认为 'text'，语音识别后传 'voice' */
+  onSend: (text: string, type?: MessageType) => void
   onEnd: () => void
+  /** 最后一条 AI 消息内容（用于 TTS 朗读） */
+  lastAIContent?: string
 }
 
-export default function InputArea({ disabled, isFinished, interviewId, onSend, onEnd }: InputAreaProps) {
+export default function InputArea({ disabled, isFinished, interviewId, onSend, onEnd, lastAIContent }: InputAreaProps) {
   const [text, setText] = useState('')
   const [recordingTime, setRecordingTime] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -69,7 +73,7 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
     if (recognizedText && settings.autoSend) {
       const trimmed = recognizedText.trim()
       if (trimmed) {
-        onSend(trimmed)
+        onSend(trimmed, 'voice')
       }
       resetRecording()
     }
@@ -106,12 +110,13 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
 
   // TTS 朗读最后一条 AI 消息
   const handleSpeakLast = useCallback(() => {
+    if (!lastAIContent) return
     if (isSpeaking) {
       stopSpeaking()
     } else {
-      // 由父组件传入朗读内容会更精确，这里只是框架预留
+      speakText(lastAIContent)
     }
-  }, [isSpeaking, stopSpeaking])
+  }, [lastAIContent, isSpeaking, speakText, stopSpeaking])
 
   // 取消已识别的文本（由 useEffect 触发发送前可手动取消）
   const handleCancelRecognition = useCallback(() => {
@@ -177,6 +182,18 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
           )}
         </button>
 
+        {/* TTS 朗读按钮 */}
+        {lastAIContent && (
+          <button
+            className={`btn-voice ${isSpeaking ? 'speaking' : ''}`}
+            onClick={handleSpeakLast}
+            disabled={disabled}
+            title={isSpeaking ? '停止朗读' : '朗读 AI 回复'}
+          >
+            {isSpeaking ? <LoadingOutlined /> : <SoundOutlined />}
+          </button>
+        )}
+
         {/* 语音开关 */}
         {/* <button
           className={`btn-voice-toggle ${voiceEnabled ? 'active' : ''}`}
@@ -211,7 +228,7 @@ export default function InputArea({ disabled, isFinished, interviewId, onSend, o
       {recognizedText && !settings.autoSend && (
         <div className="voice-status recognized">
           <span>识别: {recognizedText}</span>
-          <button className="voice-status-btn" onClick={() => { onSend(recognizedText); resetRecording() }}>
+          <button className="voice-status-btn" onClick={() => { onSend(recognizedText, 'voice'); resetRecording() }}>
             <SendOutlined /> 发送
           </button>
           <button className="voice-status-btn cancel" onClick={handleCancelRecognition}>

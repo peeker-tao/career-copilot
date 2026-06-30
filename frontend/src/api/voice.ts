@@ -1,17 +1,12 @@
 /**
- * 语音服务 SDK — 框架版本
+ * 语音服务 SDK — ASR / TTS
  *
- * 当前实现：
- *   VITE_USE_MOCK=true  → 调用 mock 数据模拟识别/合成
- *   VITE_USE_MOCK=false → 抛出 Error（待接入真实语音服务后实现）
- *
- * 接入说明（以 Azure Speech Services 为例）：
- *   1. 安装 @microsoft/cognitiveservices-speech-sdk
- *   2. 在 speechToText() 中用 SpeechSDK.AudioConfig.fromStreamInput() 处理 audioBlob
- *   3. 在 textToSpeech() 中用 SpeechSDK.SpeechSynthesizer 生成音频流
- *   4. 删除本文件顶部的 mock 分支，改为真实 SDK 调用
+ * API 端点：
+ *   POST /api/voice/asr  — 语音识别，接受 FormData (audio file)，返回 { text }
+ *   POST /api/voice/tts  — 语音合成，接受 { text, voice }，返回 audio blob
  */
 
+import apiClient from './client'
 import type { ApiResponse } from '@/types/api'
 import type { SpeechToTextResult, TextToSpeechResult } from '@/types/voice'
 import { MOCK_SPEECH_TO_TEXT, MOCK_TEXT_TO_SPEECH } from '@/mock/voice'
@@ -19,9 +14,12 @@ import { MOCK_SPEECH_TO_TEXT, MOCK_TEXT_TO_SPEECH } from '@/mock/voice'
 const useMock = import.meta.env.VITE_USE_MOCK === 'true'
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+/** 默认 TTS 音色 */
+const DEFAULT_VOICE = 'alloy'
+
 /**
  * 语音识别：将音频 Blob 转为文字
- * @param audioBlob 来自 MediaRecorder 的录音数据（推荐 WebM/Opus 或 WAV）
+ * POST /api/voice/asr，FormData 携带音频文件
  */
 export async function speechToText(audioBlob: Blob): Promise<ApiResponse<SpeechToTextResult>> {
   if (useMock) {
@@ -30,23 +28,44 @@ export async function speechToText(audioBlob: Blob): Promise<ApiResponse<SpeechT
     return { code: 200, message: 'success', data: result }
   }
 
-  // TODO: 接入真实语音识别服务
-  throw new Error('语音识别服务未实现 — 请接入 Azure Speech Services 或等替代方案后实现')
+  const formData = new FormData()
+  formData.append('file', audioBlob, 'recording.webm')
+
+  const response: ApiResponse<SpeechToTextResult> = await apiClient.post('/voice/asr', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response
 }
 
 /**
- * 语音合成：将文字转为音频 URL
- * @param text 需要朗读的文字
+ * 语音合成：将文字转为可播放的 Blob URL
+ * POST /api/voice/tts，返回 audio blob → 前端创建 Blob URL
  */
-export async function textToSpeech(text: string): Promise<ApiResponse<TextToSpeechResult>> {
+export async function textToSpeech(
+  text: string,
+  voice: string = DEFAULT_VOICE,
+): Promise<ApiResponse<TextToSpeechResult>> {
   if (useMock) {
     const result = await MOCK_TEXT_TO_SPEECH(text)
     await delay(300)
     return { code: 200, message: 'success', data: result }
   }
 
-  // TODO: 接入真实 TTS 服务
-  throw new Error('语音合成服务未实现 — 请接入 Azure Speech Services 或等替代方案后实现')
+  const response = await apiClient.post(
+    '/voice/tts',
+    { text, voice },
+    { responseType: 'blob' },
+  )
+
+  // axios 拦截器对 blob 类型不会自动解包，response 就是 blob
+  const audioBlob = response as unknown as Blob
+  const audioUrl = URL.createObjectURL(audioBlob)
+
+  return {
+    code: 201,
+    message: 'success',
+    data: { audioUrl },
+  }
 }
 
 /**

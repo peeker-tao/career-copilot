@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Interview, InterviewMessage, InterviewReport } from '@/types/interview'
+import type { Interview, InterviewMessage, InterviewReport, MessageType } from '@/types/interview'
 import type { SubmitAnswerResult } from '@/types/interview'
 import type { InterviewStats } from '@/components/interview/HistoryStats'
 import * as interviewApi from '@/api/interviews'
@@ -34,7 +34,7 @@ interface InterviewState {
   fetchInterview: (id: string) => Promise<void>
   startInterview: (position: string, difficulty: string, resumeId?: string) => Promise<string | null>
   loadMessages: (id: string) => Promise<void>
-  sendMessage: (interviewId: string, content: string) => Promise<void>
+  sendMessage: (interviewId: string, content: string, type?: MessageType) => Promise<void>
   finishInterview: (interviewId: string) => Promise<void>
   fetchReport: (interviewId: string) => Promise<void>
   deleteInterview: (id: string) => Promise<void>
@@ -150,13 +150,14 @@ export const useInterviewStore = create<InterviewState>((set) => ({
     }
   },
 
-  sendMessage: async (interviewId, content) => {
+  sendMessage: async (interviewId, content, type) => {
     const userMsg: InterviewMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content,
       timestamp: new Date().toISOString(),
       rating: null,
+      type: type || 'text',
     }
 
     set((state) => ({

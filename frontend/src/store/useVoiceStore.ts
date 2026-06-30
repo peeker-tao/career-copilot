@@ -85,7 +85,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
     if (!settings.outputEnabled) return
     set({ isSpeaking: true })
     try {
-      const res = await textToSpeech(text)
+      const res = await textToSpeech(text, settings.voice)
       // 停止上一个播放
       if (currentAudio) {
         currentAudio.pause()
