@@ -325,7 +325,7 @@ export class AiService {
       "duration": "建议时长",
       "focus": "学习重点",
       "topics": [
-        { "name": "学习主题", "priority": "high" | "medium" | "low", "resources": ["推荐学习资料"] }
+        { "name": "学习主题", "priority": "high" | "medium" | "low", "resources": [{ "name": "推荐资源名称", "url": "资源链接（使用知名平台真实链接）" }] }
       ]
     }
   ],

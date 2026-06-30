@@ -87,14 +87,29 @@ export class CareerPlanner {
         estimatedWeeks: this.parseWeeks(phase.duration as string | undefined),
         resources: Array.isArray(phase.topics)
           ? (phase.topics as Array<Record<string, unknown>>).flatMap((t) => {
-              const resources = t.resources as string[] | undefined;
-              return resources
-                ? resources.map((r) => ({
-                    name: r,
-                    type: 'course' as const,
-                    description: `推荐学习：${r}`,
-                  }))
-                : [];
+              const resources = t.resources as
+                | string[]
+                | Array<Record<string, unknown>>
+                | undefined;
+              if (!resources || !Array.isArray(resources)) return [];
+              return resources.map((r) => {
+                // 支持对象格式: { name, url, type, description }
+                if (typeof r === 'object' && r !== null) {
+                  const obj = r as Record<string, unknown>;
+                  return {
+                    name: (obj.name as string) ?? '未知资源',
+                    type: (obj.type as 'video' | 'book' | 'project' | 'course' | 'article') ?? 'course',
+                    url: (obj.url as string) ?? undefined,
+                    description: (obj.description as string) ?? `推荐学习：${obj.name}`,
+                  };
+                }
+                // 支持字符串格式: "资源名称"
+                return {
+                  name: String(r),
+                  type: 'course' as const,
+                  description: `推荐学习：${r}`,
+                };
+              });
             })
           : [],
       }),
