@@ -179,12 +179,29 @@ export class InterviewGateway
         })),
       );
 
-      // 9. 保存 AI 回复到数据库
-      let aiContent = evaluation.feedback;
+      // 8b. 更新用户回答消息，附上 AI 评价（与 REST API 保持一致）
+      const userMessage = await this.prisma.interviewMessage.findFirst({
+        where: { interviewId: data.interviewId, role: 'user' },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (userMessage) {
+        await this.prisma.interviewMessage.update({
+          where: { id: userMessage.id },
+          data: {
+            feedback: evaluation.feedback,
+            score: evaluation.score,
+            strengths: evaluation.strengths ?? undefined,
+            weaknesses: evaluation.weaknesses ?? undefined,
+          },
+        });
+      }
+
+      // 9. 保存 AI 回复到数据库（只含下一题/追问内容，不含评价文本）
+      let aiContent = '';
       if (evaluation.isFollowUp && evaluation.followUpContent) {
-        aiContent += `\n\n追问：${evaluation.followUpContent}`;
+        aiContent = evaluation.followUpContent;
       } else if (evaluation.nextQuestion) {
-        aiContent += `\n\n${evaluation.nextQuestion}`;
+        aiContent = evaluation.nextQuestion;
       }
 
       await this.prisma.interviewMessage.create({
@@ -193,6 +210,7 @@ export class InterviewGateway
           role: 'assistant',
           content: aiContent,
           questionType: evaluation.nextQuestionType || null,
+          referenceAnswer: evaluation.nextQuestionReferenceAnswer ?? null,
         },
       });
 
@@ -221,6 +239,18 @@ export class InterviewGateway
           await new Promise((r) => setTimeout(r, 50));
         }
       }
+
+      // ── 调试日志：追踪新题目与参考答案 ──
+      this.logger.log(`===== 评估结果详情 (面试: ${data.interviewId}) =====`);
+      this.logger.log(`nextAction: ${evaluation.nextAction}`);
+      this.logger.log(`isFollowUp: ${evaluation.isFollowUp}`);
+      this.logger.log(`nextQuestion: ${evaluation.nextQuestion ? `"${evaluation.nextQuestion.slice(0, 80)}..." (长度 ${evaluation.nextQuestion.length})` : '❌ null/undefined'}`);
+      this.logger.log(`nextQuestionType: ${evaluation.nextQuestionType || '❌ null/undefined'}`);
+      this.logger.log(`nextQuestionReferenceAnswer: ${evaluation.nextQuestionReferenceAnswer ? `"${String(evaluation.nextQuestionReferenceAnswer).slice(0, 80)}..."` : '❌ null/undefined'}`);
+      this.logger.log(`followUpContent: ${evaluation.followUpContent ? `"${evaluation.followUpContent.slice(0, 60)}..."` : 'null'}`);
+      this.logger.log(`score: ${evaluation.score}, feedback: "${(evaluation.feedback || '').slice(0, 50)}..."`);
+      this.logger.log(`aiContent (存库的完整内容): "${aiContent.slice(0, 100)}..."`);
+      this.logger.log(`========================================`);
 
       // 12. 发送完成事件
       client.emit('ai_message_done', {

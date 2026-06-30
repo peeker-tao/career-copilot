@@ -76,13 +76,18 @@ export class InterviewService {
         await this.aiInterviewService.generateFirstQuestion(context);
 
       // 4. 保存面试官的第一道题（含标准答案）
+      // 确保 referenceAnswer 是字符串（LLM 可能返回数组）
+      const referenceAnswer = Array.isArray(firstQuestion.referenceAnswer)
+        ? firstQuestion.referenceAnswer.join('\n')
+        : firstQuestion.referenceAnswer;
+
       await this.prisma.interviewMessage.create({
         data: {
           interviewId: interview.id,
           role: 'assistant',
           content: firstQuestion.content,
           questionType: firstQuestion.questionType,
-          referenceAnswer: firstQuestion.referenceAnswer,
+          referenceAnswer,
         },
       });
 
@@ -319,6 +324,15 @@ export class InterviewService {
         },
       });
     }
+
+    // ── 调试日志：追踪 REST 响应中的新题目与参考答案 ──
+    this.logger.log(`===== REST submitAnswer 结果 (面试: ${id}) =====`);
+    this.logger.log(`action: ${action}, isComplete: ${isComplete}`);
+    this.logger.log(`nextQuestion: ${nextQuestion ? `"${nextQuestion.content.slice(0, 80)}..." (referenceAnswer: ${!!nextQuestion.referenceAnswer})` : '❌ null/undefined'}`);
+    this.logger.log(`nextQuestion.referenceAnswer: ${nextQuestion?.referenceAnswer ? `"${String(nextQuestion.referenceAnswer).slice(0, 100)}..."` : '❌ null/undefined'}`);
+    this.logger.log(`evaluation.feedback: "${(evaluation.feedback || '').slice(0, 60)}..."`);
+    this.logger.log(`evaluation.score: ${evaluation.score}`);
+    this.logger.log(`========================================`);
 
     return {
       evaluation: {
