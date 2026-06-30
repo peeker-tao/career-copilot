@@ -2,7 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { urlencoded } from 'express';
+import { urlencoded, static as expressStatic } from 'express';
+import { join } from 'path';
 import type { Request, Response, NextFunction } from 'express';
 
 async function bootstrap() {
@@ -112,6 +113,23 @@ async function bootstrap() {
 
   // urlencoded 解析（用于表单提交）
   app.use(urlencoded({ extended: true, limit: '10mb' }));
+
+  // ======== 静态文件托管 - 上传资源 ========
+  const uploadsPath = join(__dirname, '..', 'uploads');
+  app.use('/uploads', expressStatic(uploadsPath));
+
+  // ======== 静态文件托管 - 后台管理界面 ========
+  const adminDistPath = join(__dirname, '..', 'admin-frontend', 'dist');
+  app.use(expressStatic(adminDistPath));
+
+  // SPA 路由回退：非 /api 路径的 GET 请求返回 index.html
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (!req.path.startsWith('/api') && req.method === 'GET') {
+      res.sendFile(join(adminDistPath, 'index.html'));
+    } else {
+      next();
+    }
+  });
 
   // 全局路由前缀
   app.setGlobalPrefix('api', {

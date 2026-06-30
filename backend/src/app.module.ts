@@ -12,11 +12,11 @@ import { AiModule } from './ai/ai.module';
 import { QueueModule } from './queue/queue.module';
 import { RedisModule } from './redis/redis.module';
 import { AdminModule } from './admin/admin.module';
-import { VoiceInterviewModule } from './voice-interview/voice-interview.module';
 import { JobMatchingModule } from './job-matching/job-matching.module';
 import { QuestionBankModule } from './question-bank/question-bank.module';
 import { LearningResourcesModule } from './learning-resources/learning-resources.module';
 import { ResumeNerModule } from './resume-ner/resume-ner.module';
+import { VoiceModule } from './voice/voice.module';
 
 @Module({
   imports: [
@@ -31,11 +31,11 @@ import { ResumeNerModule } from './resume-ner/resume-ner.module';
     QueueModule,
     RedisModule,
     AdminModule,
-    VoiceInterviewModule,
     JobMatchingModule,
     QuestionBankModule,
     LearningResourcesModule,
     ResumeNerModule,
+    VoiceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
