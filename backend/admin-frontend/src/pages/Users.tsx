@@ -19,7 +19,10 @@ export default function Users() {
   const [loading, setLoading] = useState(false);
   const [editModal, setEditModal] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
+  const [resetPasswordModal, setResetPasswordModal] = useState(false);
+  const [resetUserId, setResetUserId] = useState<string>('');
   const [form] = Form.useForm();
+  const [passwordForm] = Form.useForm();
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -70,11 +73,23 @@ export default function Users() {
   };
 
   const handleResetPassword = async (id: string) => {
+    setResetUserId(id);
+    passwordForm.resetFields();
+    setResetPasswordModal(true);
+  };
+
+  const handleConfirmResetPassword = async () => {
     try {
-      await userApi.resetPassword(id);
+      const values = await passwordForm.validateFields();
+      await userApi.resetPassword(resetUserId, values.newPassword);
       message.success('密码已重置');
-    } catch {
-      message.error('重置密码失败');
+      setResetPasswordModal(false);
+    } catch (err: any) {
+      if (err?.message) {
+        message.error(err.message);
+      } else {
+        message.error('重置密码失败');
+      }
     }
   };
 
@@ -218,6 +233,47 @@ export default function Users() {
           </Form.Item>
           <Form.Item name="phone" label="手机号">
             <Input />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="重置用户密码"
+        open={resetPasswordModal}
+        onOk={handleConfirmResetPassword}
+        onCancel={() => setResetPasswordModal(false)}
+        okText="确认重置"
+        cancelText="取消"
+      >
+        <Form form={passwordForm} layout="vertical">
+          <Form.Item
+            name="newPassword"
+            label="新密码"
+            rules={[
+              { required: true, message: '请输入新密码' },
+              { min: 6, message: '密码至少6个字符' },
+              { max: 50, message: '密码最多50个字符' },
+            ]}
+          >
+            <Input.Password placeholder="请输入新密码" />
+          </Form.Item>
+          <Form.Item
+            name="confirmPassword"
+            label="确认密码"
+            dependencies={['newPassword']}
+            rules={[
+              { required: true, message: '请确认密码' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('newPassword') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('两次输入的密码不一致'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password placeholder="请再次输入密码" />
           </Form.Item>
         </Form>
       </Modal>

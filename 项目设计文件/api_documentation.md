@@ -1843,6 +1843,191 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 #### DELETE `/admin/career-plans/:id` — 删除任意职业规划
 
+### 学习资源管理
+
+#### GET `/admin/learning-resources` — 获取学习资源列表（分页 + 筛选）
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `page` | number | | 页码（默认 1） |
+| `limit` | number | | 每页条数（默认 20） |
+| `category` | string | | 分类筛选 |
+| `search` | string | | 搜索关键词 |
+
+**响应 `200`：**
+
+```json
+{
+  "items": [
+    {
+      "id": "lr_001",
+      "title": "Java 入门教程",
+      "description": "适合初学者的 Java 基础教程",
+      "url": "https://example.com/java-tutorial",
+      "category": "java",
+      "type": "course",
+      "difficulty": "beginner",
+      "tags": ["java", "programming"],
+      "createdAt": "2026-06-30T10:00:00.000Z",
+      "updatedAt": "2026-06-30T10:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 50,
+    "totalPages": 3
+  }
+}
+```
+
+#### POST `/admin/learning-resources` — 创建学习资源
+
+**请求体：**
+
+```json
+{
+  "title": "Python 高级编程",
+  "description": "深入理解 Python 高级特性",
+  "url": "https://example.com/python-advanced",
+  "category": "python",
+  "type": "article",
+  "difficulty": "advanced",
+  "tags": ["python", "advanced"]
+}
+```
+
+#### PATCH `/admin/learning-resources/:id` — 更新学习资源
+
+**请求体：** 同创建，所有字段可选
+
+#### DELETE `/admin/learning-resources/:id` — 删除学习资源
+
+### 题库管理
+
+#### GET `/admin/question-bank` — 获取题目列表（分页 + 筛选）
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `page` | number | | 页码（默认 1） |
+| `limit` | number | | 每页条数（默认 20） |
+| `category` | string | | 分类筛选 |
+| `search` | string | | 搜索关键词（搜索题目标题和内容） |
+
+**响应 `200`：**
+
+```json
+{
+  "items": [
+    {
+      "id": "qb_001",
+      "question": "什么是 JavaScript 闭包？",
+      "answer": "闭包是指有权访问另一个函数作用域中变量的函数...",
+      "explanation": "闭包是 JavaScript 的重要特性，常用于数据封装和回调函数。",
+      "category": "javascript",
+      "difficulty": "medium",
+      "type": "short_answer",
+      "tags": ["javascript", "closure", "frontend"],
+      "source": "ai_generated",
+      "usageCount": 15,
+      "createdAt": "2026-06-30T10:00:00.000Z",
+      "updatedAt": "2026-06-30T10:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 100,
+    "totalPages": 5
+  }
+}
+```
+
+**字段说明：**
+- `question`: 题目标题/内容
+- `answer`: 参考答案
+- `explanation`: 答案解析
+- `category`: 分类（如 javascript, java, python 等）
+- `difficulty`: 难度（easy / medium / hard）
+- `type`: 题型（choice / short_answer / coding / behavioral）
+- `tags`: 标签数组
+- `source`: 来源（manual / ai_generated / crawled）
+- `usageCount`: 使用次数
+
+#### GET `/admin/question-bank/:id` — 获取题目详情
+
+**响应 `200`：**
+
+```json
+{
+  "id": "qb_001",
+  "question": "什么是 JavaScript 闭包？",
+  "answer": "闭包是指有权访问另一个函数作用域中变量的函数...",
+  "explanation": "闭包是 JavaScript 的重要特性，常用于数据封装和回调函数。",
+  "options": null,
+  "category": "javascript",
+  "difficulty": "medium",
+  "type": "short_answer",
+  "tags": ["javascript", "closure", "frontend"],
+  "source": "ai_generated",
+  "usageCount": 15,
+  "createdAt": "2026-06-30T10:00:00.000Z",
+  "updatedAt": "2026-06-30T10:00:00.000Z"
+}
+```
+
+**注意：** 选择题会包含 `options` 字段，例如：`["选项A", "选项B", "选项C", "选项D"]`
+
+#### POST `/admin/question-bank` — 创建题目
+
+**请求体：**
+
+```json
+{
+  "question": "请解释 React 中的 useEffect 钩子",
+  "answer": "useEffect 是 React 的副作用处理钩子，用于执行数据获取、订阅设置、手动 DOM 操作等副作用。",
+  "explanation": "useEffect 在组件渲染后执行，可以模拟 componentDidMount、componentDidUpdate 和 componentWillUnmount。",
+  "category": "react",
+  "difficulty": "medium",
+  "type": "short_answer",
+  "tags": ["react", "hooks", "frontend"],
+  "source": "manual"
+}
+```
+
+**字段说明：**
+- `question`: 题目标题/内容（必填）
+- `answer`: 参考答案（可选）
+- `explanation`: 答案解析（可选）
+- `options`: 选项数组（仅选择题需要）
+- `category`: 分类（可选，默认 general）
+- `difficulty`: 难度（可选，默认 medium）
+- `type`: 题型（可选，默认 short_answer）
+- `tags`: 标签（可选，支持数组或逗号分隔字符串）
+- `source`: 来源（可选，默认 manual）
+
+**响应 `201`：** 返回创建的题目对象（格式同详情接口）
+
+#### PATCH `/admin/question-bank/:id` — 更新题目
+
+**请求体：** 同创建，所有字段可选
+
+**响应 `200`：** 返回更新后的题目对象
+
+#### DELETE `/admin/question-bank/:id` — 删除题目
+
+**响应 `200`：**
+
+```json
+{
+  "message": "题目 \"什么是 JavaScript 闭包？\" 已删除"
+}
+```
+
 ---
 
 ## 十二、🆕 简历 NER 模块（Resume NER）⏳ 待测试
@@ -1886,7 +2071,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 | 学习资源 | `/resources` | `GET /learning-resources`、`POST /learning-resources/recommendations` |
 | 面试题库 | `/question-bank` | `GET /question-bank`、`GET /question-bank/:id`、`POST /question-bank/generate` |
 | 语音面试 | `/voice-interview` | `POST /voice-interviews`、`GET /voice-interviews`、`GET /voice-interviews/:id/summary` |
-| 管理员 | `/admin` | `GET /admin/users`、`GET /admin/resumes`、`GET /admin/interviews`、`GET /admin/career-plans` |
+| 管理员 | `/admin` | `GET /admin/users`、`GET /admin/resumes`、`GET /admin/interviews`、`GET /admin/career-plans`、`GET /admin/question-bank`、`POST /admin/question-bank`、`PATCH /admin/question-bank/:id`、`DELETE /admin/question-bank/:id` |
 
 ---
 
