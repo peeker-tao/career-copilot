@@ -57,7 +57,7 @@ interface InterviewState {
     nextAction: string
     followUpContent: string | null
     nextQuestion: string | null
-    nextQuestionReferenceAnswer?: string[] | null
+    nextQuestionReferenceAnswer?: string | null
   }) => void
   handleWSError: (code: number, message: string) => void
 }
@@ -446,18 +446,17 @@ export const useInterviewStore = create<InterviewState>((set) => ({
     console.log('followUpContent:', data.followUpContent)
     console.log('nextQuestion:', data.nextQuestion)
     console.log('nextAction:', data.nextAction)
-    console.log('参考回答:', data.nextQuestionReferenceAnswer)
+    console.log('nextQuestionReferenceAnswer:', data.nextQuestionReferenceAnswer)
     console.groupEnd()
 
     set((state) => {
       const messages = [...state.currentMessages]
       const idx = messages.findIndex((m) => m.id === data.messageId)
       if (idx >= 0) {
-        // 统一 referenceAnswer 为 string[]（后端可能返回字符串或数组）
+        // 统一 referenceAnswer 为 string[]（后端发来的是 string | null）
         const rawRef = data.nextQuestionReferenceAnswer
-        const refAnswer: string[] | undefined = Array.isArray(rawRef)
-          ? rawRef
-          : typeof rawRef === 'string' && rawRef.length > 0
+        const refAnswer: string[] | undefined =
+          typeof rawRef === 'string' && rawRef.length > 0
             ? rawRef.split('\n').map((s) => s.trim()).filter(Boolean)
             : undefined
 
