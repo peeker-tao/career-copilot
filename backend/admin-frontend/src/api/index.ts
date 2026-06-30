@@ -44,8 +44,8 @@ export const userApi = {
   update: (id: string, data: Record<string, unknown>) =>
     api.patch(`/admin/users/${id}`, data),
   remove: (id: string) => api.delete(`/admin/users/${id}`),
-  resetPassword: (id: string) =>
-    api.post(`/admin/users/${id}/reset-password`),
+  resetPassword: (id: string, newPassword: string) =>
+    api.post(`/admin/users/${id}/reset-password`, { newPassword }),
 };
 
 /* ====== 简历管理 API ====== */

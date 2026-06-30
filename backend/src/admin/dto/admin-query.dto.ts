@@ -22,4 +22,9 @@ export class AdminQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional({ description: '分类筛选' })
+  @IsOptional()
+  @IsString()
+  category?: string;
 }

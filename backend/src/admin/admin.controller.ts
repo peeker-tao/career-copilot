@@ -25,6 +25,16 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   /* ========================================
+     Dashboard 统计
+     ======================================== */
+
+  @Get('dashboard')
+  @ApiOperation({ summary: '管理员 - 获取Dashboard统计数据' })
+  getDashboardStats() {
+    return this.adminService.getDashboardStats();
+  }
+
+  /* ========================================
      用户管理
      ======================================== */
 
@@ -42,10 +52,7 @@ export class AdminController {
 
   @Patch('users/:id')
   @ApiOperation({ summary: '管理员 - 修改用户信息' })
-  updateUser(
-    @Param('id') id: string,
-    @Body() dto: AdminUpdateUserDto,
-  ) {
+  updateUser(@Param('id') id: string, @Body() dto: AdminUpdateUserDto) {
     return this.adminService.updateUser(id, dto);
   }
 
@@ -131,5 +138,79 @@ export class AdminController {
   @ApiOperation({ summary: '管理员 - 删除任意职业规划' })
   deleteCareerPlan(@Param('id') id: string) {
     return this.adminService.deleteCareerPlan(id);
+  }
+
+  /* ========================================
+     学习资源管理
+     ======================================== */
+
+  @Get('learning-resources')
+  @ApiOperation({ summary: '管理员 - 获取学习资源列表（分页 + 筛选）' })
+  @ApiQuery({ name: 'page', required: false, description: '页码' })
+  @ApiQuery({ name: 'limit', required: false, description: '每页条数' })
+  @ApiQuery({ name: 'category', required: false, description: '分类筛选' })
+  listLearningResources(@Query() query: AdminQueryDto) {
+    return this.adminService.listLearningResources(query);
+  }
+
+  @Get('learning-resources/:id')
+  @ApiOperation({ summary: '管理员 - 获取学习资源详情' })
+  getLearningResourceById(@Param('id') id: string) {
+    return this.adminService.getLearningResourceById(id);
+  }
+
+  @Post('learning-resources')
+  @ApiOperation({ summary: '管理员 - 创建学习资源' })
+  createLearningResource(@Body() data: any) {
+    return this.adminService.createLearningResource(data);
+  }
+
+  @Patch('learning-resources/:id')
+  @ApiOperation({ summary: '管理员 - 更新学习资源' })
+  updateLearningResource(@Param('id') id: string, @Body() data: any) {
+    return this.adminService.updateLearningResource(id, data);
+  }
+
+  @Delete('learning-resources/:id')
+  @ApiOperation({ summary: '管理员 - 删除学习资源' })
+  deleteLearningResource(@Param('id') id: string) {
+    return this.adminService.deleteLearningResource(id);
+  }
+
+  /* ========================================
+     题库管理
+     ======================================== */
+
+  @Get('question-bank')
+  @ApiOperation({ summary: '管理员 - 获取题库列表（分页 + 筛选）' })
+  @ApiQuery({ name: 'page', required: false, description: '页码' })
+  @ApiQuery({ name: 'limit', required: false, description: '每页条数' })
+  @ApiQuery({ name: 'category', required: false, description: '分类筛选' })
+  listQuestions(@Query() query: AdminQueryDto) {
+    return this.adminService.listQuestions(query);
+  }
+
+  @Get('question-bank/:id')
+  @ApiOperation({ summary: '管理员 - 获取题目详情' })
+  getQuestionById(@Param('id') id: string) {
+    return this.adminService.getQuestionById(id);
+  }
+
+  @Post('question-bank')
+  @ApiOperation({ summary: '管理员 - 创建题目' })
+  createQuestion(@Body() data: any) {
+    return this.adminService.createQuestion(data);
+  }
+
+  @Patch('question-bank/:id')
+  @ApiOperation({ summary: '管理员 - 更新题目' })
+  updateQuestion(@Param('id') id: string, @Body() data: any) {
+    return this.adminService.updateQuestion(id, data);
+  }
+
+  @Delete('question-bank/:id')
+  @ApiOperation({ summary: '管理员 - 删除题目' })
+  deleteQuestion(@Param('id') id: string) {
+    return this.adminService.deleteQuestion(id);
   }
 }
