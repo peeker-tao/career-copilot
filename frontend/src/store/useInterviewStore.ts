@@ -166,7 +166,20 @@ export const useInterviewStore = create<InterviewState>((set) => ({
         })
       }
       console.groupEnd()
-      set({ currentMessages: Array.isArray(res.data) ? res.data : [], loading: false })
+      // 统一 referenceAnswer 为 string[]（后端/DB 可能返回字符串）
+      const normalized = (Array.isArray(res.data) ? res.data : []).map((m) => {
+        if (!m.referenceAnswer) return m
+        const ref = m.referenceAnswer as unknown
+        return {
+          ...m,
+          referenceAnswer: Array.isArray(ref)
+            ? ref
+            : typeof ref === 'string' && ref.length > 0
+              ? ref.split('\n').map((s) => s.trim()).filter(Boolean)
+              : undefined,
+        }
+      })
+      set({ currentMessages: normalized, loading: false })
     } catch (err) {
       console.error(`[对话] 加载消息失败 (${id}):`, (err as Error).message)
       set({ error: (err as Error).message, loading: false })
@@ -248,6 +261,14 @@ export const useInterviewStore = create<InterviewState>((set) => ({
         ),
       }))
 
+      // 统一 referenceAnswer 为 string[]（后端可能返回字符串或数组）
+      const rawRef = result.nextQuestion?.referenceAnswer
+      const refAnswer: string[] | undefined = Array.isArray(rawRef)
+        ? rawRef
+        : typeof rawRef === 'string' && rawRef.length > 0
+          ? rawRef.split('\n').map((s) => s.trim()).filter(Boolean)
+          : undefined
+
       // 评价+对话+答案模式：合并为一条 AI 消息
       // content 只放下一题内容；若追问内容与 feedback 相同则跳过（避免重复）
       const qContent = (result.nextQuestion?.content || '').trim()
@@ -261,7 +282,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
         rating: result.evaluation?.score ?? null,
         questionType: result.nextQuestion?.questionType,
         feedback: result.evaluation?.feedback || undefined,
-        referenceAnswer: result.nextQuestion?.referenceAnswer,
+        referenceAnswer: refAnswer,
       }
 
       set((state) => ({
@@ -430,32 +451,22 @@ export const useInterviewStore = create<InterviewState>((set) => ({
 
     set((state) => {
       const messages = [...state.currentMessages]
-      // 用完整内容替换流式消息，同时保存 feedback
       const idx = messages.findIndex((m) => m.id === data.messageId)
       if (idx >= 0) {
-        // 评价+对话+答案模式：提取下一题内容作为消息文本（同 REST 模式行为）
-        const qContent = (data.nextQuestion || '').trim()
-        const fbContent = (data.feedback || '').trim()
-        const msgContent = qContent && qContent !== fbContent ? qContent : ''
+        // 统一 referenceAnswer 为 string[]（后端可能返回字符串或数组）
+        const rawRef = data.nextQuestionReferenceAnswer
+        const refAnswer: string[] | undefined = Array.isArray(rawRef)
+          ? rawRef
+          : typeof rawRef === 'string' && rawRef.length > 0
+            ? rawRef.split('\n').map((s) => s.trim()).filter(Boolean)
+            : undefined
 
         messages[idx] = {
           ...messages[idx],
-          content: msgContent,
           rating: data.score,
           feedback: data.feedback || undefined,
-          referenceAnswer: data.nextQuestionReferenceAnswer ?? undefined,
+          referenceAnswer: refAnswer,
         }
-      }
-
-      // 如果是追问，追加追问内容为独立消息
-      if (data.isFollowUp && data.followUpContent) {
-        messages.push({
-          id: `ai-followup-${Date.now()}`,
-          role: 'assistant',
-          content: data.followUpContent,
-          timestamp: new Date().toISOString(),
-          rating: null,
-        })
       }
 
       return {
