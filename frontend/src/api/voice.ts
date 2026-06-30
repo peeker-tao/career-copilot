@@ -39,7 +39,7 @@ export async function speechToText(audioBlob: Blob): Promise<ApiResponse<SpeechT
 
 /**
  * 语音合成：将文字转为可播放的 Blob URL
- * POST /api/voice/tts，返回 audio blob → 前端创建 Blob URL
+ * POST /api/voice/tts → 获取音频文件 URL → 下载 binary → 创建 Blob URL
  */
 export async function textToSpeech(
   text: string,
@@ -51,14 +51,17 @@ export async function textToSpeech(
     return { code: 200, message: 'success', data: result }
   }
 
-  const response = await apiClient.post(
+  // 1. 先请求 TTS，获取音频文件 URL（后端返回 { url, path }）
+  const resp = await apiClient.post(
     '/voice/tts',
     { text, voice },
-    { responseType: 'blob' },
-  )
+  ) as ApiResponse<{ url: string; path: string }>
+  const url: string = resp.data?.url || ''
 
-  // axios 拦截器对 blob 类型不会自动解包，response 就是 blob
-  const audioBlob = response as unknown as Blob
+  // 2. 根据 baseURL 拼接完整 URL 并下载音频 binary
+  const baseURL = apiClient.defaults.baseURL?.replace(/\/api$/, '') || ''
+  const audioResponse = await fetch(`${baseURL}${url}`)
+  const audioBlob = await audioResponse.blob()
   const audioUrl = URL.createObjectURL(audioBlob)
 
   return {
@@ -69,15 +72,39 @@ export async function textToSpeech(
 }
 
 /**
+ * TTS 音色显示名映射（后端 DashScope 发音人）
+ * 后端 getAvailableVoices 返回 alloy/echo/fable/onyx/nova/shimmer
+ */
+export const VOICE_DISPLAY_NAMES: Record<string, string> = {
+  alloy: '面试官（中性友好）',
+  echo: '面试官（成熟沉稳）',
+  fable: '引导介绍（知性积极）',
+  onyx: '放松场景（居家暖男）',
+  nova: '温和反馈（细腻柔声）',
+  shimmer: '默认通用（知性积极）',
+}
+
+/**
+ * 获取可用 TTS 语音列表
+ * GET /api/voice/voices-list → string[]
+ */
+export async function getVoiceList(): Promise<string[]> {
+  if (useMock) {
+    await delay(200)
+    return Object.keys(VOICE_DISPLAY_NAMES)
+  }
+  const result = await apiClient.get('/voice/voices-list') as ApiResponse<string[]>
+  return result.data ?? result
+}
+
+/**
  * 检测浏览器语音能力
  */
 export function checkVoiceCapability() {
   return {
     microphoneSupported: !!navigator.mediaDevices?.getUserMedia,
-    speechRecognitionSupported:
-      !!(
-        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-      ),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    speechRecognitionSupported: !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition),
     ttsSupported: !!window.speechSynthesis,
   }
 }

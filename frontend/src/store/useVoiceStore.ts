@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { speechToText, textToSpeech } from '@/api/voice'
+import { speechToText, textToSpeech, getVoiceList } from '@/api/voice'
 import type { VoiceSettings } from '@/types/voice'
 
 export interface VoiceState {
@@ -9,6 +9,8 @@ export interface VoiceState {
   isRecording: boolean
   /** 是否正在播放 TTS */
   isSpeaking: boolean
+  /** AI 消息自动朗读开关 */
+  ttsEnabled: boolean
   /** 识别到的文本（确认发送前可预览） */
   recognizedText: string | null
   /** 识别中 */
@@ -17,11 +19,19 @@ export interface VoiceState {
   error: string | null
   /** 设置 */
   settings: VoiceSettings
+  /** 可用语音列表 */
+  voiceList: string[]
+  /** 是否正在加载语音列表 */
+  voiceListLoading: boolean
+  /** 是否已请求过语音列表（防止重复请求） */
+  voiceListFetched: boolean
   /** 设置语音开关 */
   setEnabled: (v: boolean) => void
 
   /** 切换语音开关 */
   toggleEnabled: () => void
+  /** 切换 AI 自动朗读 */
+  toggleTtsEnabled: () => void
   /** 切换自动发送 */
   toggleAutoSend: () => void
   /** 开始录音（由 useMediaRecorder 调用） */
@@ -40,6 +50,14 @@ export interface VoiceState {
   clearError: () => void
   /** 重置所有录音相关状态 */
   resetRecording: () => void
+  /** 获取可用语音列表 */
+  fetchVoiceList: () => Promise<void>
+  /** 设置 TTS 音色 */
+  setVoice: (voice: string) => void
+  /** 语音面试模式：AI 消息转为语音播放 */
+  voiceInterviewMode: boolean
+  /** 切换语音面试模式 */
+  toggleVoiceInterviewMode: () => void
 }
 
 let currentAudio: HTMLAudioElement | null = null
@@ -48,18 +66,23 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   enabled: false,
   isRecording: false,
   isSpeaking: false,
+  ttsEnabled: false,
   recognizedText: null,
   isProcessing: false,
   error: null,
+  voiceList: [],
+  voiceListLoading: false,
+  voiceListFetched: false,
   settings: {
     inputEnabled: true,
     outputEnabled: true,
     autoSend: true,
     speed: 1.0,
-    voice: 'zh-CN-XiaoxiaoNeural',
+    voice: 'alloy',
   },
   setEnabled: (v) => set({enabled: v}),
   toggleEnabled: () => set((s) => ({ enabled: !s.enabled })),
+  toggleTtsEnabled: () => set((s) => ({ ttsEnabled: !s.ttsEnabled })),
   toggleAutoSend: () =>
     set((s) => ({ settings: { ...s.settings, autoSend: !s.settings.autoSend } })),
   setRecording: (v) => set({ isRecording: v }),
@@ -118,4 +141,21 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
 
   clearError: () => set({ error: null }),
   resetRecording: () => set({ isRecording: false, recognizedText: null, isProcessing: false }),
+
+  fetchVoiceList: async () => {
+    set({ voiceListLoading: true })
+    try {
+      const list = await getVoiceList()
+      set({ voiceList: Array.isArray(list) ? list : [], voiceListLoading: false, voiceListFetched: true })
+    } catch (err) {
+      set({ voiceList: [], voiceListLoading: false, voiceListFetched: true })
+    }
+  },
+
+  setVoice: (voice) =>
+    set((s) => ({ settings: { ...s.settings, voice } })),
+
+  voiceInterviewMode: false,
+  toggleVoiceInterviewMode: () =>
+    set((s) => ({ voiceInterviewMode: !s.voiceInterviewMode })),
 }))
