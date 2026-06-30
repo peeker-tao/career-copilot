@@ -3,6 +3,7 @@ import { RobotOutlined, UserOutlined, LoadingOutlined, ExclamationCircleOutlined
 import type { InterviewMessage } from '@/types/interview'
 import { useStreamingText } from '@/hooks/useStreamingText'
 import { textToSpeech } from '@/api/voice'
+import { useVoiceStore } from '@/store/useVoiceStore'
 import StarRating from './StarRating'
 
 export interface MessageBubbleProps {
@@ -47,6 +48,9 @@ export default function MessageBubble({ message, isStreaming, instantStreaming, 
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null)
   const ttsAnimRef = useRef<number>(0)
   const [textExpanded, setTextExpanded] = useState(false)
+
+  // 从 voiceStore 读取当前音色设置（修改音色后即时生效）
+  const ttsVoice = useVoiceStore((s) => s.settings.voice)
 
   // WebSocket 真实流式：speed=0 即时展示；REST 假流式：speed=25 打字机效果
   const streamingSpeed = instantStreaming ? 0 : 25
@@ -133,7 +137,7 @@ export default function MessageBubble({ message, isStreaming, instantStreaming, 
     // 否则生成新的 TTS 音频
     setTtsLoading(true)
     try {
-      const res = await textToSpeech(message.content)
+      const res = await textToSpeech(message.content, ttsVoice)
       const audio = new Audio(res.data.audioUrl)
       ttsAudioRef.current = audio
       audio.onloadedmetadata = () => setTtsDuration(audio.duration)

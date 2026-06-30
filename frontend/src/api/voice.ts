@@ -40,6 +40,9 @@ export async function speechToText(audioBlob: Blob): Promise<ApiResponse<SpeechT
 /**
  * 语音合成：将文字转为可播放的 Blob URL
  * POST /api/voice/tts → 获取音频文件 URL → 下载 binary → 创建 Blob URL
+ *
+ * 后端返回 { url: string }，url 已是完整可访问的地址（OSS 直链 或 含 host 的本地路径），
+ * 前端直接 fetch 即可，不需要再拼接 baseURL。
  */
 export async function textToSpeech(
   text: string,
@@ -51,29 +54,39 @@ export async function textToSpeech(
     return { code: 200, message: 'success', data: result }
   }
 
-  // 1. 先请求 TTS，获取音频文件 URL（后端返回 { url, path }）
-  const resp = await apiClient.post(
+  // 1. 请求 TTS 获取音频文件 URL（后端返回 { url: "完整URL" }）
+  const resp = await apiClient.post<{ url: string }>(
     '/voice/tts',
     { text, voice },
-  ) as ApiResponse<{ url: string; path: string }>
+  )
   const url: string = resp.data?.url || ''
+  if (!url) throw new Error('TTS 返回的音频 URL 为空')
 
-  // 2. 根据 baseURL 拼接完整 URL 并下载音频 binary
-  const baseURL = apiClient.defaults.baseURL?.replace(/\/api$/, '') || ''
-  const audioResponse = await fetch(`${baseURL}${url}`)
+  // 2. url 已是完整 URL（OSS 直链 或 http://host/uploads/audio/xxx.mp3），直接 fetch
+  const audioResponse = await fetch(url)
+  if (!audioResponse.ok) throw new Error(`TTS 音频下载失败 (${audioResponse.status})`)
   const audioBlob = await audioResponse.blob()
   const audioUrl = URL.createObjectURL(audioBlob)
 
   return {
-    code: 201,
+    code: 200,
     message: 'success',
     data: { audioUrl },
   }
 }
 
 /**
- * TTS 音色显示名映射（后端 DashScope 发音人）
- * 后端 getAvailableVoices 返回 alloy/echo/fable/onyx/nova/shimmer
+ * TTS 音色显示名映射（后端支持 DashScope CosyVoice + OpenAI TTS）
+ *
+ * DashScope 发音人（CosyVoice）：
+ *   longanyang     - 阳光大男孩
+ *   longxiaochun_v3 - 知性积极女
+ *   longwan_v3     - 细腻柔声女
+ *   longanyun_v3   - 居家暖男
+ *   longanzhi_v3   - 睿智轻熟男
+ *
+ * OpenAI 发音人：
+ *   alloy/echo/fable/onyx/nova/shimmer
  */
 export const VOICE_DISPLAY_NAMES: Record<string, string> = {
   alloy: '面试官（中性友好）',
@@ -82,6 +95,11 @@ export const VOICE_DISPLAY_NAMES: Record<string, string> = {
   onyx: '放松场景（居家暖男）',
   nova: '温和反馈（细腻柔声）',
   shimmer: '默认通用（知性积极）',
+  longanyang: '阳光大男孩（CosyVoice）',
+  longxiaochun_v3: '知性积极女（CosyVoice）',
+  longwan_v3: '细腻柔声女（CosyVoice）',
+  longanyun_v3: '居家暖男（CosyVoice）',
+  longanzhi_v3: '睿智轻熟男（CosyVoice）',
 }
 
 /**
