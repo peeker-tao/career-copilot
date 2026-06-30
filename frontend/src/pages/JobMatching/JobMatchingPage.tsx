@@ -7,9 +7,11 @@ import {
   ThunderboltOutlined,
   ArrowLeftOutlined,
   RightOutlined,
+  DatabaseOutlined,
 } from '@ant-design/icons'
 import type { JobRecommendation, JobMatch, JobMatchStatus, MatchAnalysis } from '@/types/job-matching'
 import * as jobMatchingApi from '@/api/job-matching'
+import { toast } from '@/store/useToastStore'
 import { useResumeStore } from '@/store/useResumeStore'
 import Loading from '@/components/common/Loading'
 import EmptyState from '@/components/common/EmptyState'
@@ -27,7 +29,7 @@ const POSITION_OPTIONS = ['后端开发工程师', '前端开发工程师', '算
 
 export default function JobMatchingPage() {
   // 标签页
-  const [tab, setTab] = useState<'recommend' | 'analyze' | 'saved'>('recommend')
+  const [tab, setTab] = useState<'recommend' | 'analyze' | 'saved' | 'import'>('recommend')
 
   // 智能推荐
   const [recommendations, setRecommendations] = useState<JobRecommendation[]>([])
@@ -38,6 +40,8 @@ export default function JobMatchingPage() {
   const [analysisPosition, setAnalysisPosition] = useState('')
   const [analysis, setAnalysis] = useState<MatchAnalysis | null>(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
+
+  const [seedLoading, setSeedLoading] = useState(false)
 
   // 已保存岗位
   const [savedMatches, setSavedMatches] = useState<JobMatch[]>([])
@@ -93,6 +97,13 @@ export default function JobMatchingPage() {
     }
   }
 
+  const handleSaveRecommendation = async (id: string) => {
+    try {
+      await jobMatchingApi.updateMatchStatus(id, 'saved')
+      loadSavedMatches()
+    } catch {}
+  }
+
   const handleStatusChange = async (id: string, status: JobMatchStatus) => {
     try {
       await jobMatchingApi.updateMatchStatus(id, status)
@@ -129,13 +140,13 @@ export default function JobMatchingPage() {
         >
           <SearchOutlined /> 匹配分析
         </button>
-        <button
-          className={`jm-tab ${tab === 'saved' ? 'active' : ''}`}
-          onClick={() => setTab('saved')}
-        >
-          <StarOutlined /> 已保存 ({savedMatches.length})
-        </button>
-      </div>
+<button
+            className={`jm-tab ${tab === 'saved' ? 'active' : ''}`}
+            onClick={() => setTab('saved')}
+          >
+            <StarOutlined /> 已保存 ({savedMatches.length})
+          </button>
+          </div>
 
       {/* 智能推荐 */}
       {tab === 'recommend' && (
@@ -143,13 +154,30 @@ export default function JobMatchingPage() {
           {recLoading ? (
             <Loading skeleton={{ rows: 6 }} className="pad-24-0" />
           ) : recommendations.length === 0 ? (
+            <div>
             <EmptyState
               icon={<AimOutlined />}
               title="暂无推荐岗位"
-              description="请先上传简历，AI将根据您的简历智能推荐匹配岗位"
+              description="请先上传简历，或一键导入 Kaggle 基准数据"
               actionText="前往简历管理"
               onAction={() => window.location.href = '/resume'}
             />
+            <div style={{ textAlign: 'center', marginTop: 12 }}>
+              <button className="jm-btn-primary" disabled={seedLoading} onClick={async () => {
+                setSeedLoading(true)
+                try {
+                  const res = await jobMatchingApi.seedDefaultJobMatches()
+                  toast.success(`导入成功: ${res.data?.success || 0} 条`)
+                  loadRecommendations()
+                  loadSavedMatches()
+                } catch {
+                  toast.error('导入失败，请检查后端 CSV 文件是否存在')
+                } finally { setSeedLoading(false) }
+              }}>
+                <DatabaseOutlined /> {seedLoading ? '导入中...' : '一键导入 Kaggle 基准数据'}
+              </button>
+            </div>
+          </div>
           ) : (
             <div className="jm-recommend-grid">
               {recommendations.map((item) => (
@@ -178,6 +206,11 @@ export default function JobMatchingPage() {
                       ))}
                     </div>
                   )}
+                  <div className="jm-rec-actions">
+                    <button className="jm-btn-save" onClick={() => handleSaveRecommendation(item.id)}>
+                      <StarOutlined /> 保存
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
