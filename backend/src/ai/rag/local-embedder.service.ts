@@ -206,7 +206,11 @@ export class LocalEmbedderService implements OnModuleInit, OnModuleDestroy {
         const { execSync } = require('child_process');
         const ver = execSync(
           `"${candidate}" -c "from fastembed import TextEmbedding; print('ok')"`,
-          { encoding: 'utf-8', timeout: 5000 },
+          {
+            encoding: 'utf-8',
+            timeout: 5000,
+            stdio: ['ignore', 'pipe', 'ignore'],
+          },
         );
         if (ver.trim() === 'ok') return candidate;
       } catch {
