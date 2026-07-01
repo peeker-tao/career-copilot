@@ -25,7 +25,7 @@ function getPrevUserEval(messages: InterviewMessage[], currentIdx: number) {
   for (let i = currentIdx - 1; i >= 0; i--) {
     if (messages[i].role === 'user' && messages[i].feedback) {
       return {
-        feedback: messages[i].feedback,
+        feedback: messages[i].feedback || '',
         rating: messages[i].rating,
         strengths: messages[i].strengths,
         weaknesses: messages[i].weaknesses,

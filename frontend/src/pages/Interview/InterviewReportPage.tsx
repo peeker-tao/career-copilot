@@ -87,6 +87,7 @@ export default function InterviewReportPage() {
   /** 构建报告朗读文本 */
   const buildReportSpeechText = () => {
     const parts: string[] = []
+    if (!report) return ''
     parts.push(`你的面试总体得分为${report.overallScore}分，${getScoreLevel(report.overallScore).label}。`)
     if (report.strengths.length > 0) {
       parts.push('优势方面：' + report.strengths.join('，'))

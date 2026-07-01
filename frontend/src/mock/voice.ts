@@ -3,7 +3,7 @@ import type { SpeechToTextResult, TextToSpeechResult } from '@/types/voice'
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** 模拟语音 -> 文字 (模拟识别延时 + 预设文本) */
-export async function MOCK_SPEECH_TO_TEXT(audioBlob: Blob): Promise<SpeechToTextResult> {
+export async function MOCK_SPEECH_TO_TEXT(_audioBlob: Blob): Promise<SpeechToTextResult> {
   await delay(1200)
 
   const mockTexts = [

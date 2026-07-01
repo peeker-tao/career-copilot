@@ -49,8 +49,8 @@ export async function speechToText(audioBlob: Blob): Promise<ApiResponse<SpeechT
   }
 
   const form = new FormData()
-  form.append('audio', audioBlob, 'recording.webm')
-  return apiClient.post('/voice-interviews/stt', form, {
+  form.append('file', audioBlob, 'recording.webm')
+  return apiClient.post('/voice/asr', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
@@ -113,10 +113,23 @@ export async function textToSpeech(
 }
 
 /**
- * TTS 音色显示名映射（后端 DashScope 发音人）
- * 后端 getAvailableVoices 返回 alloy/echo/fable/onyx/nova/shimmer
+ * TTS 音色显示名映射（后端 DashScope CosyVoice 发音人）
+ * 支持 DashScope 原生音色名 + 兼容 old OpenAI 风格别名
+ * DashScope v3-flash 标杆音色:
+ *   longanyang      — 阳光大男孩
+ *   longxiaochun_v3 — 知性积极女
+ *   longwan_v3      — 细腻柔声女
+ *   longanyun_v3    — 居家暖男
+ *   longanzhi_v3    — 睿智轻熟男
  */
 export const VOICE_DISPLAY_NAMES: Record<string, string> = {
+  // DashScope 原生发音人
+  longanyang: '阳光大男孩（标杆）',
+  longxiaochun_v3: '知性积极女',
+  longwan_v3: '细腻柔声女',
+  longanyun_v3: '居家暖男',
+  longanzhi_v3: '睿智轻熟男',
+  // 兼容旧版 OpenAI 风格别名（后端映射到 DashScope）
   alloy: '面试官（中性友好）',
   echo: '面试官（成熟沉稳）',
   fable: '引导介绍（知性积极）',
@@ -127,15 +140,15 @@ export const VOICE_DISPLAY_NAMES: Record<string, string> = {
 
 /**
  * 获取可用 TTS 语音列表
- * GET /api/voice/voices-list → string[]
+ * 后端 DashScope CosyVoice 支持以下发音人
  */
 export async function getVoiceList(): Promise<string[]> {
   if (useMock) {
     await delay(200)
     return Object.keys(VOICE_DISPLAY_NAMES)
   }
-  const result = await apiClient.get('/voice/voices-list') as ApiResponse<string[]>
-  return result.data ?? result
+  // 后端无独立 voice-list 接口，直接返回前端内置列表
+  return Object.keys(VOICE_DISPLAY_NAMES)
 }
 
 /**

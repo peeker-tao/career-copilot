@@ -16,7 +16,7 @@ import { AvatarUpload, ProfileStats, ProfileForm, AccountSecurity } from '@/comp
 import type { UserData } from '@/components/user'
 import './User.css'
 import { useAuthStore } from '@/store/useAuthStore'
-import { useToastStore } from '@/store/useToastStore'
+import { toast } from '@/store/useToastStore'
 import * as jobMatchingApi from '@/api/job-matching'
 import * as questionBankApi from '@/api/question-bank'
 import * as learningResourcesApi from '@/api/learning-resources'
@@ -33,7 +33,6 @@ const User: React.FC = () => {
   const profileLoading = !userInfo
 
   /** 收藏页签 & 数据 */
-  const toast = useToastStore((s) => s.addToast)
   const [favTab, setFavTab] = useState<'jobs' | 'questions' | 'resources'>('jobs')
   const [savedJobs, setSavedJobs] = useState<JobMatch[]>([])
   const [savedQuestions, setSavedQuestions] = useState<QuestionBankItem[]>([])
@@ -81,9 +80,9 @@ const User: React.FC = () => {
     try {
       await jobMatchingApi.updateMatchStatus(id, 'archived')
       setSavedJobs((prev) => prev.filter((j) => j.id !== id))
-      toast('success', '已取消收藏')
+      toast.success('已取消收藏')
     } catch {
-      toast('error', '操作失败')
+      toast.error('操作失败')
     }
   }
 
@@ -93,7 +92,7 @@ const User: React.FC = () => {
     const updated = ids.filter((fid) => fid !== id)
     localStorage.setItem('qb_favorites', JSON.stringify(updated))
     setSavedQuestions((prev) => prev.filter((q) => q.id !== id))
-    toast('success', '已取消收藏')
+    toast.success('已取消收藏')
   }
 
   /** 取消收藏资源 */
@@ -102,7 +101,7 @@ const User: React.FC = () => {
     const updated = ids.filter((fid) => fid !== id)
     localStorage.setItem('lr_favorites', JSON.stringify(updated))
     setSavedResources((prev) => prev.filter((r) => r.id !== id))
-    toast('success', '已取消收藏')
+    toast.success('已取消收藏')
   }
 
   useEffect(() => {
@@ -199,22 +198,6 @@ const User: React.FC = () => {
       </div>
 
       <ProfileStats stats={stats || { totalInterviews: 0, avgScore: 0, resumeCount: 0, activePlans: 0 }} />
-
-      <div className="profile-content">
-        <div className="profile-card">
-          <h2 className="card-title">
-            <EditOutlined /> 个人信息
-          </h2>
-          <ProfileForm user={userData} onSave={handleSave} />
-        </div>
-
-        <div className="profile-card">
-          <h2 className="card-title">
-            <SafetyCertificateOutlined /> 账号安全
-          </h2>
-          <AccountSecurity onLogoutRequest={() => setShowLogoutConfirm(true)} />
-        </div>
-      </div>
 
       {/* ===== 我的收藏 ===== */}
       <div className="profile-card favorites-card">
@@ -333,6 +316,23 @@ const User: React.FC = () => {
           </div>
         )}
       </div>
+
+      <div className="profile-content">
+        <div className="profile-card">
+          <h2 className="card-title">
+            <EditOutlined /> 个人信息
+          </h2>
+          <ProfileForm user={userData} onSave={handleSave} />
+        </div>
+
+        <div className="profile-card">
+          <h2 className="card-title">
+            <SafetyCertificateOutlined /> 账号安全
+          </h2>
+          <AccountSecurity onLogoutRequest={() => setShowLogoutConfirm(true)} />
+        </div>
+      </div>
+
 
       <ConfirmModal
         open={showLogoutConfirm}

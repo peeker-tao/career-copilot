@@ -187,7 +187,7 @@ export default function MessageBubble({ message, isStreaming, instantStreaming, 
 
   /** 播放/暂停评价 TTS 语音 */
   const handleEvalTtsPlay = async () => {
-    const text = message.feedback
+    const text = prevUserEval?.feedback
     if (!text?.trim()) return
     // 如果主 TTS 正在播放，先暂停
     if (ttsAudioRef.current && ttsPlaying) {

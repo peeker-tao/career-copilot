@@ -107,7 +107,7 @@ export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps)
 
   }
 
-  const canGenerate = position.trim() && (inputMethod === 'manual' || inputMethod === 'resume')
+  const canGenerate = position.trim() && (inputMethod === 'manual' || inputMethod === 'upload')
 
   return (
     <div className="generate-section">
@@ -157,8 +157,8 @@ export default function GeneratePlanForm({ onGenerated }: GeneratePlanFormProps)
               <TagsOutlined /> 手动填写
             </button>
             <button
-              className={`method-tab ${inputMethod === 'resume' ? 'active' : ''}`}
-              onClick={() => setInputMethod('resume')}
+              className={`method-tab ${inputMethod === 'upload' ? 'active' : ''}`}
+              onClick={() => setInputMethod('upload')}
             >
               <FileTextOutlined /> 选择简历
             </button>

@@ -21,6 +21,7 @@ function trendLabels(count: number): string[] {
 // echarts tooltip formatter 参数类型
 interface TooltipParam {
   name: string
+  dataIndex?: number
   value?: number | [number, number]
   data?: number | [number, number]
   seriesName?: string

@@ -40,32 +40,6 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   hard: '困难',
 }
 
-function formatAnswer(text: string, type: string): string {
-  if (type === 'coding') {
-    const lines = text.split('\n')
-    const codeLines = lines.filter(l => l.trim())
-    if (codeLines.length >= 2) {
-      return '```\n' + text + '\n```'
-    }
-  }
-  return text
-}
-
-function renderFormatted(text: string): React.ReactNode {
-  if (text.startsWith('```') && text.endsWith('```')) {
-    const code = text.slice(3, -3).trim()
-    return <pre className="qb-code-block"><code>{code}</code></pre>
-  }
-  return text.split('\n').map((line, i) => <span key={i}>{line}<br /></span>)
-}
-
-interface AnswerState {
-  question: QuestionBankItem
-  selectedOption?: string
-  textAnswer: string
-  submitted: boolean
-}
-
 export default function QuestionBankPage() {
   const [questions, setQuestions] = useState<QuestionBankItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -489,21 +463,16 @@ export default function QuestionBankPage() {
       )}
 
       {/* 答题弹窗 */}
-      {answerState && (
-        <div className="qb-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setAnswerState(null) }}>
+      {detail && (
+        <div className="qb-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setDetail(null) }}>
           <div className="qb-modal qb-answer-modal">
             <h3>
-              {TYPE_LABELS[answerState.question.type] || '题目'}
-              <span className={`qb-tag ${answerState.question.difficulty}`} style={{ marginLeft: 8, verticalAlign: 'middle' }}>
-                {DIFFICULTY_LABELS[answerState.question.difficulty] || answerState.question.difficulty}
+              {TYPE_LABELS[detail.type] || '题目'}
+              <span className={`qb-tag ${detail.difficulty}`} style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+                {DIFFICULTY_LABELS[detail.difficulty] || detail.difficulty}
               </span>
             </h3>
 
-            <div className="qb-modal-body">
-              <div className="qb-answer-question">{answerState.question.question}</div>
-            </div>
-
-            {/* 题目内容 */}
             <div className="qb-modal-body">{detail.question}</div>
 
             {/* 选择题选项 */}

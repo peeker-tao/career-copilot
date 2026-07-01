@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   BookOutlined,
   PlayCircleOutlined,
@@ -21,7 +22,6 @@ import {
 } from '@ant-design/icons'
 import type { LearningResource, ResourceCategory, RecommendedResource } from '@/types/learning-resources'
 import * as resourcesApi from '@/api/learning-resources'
-import { toast } from '@/store/useToastStore'
 import { toast } from '@/store/useToastStore'
 import Loading from '@/components/common/Loading'
 import EmptyState from '@/components/common/EmptyState'
@@ -47,12 +47,6 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   beginner: '入门',
   intermediate: '中级',
   advanced: '高级',
-}
-
-const SOURCE_LABELS: Record<string, { text: string; className: string }> = {
-  ai_generated: { text: 'AI 生成', className: 'rs-badge-ai' },
-  database: { text: '精选', className: 'rs-badge-db' },
-  database_fallback: { text: '数据库', className: 'rs-badge-db' },
 }
 
 const PRESET_SKILLS = [
@@ -81,7 +75,6 @@ export default function LearningResourcesPage() {
 
   // AI推荐
   const [recommendations, setRecommendations] = useState<RecommendedResource[]>([])
-  const [recSource, setRecSource] = useState<string | undefined>()
   const [recLoading, setRecLoading] = useState(false)
   const [showSkillGapModal, setShowSkillGapModal] = useState(false)
   const [skillGaps, setSkillGaps] = useState<string[]>([])
@@ -144,9 +137,14 @@ export default function LearningResourcesPage() {
     }
   }, [page, keyword, category, difficulty, type])
 
+  // 搜索参数变化时同步 keyword（仅在初始化时同步 URL 参数）
+  const initialSearch = useRef(searchQuery)
   useEffect(() => {
     const q = searchParams.get('search') || ''
-    if (q !== keyword) setKeyword(q)
+    if (q !== keyword && initialSearch.current === q) {
+      setKeyword(q)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   useEffect(() => {
@@ -173,14 +171,10 @@ export default function LearningResourcesPage() {
         targetPosition: targetPosition.trim(),
         limit: 5,
       })
-      setRecommendations(res.data ?? [])
-      // 尝试从响应中提取 source（后端可能返回完整结构）
-      if (res as any) {
-        const raw = res as any
-        setRecSource(raw?.source ?? undefined)
-      }
+      const data = res.data ?? []
+      setRecommendations(data)
       setShowSkillGapModal(false)
-      if (items.length === 0) {
+      if (data.length === 0) {
         toast.info('暂无匹配资源，请尝试调整技能缺口')
       }
     } catch (e) {
@@ -230,8 +224,6 @@ export default function LearningResourcesPage() {
     count: categoryCounts[c.name] ?? c.count,
   })).filter((c) => c.count > 0 || c.name === category)
 
-  const recSourceInfo = recSource ? SOURCE_LABELS[recSource] : undefined
-
   return (
     <div className="resources-page">
       <h1 className="page-title">学习资源</h1>
@@ -256,12 +248,6 @@ export default function LearningResourcesPage() {
           <Loading skeleton={{ rows: 3 }} />
         ) : recommendations.length > 0 ? (
           <div>
-            {recSourceInfo && (
-              <div style={{ marginBottom: 12, fontSize: 12, color: 'var(--text-muted)' }}>
-                推荐来源：<span className={`rs-badge ${recSourceInfo.className}`}>{recSourceInfo.text}</span>
-                {targetPosition && <span style={{ marginLeft: 12 }}>目标岗位：<strong>{targetPosition}</strong></span>}
-              </div>
-            )}
             {recommendations.map((item) => (
               <div key={item.id} className="rs-rec-item" onClick={() => setDetail(item)}>
                 <div className="rs-rec-score-circle">
@@ -341,6 +327,7 @@ export default function LearningResourcesPage() {
         </div>
         <select
           className="rs-filter-select"
+          title="选择分类"
           value={category ?? ''}
           onChange={(e) => { setCategory(e.target.value || undefined); setPage(1) }}
         >
@@ -351,6 +338,7 @@ export default function LearningResourcesPage() {
         </select>
         <select
           className="rs-filter-select"
+          title="选择难度"
           value={difficulty ?? ''}
           onChange={(e) => { setDifficulty(e.target.value || undefined); setPage(1) }}
         >
@@ -361,6 +349,7 @@ export default function LearningResourcesPage() {
         </select>
         <select
           className="rs-filter-select"
+          title="选择类型"
           value={type ?? ''}
           onChange={(e) => { setType(e.target.value || undefined); setPage(1) }}
         >
@@ -476,7 +465,7 @@ export default function LearningResourcesPage() {
               <span className="rs-tag">{TYPE_LABELS[detail.type] || detail.type}</span>
               {detail.category && <span className="rs-tag rs-tag-cat">{detail.category}</span>}
               {detail.duration && <span className="rs-tag">⏱ {detail.duration}</span>}
-              {(detail as any).aiGenerated && (
+              {(detail as LearningResource).aiGenerated && (
                 <span className="rs-badge rs-badge-ai">AI 生成</span>
               )}
               {detail.usageCount != null && detail.usageCount > 0 && (

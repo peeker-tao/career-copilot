@@ -15,7 +15,6 @@ import {
 } from '@ant-design/icons'
 import type { JobRecommendation, JobMatch, JobMatchStatus, MatchAnalysis, JobMatchStats } from '@/types/job-matching'
 import * as jobMatchingApi from '@/api/job-matching'
-import { toast } from '@/store/useToastStore'
 import { useResumeStore } from '@/store/useResumeStore'
 import { toast } from '@/store/useToastStore'
 import Loading from '@/components/common/Loading'
@@ -38,7 +37,6 @@ export default function JobMatchingPage() {
   // 智能推荐
   const [recommendations, setRecommendations] = useState<JobRecommendation[]>([])
   const [recLoading, setRecLoading] = useState(false)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   // 匹配分析
   const [selectedResumeId, setSelectedResumeId] = useState<string>('')
@@ -135,17 +133,6 @@ export default function JobMatchingPage() {
       // 静默失败
     } finally {
       setAnalysisLoading(false)
-    }
-  }
-
-  const handleSaveRecommendation = async (id: string) => {
-    try {
-      await jobMatchingApi.updateMatchStatus(id, 'saved')
-      toast.success('已收藏该岗位')
-      setExpandedId(null)
-      loadSavedMatches()
-    } catch {
-      toast.error('收藏失败，请重试')
     }
   }
 

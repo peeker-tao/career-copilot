@@ -1,6 +1,6 @@
 import apiClient from './client'
 import type { ApiResponse } from '@/types/api'
-import type { Interview, InterviewMessage, CreateInterviewRequest, InterviewReport, SubmitAnswerResult, VoiceAnswerResult } from '@/types/interview'
+import type { Interview, InterviewMessage, CreateInterviewRequest, InterviewReport, SubmitAnswerResult } from '@/types/interview'
 import { MOCK_INTERVIEWS, MOCK_INITIAL_MESSAGES, AI_FEEDBACKS, AI_NEXT_QUESTIONS } from '@/mock'
 
 const useMock = import.meta.env.VITE_USE_MOCK === 'true'
@@ -102,9 +102,9 @@ export async function createInterview(data: CreateInterviewRequest): Promise<Api
     console.log(`[API] createInterview response(mock):`, res)
     return res
   }
-  const res = await apiClient.post('/interviews', data)
-  console.log(`[API] createInterview response:`, res)
-  return res
+  const raw = await apiClient.post('/interviews', data)
+  console.log(`[API] createInterview response:`, raw)
+  return { code: raw.data?.code ?? 200, message: raw.data?.message ?? '成功', data: raw.data?.data ?? raw.data }
 }
 
 /** 提交回答（模拟 AI 回复） */
@@ -143,9 +143,9 @@ export async function submitAnswer(
     console.log(`[API] submitAnswer(${interviewId}) response(mock):`, JSON.stringify(res, null, 2))
     return res
   }
-  const res = await apiClient.post(`/interviews/${interviewId}/answer`, { content })
-  console.log(`[API] submitAnswer(${interviewId}) response:`, JSON.stringify(res, null, 2))
-  return res
+  const raw = await apiClient.post(`/interviews/${interviewId}/answer`, { content })
+  console.log(`[API] submitAnswer(${interviewId}) response:`, JSON.stringify(raw, null, 2))
+  return { code: raw.data?.code ?? 200, message: raw.data?.message ?? '成功', data: raw.data?.data ?? raw.data }
 }
 
 /** 语音提交回答：上传音频，后端 ASR + 评估一步完成 */
@@ -316,9 +316,9 @@ export async function completeInterview(id: string): Promise<ApiResponse<Intervi
     console.log(`[API] completeInterview(${id}) response(mock):`, res)
     return res
   }
-  const res = await apiClient.post(`/interviews/${id}/complete`)
-  console.log(`[API] completeInterview(${id}) response:`, res)
-  return res
+  const raw = await apiClient.post(`/interviews/${id}/complete`)
+  console.log(`[API] completeInterview(${id}) response:`, raw)
+  return { code: raw.data?.code ?? 200, message: raw.data?.message ?? '成功', data: raw.data?.data ?? raw.data }
 }
 
 /** 删除面试记录 */

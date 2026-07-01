@@ -3,6 +3,7 @@ import type { Interview, InterviewMessage, InterviewReport, MessageType } from '
 import type { InterviewStats } from '@/components/interview/HistoryStats'
 import * as interviewApi from '@/api/interviews'
 import { toast } from '@/store/useToastStore'
+import { useVoiceStore } from '@/store/useVoiceStore'
 
 /** 后端返回的 referenceAnswer 是字符串，前端需要归一化为 string[] */
 function normalizeReferenceAnswer(val: unknown): string[] | undefined {
@@ -231,7 +232,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   },
 
   /** 发送消息（异步）：用 msgId 找到已有消息并更新其状态 */
-  sendMessage: async (interviewId, msgId, content, type, audioUrl, audioBlob, forceRest) => {
+  sendMessage: async (interviewId, msgId, content, type, _audioUrl, _audioBlob, forceRest) => {
     // WebSocket 模式：实际发送由 useInterviewWebSocket hook 处理，这里只标记 sent
     // 除非 forceRest=true（例如 WS 未连接时的降级）
     if (useInterviewStore.getState().useWebSocket && !forceRest) {
@@ -293,14 +294,6 @@ export const useInterviewStore = create<InterviewState>((set) => ({
             : m
         ),
       }))
-
-      // 统一 referenceAnswer 为 string[]（后端可能返回字符串或数组）
-      const rawRef = result.nextQuestion?.referenceAnswer
-      const refAnswer: string[] | undefined = Array.isArray(rawRef)
-        ? rawRef
-        : typeof rawRef === 'string' && rawRef.length > 0
-          ? rawRef.split('\n').map((s) => s.trim()).filter(Boolean)
-          : undefined
 
       // AI 消息只含下一题内容，不包含评价文本（评价已附在用户消息上）
       const qContent = (result.nextQuestion?.content || '').trim()
@@ -421,6 +414,8 @@ export const useInterviewStore = create<InterviewState>((set) => ({
 
   clearError: () => set({ error: null }),
   resetRoom: () => {
+    // 退出房间时停止所有语音播放
+    useVoiceStore.getState().stopSpeaking()
     clearAiRespondingTimer()
     set({
       interview: null,
@@ -499,15 +494,9 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       // AI 消息更新：替换为最终内容，附带参考答案
       const aiIdx = messages.findIndex((m) => m.id === data.messageId)
       if (aiIdx >= 0) {
-        const rawRef = data.nextQuestionReferenceAnswer
-        const refAnswer: string[] | undefined =
-          typeof rawRef === 'string' && rawRef.length > 0
-            ? rawRef.split('\n').map((s) => s.trim()).filter(Boolean)
-            : undefined
-
-        messages[idx] = {
-          ...messages[idx],
-          content: msgContent,
+        messages[aiIdx] = {
+          ...messages[aiIdx],
+          content: data.fullContent,
           rating: data.score,
           feedback: data.feedback || undefined,
           referenceAnswer: normalizeReferenceAnswer(data.nextQuestionReferenceAnswer),

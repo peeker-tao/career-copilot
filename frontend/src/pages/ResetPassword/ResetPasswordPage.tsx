@@ -6,6 +6,7 @@ import { resetPassword } from '@/api/auth'
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
   const [newPwd, setNewPwd] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
@@ -17,6 +18,8 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const t = searchParams.get('token')
     if (t) setToken(t)
+    const e = searchParams.get('email')
+    if (e) setEmail(e)
   }, [searchParams])
 
   const handleReset = async () => {
@@ -31,7 +34,7 @@ export default function ResetPasswordPage() {
     }
     setLoading(true); setMsg(null)
     try {
-      await resetPassword(token.trim(), newPwd)
+      await resetPassword(email, token.trim(), newPwd)
       setStep('done')
       setMsgType('success')
       setMsg('密码重置成功')

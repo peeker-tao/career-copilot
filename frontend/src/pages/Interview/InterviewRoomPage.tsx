@@ -199,8 +199,9 @@ export default function InterviewRoomPage() {
   }, [id, isNew, addMessage, sendMessage, wsEnabled, wsConnected, wsSendAnswer])
 
   // 最后一条 AI 消息内容，用于 TTS 朗读
+  // 注意：WebSocket 流式消息 role='assistant'，REST 消息 role='ai'，都要覆盖
   const lastAIContent = useMemo(() => {
-    const aiMsgs = messages.filter((m) => m.role === 'ai')
+    const aiMsgs = messages.filter((m) => m.role === 'ai' || m.role === 'assistant')
     return aiMsgs.length > 0 ? aiMsgs[aiMsgs.length - 1].content : ''
   }, [messages])
 
