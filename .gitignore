@@ -106,5 +106,6 @@ backend/generated
 **/.yarn/*
 career-copilot/.yarn/install-state.gz
 
-/frontend
 .VSCodeCounter
+.venv
+/frontend

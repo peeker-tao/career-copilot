@@ -1,8 +1,8 @@
 # Career-Copilot API 接口文档
 
-> 版本：v1.2 | 日期：2026-07-02
-> 状态：✅ 已实现 ⏳ 待测试
-> 基础 URL：`/api`（实际路由，部分旧文档仍标 `/api/v1`，以实际为准）
+> 版本：v2.0 | 日期：2026-07-28
+> 状态：✅ 已实现 ✅ 已验证
+> 基础 URL：`(无前缀)` — 所有路由直接挂载在根路径下，无 `/api` 或 `/api/v1` 前缀
 
 ---
 
@@ -58,7 +58,7 @@ Authorization: Bearer <access_token>
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `page` | number | 1 | 页码 |
-| `pageSize` | number | 10 | 每页条数（最大 50） |
+| `limit` | number | 20 | 每页条数（最大 100） |
 
 分页响应：
 
@@ -70,7 +70,7 @@ Authorization: Bearer <access_token>
     "list": [],
     "pagination": {
       "page": 1,
-      "pageSize": 10,
+      "limit": 10,
       "total": 100
     }
   }
@@ -205,6 +205,33 @@ Authorization: Bearer <access_token>
 
 **响应 `200`：** 返回更新后的用户信息
 
+### PATCH `/auth/password` — 修改密码
+
+**请求体：**
+
+```json
+{
+  "currentPassword": "oldPassword123",
+  "newPassword": "newPassword456"
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `currentPassword` | string | ✅ | 当前密码 |
+| `newPassword` | string | ✅ | 新密码（≥ 6 位） |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "密码修改成功"
+}
+```
+
+---
+
 ### POST `/auth/forgot-password` — 忘记密码
 
 **请求体：**
@@ -335,7 +362,7 @@ Authorization: Bearer <access_token>
         "createdAt": "2026-06-13T08:00:00.000Z"
       }
     ],
-    "pagination": { "page": 1, "pageSize": 10, "total": 3 }
+    "pagination": { "page": 1, "limit": 10, "total": 3 }
   }
 }
 ```
@@ -689,7 +716,7 @@ Authorization: Bearer <access_token>
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|:----:|------|
 | `page` | number | | 页码 |
-| `pageSize` | number | | 每页条数 |
+| `limit` | number | | 每页条数（默认 20） |
 | `status` | string | | 筛选：`in_progress` / `completed` |
 | `targetPosition` | string | | 按岗位筛选 |
 
@@ -712,7 +739,7 @@ Authorization: Bearer <access_token>
         "completedAt": "2026-06-13T08:25:00.000Z"
       }
     ],
-    "pagination": { "page": 1, "pageSize": 10, "total": 15 }
+    "pagination": { "page": 1, "limit": 10, "total": 15 }
   }
 }
 ```
@@ -884,7 +911,7 @@ Authorization: Bearer <access_token>
 **连接方式：**
 
 ```
-ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
+ws://host/ws/interview?token=&lt;access_token&gt;
 ```
 
 **消息格式（服务端 → 客户端）：**
@@ -1021,7 +1048,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
         "createdAt": "2026-06-13T08:00:00.000Z"
       }
     ],
-    "pagination": { "page": 1, "pageSize": 10, "total": 2 }
+    "pagination": { "page": 1, "limit": 10, "total": 2 }
   }
 }
 ```
@@ -1102,6 +1129,8 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 ## 六、仪表盘模块（Dashboard）
 
+> **说明：** 仪表盘 API 接口在 `src/app.controller.ts`（根控制器）中实现，路由为 `GET /dashboard`。首页仪表盘也支持由前端在页面加载时**并发请求**多个 API 汇总计算（如 `GET /resumes`、`GET /interviews`、`GET /career/plans` 等）。
+
 ### GET `/dashboard` — 获取首页概览数据
 
 **响应 `200`：**
@@ -1144,12 +1173,12 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 ---
 
-## 七、🆕 岗位匹配模块（Job Matching）⏳ 待测试
+## 七、岗位匹配模块（Job Matching）✅
 
 > 基于 AI 的岗位推荐与匹配度分析
 
-**基础路径：** `/api/v1/job-matching`
-**认证：** 需 JWT
+**基础路径：** `/job-matching`
+**认证：** 🔐 需要 JWT Bearer Token
 
 ### GET `/job-matching/recommendations` — 获取 AI 智能岗位推荐
 
@@ -1208,7 +1237,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
     ],
     "pagination": {
       "page": 1,
-      "pageSize": 20,
+      "limit": 20,
       "total": 15
     }
   }
@@ -1315,12 +1344,12 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 ---
 
-## 八、🆕 学习资源模块（Learning Resources）⏳ 待测试
+## 八、学习资源模块（Learning Resources）✅
 
 > 个性化学习资源推荐与浏览
 
-**基础路径：** `/api/v1/learning-resources`
-**认证：** 需 JWT
+**基础路径：** `/learning-resources`
+**认证：** 🔐 需要 JWT Bearer Token
 
 ### GET `/learning-resources` — 浏览学习资源
 
@@ -1356,7 +1385,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
     ],
     "pagination": {
       "page": 1,
-      "pageSize": 20,
+      "limit": 20,
       "total": 50
     }
   }
@@ -1442,12 +1471,12 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 ---
 
-## 九、🆕 面试题库模块（Question Bank）⏳ 待测试
+## 九、面试题库模块（Question Bank）✅
 
 > AI 驱动的面试题目生成与管理
 
-**基础路径：** `/api/v1/question-bank`
-**认证：** 需 JWT
+**基础路径：** `/question-bank`
+**认证：** 🔐 需要 JWT Bearer Token
 
 ### GET `/question-bank` — 浏览题库
 
@@ -1480,7 +1509,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
     ],
     "pagination": {
       "page": 1,
-      "pageSize": 20,
+      "limit": 20,
       "total": 200
     }
   }
@@ -1568,12 +1597,103 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 ---
 
-## 十、🆕 语音面试模块（Voice Interview）⏳ 待测试
+## 十、语音模块（Voice — ASR/TTS）✅
 
-> 模拟语音面试会话管理
+> 语音识别与合成服务，基于 DashScope Paraformer / CosyVoice + OpenAI 兜底
 
-**基础路径：** `/api/v1/voice-interviews`
-**认证：** 需 JWT
+**控制器：** `src/voice/voice.controller.ts`
+**基础路径：** `/voice`
+**认证：** 🔐 需要 JWT Bearer Token
+
+### POST `/voice/asr` — 语音识别（ASR）
+
+| 项目 | 描述 |
+|---|---|
+| **内容类型** | `multipart/form-data` |
+| **请求体** | 上传 `file` 字段，音频文件 |
+| **支持格式** | `mp3` / `wav` / `ogg` / `webm` / `m4a` / `flac` |
+| **文件大小限制** | 最大 20MB |
+| **后端模型** | DashScope Paraformer v2（优先）/ OpenAI Whisper-1（兜底） |
+| **响应** | `{ text: string }` — 识别后的文字 |
+
+### POST `/voice/tts` — 语音合成（TTS）
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | `{ text: string, voice?: string }` |
+| → `text` | `string` **必填** — 要合成的文本（最多 4096 字符） |
+| → `voice` | `string` **可选** — 发音人，默认 `"longanyang"` |
+| **可选语音** | `longanyang`（阳光大男孩）、`longxiaochun_v3`（知性积极女）、`longwan_v3`（细腻柔声女）、`longanyun_v3`（居家暖男）、`longanzhi_v3`（睿智轻熟男），以及 OpenAI 兼容的 `alloy`/`echo`/`fable`/`onyx`/`nova`/`shimmer` |
+| **后端模型** | DashScope CosyVoice v3（优先）/ OpenAI TTS-1（兜底） |
+| **响应** | `{ url: string }` — 音频文件 URL |
+
+---
+
+## 十一、AI 模块（AI）✅
+
+> AI 驱动接口，用于简历解析、面试问答、评估报告和职业规划生成
+
+**控制器：** `src/ai/ai.controller.ts`
+**基础路径：** `/ai`
+**认证：** 🔐 需要 JWT Bearer Token
+**注意：** 所有端点使用 `@HttpCode(200)` 返回 200 而非默认 201
+
+### POST `/ai/resume/parse` — AI 简历解析
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | `{ text: string }` — 简历原始文本（最少 10 字符） |
+| **响应** | 解析后的结构化 JSON |
+| → `name` | `string` |
+| → `phone` | `string` |
+| → `email` | `string` |
+| → `education` | `{ school, major, degree, startDate, endDate }[]` |
+| → `experience` | `{ company, position, startDate, endDate, description }[]` |
+| → `projects` | `{ name, role, description, techStack[] }[]` |
+| → `skills` | `string[]` |
+| → `summary` | `string` |
+| → `suggestions` | `{ category, content, priority: "high"\|"medium"\|"low" }[]` |
+
+### POST `/ai/interview/question` — 生成面试题目
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | `{ position, skills?, difficulty?, questionType? }` |
+| → `position` | `string` — 目标岗位 |
+| → `skills` | `string[]` **可选** — 技能列表 |
+| → `difficulty` | `string` **可选** (`easy` / `medium` / `hard`) |
+| → `questionType` | `string` **可选** (`technical` / `behavioral` / `project`) |
+| **响应** | `{ question, type, difficulty, skills, suggestions? }` |
+
+### POST `/ai/interview/evaluate` — 评估面试回答
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | `{ question, answer, position?, skills? }` |
+| **响应** | `{ score, feedback, strengths[], weaknesses[], suggestions[] }` |
+
+### POST `/ai/interview/report` — 生成面试报告
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | 面试消息列表 `{ messages: { role, content }[], position, skills? }` |
+| **响应** | `{ overallScore, dimensions, strengths[], weaknesses[], improvementSuggestions[] }` — 完整面试报告 |
+
+### POST `/ai/career/plan` — AI 生成职业规划
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | `{ targetPosition, currentSkills?, experience? }` |
+| **响应** | `{ targetPosition, gapSkills[], roadmap[], marketInsight? }` — 包含分阶段学习路线 |
+
+---
+
+## 十二、语音面试模块（Voice Interview）✅
+
+> **说明：** 后端已实现完整的语音面试会话管理，控制器位于 `src/voice/voice.controller.ts`，路由前缀为 `/voice-interviews`。语音处理（ASR/TTS）接口见上方 `/voice` 模块，面试流程 WebSocket 通信在 `src/interview/interview.gateway.ts` 中实现。
+
+**基础路径：** `/voice-interviews`
+**认证：** 🔐 需要 JWT Bearer Token
 
 ### POST `/voice-interviews` — 创建语音面试会话
 
@@ -1636,7 +1756,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
     ],
     "pagination": {
       "page": 1,
-      "pageSize": 20,
+      "limit": 20,
       "total": 5
     }
   }
@@ -1747,12 +1867,12 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 ---
 
-## 十一、🆕 管理员模块（Admin）⏳ 待测试
+## 十三、管理员模块（Admin）✅
 
 > 管理员后台管理功能
 
-**基础路径：** `/api/v1/admin`
-**认证：** 需 JWT + `admin` 角色
+**基础路径：** `/admin`
+**认证：** 🔐 需要 JWT Bearer Token + `admin` 角色
 
 ### 用户管理
 
@@ -1785,7 +1905,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
     ],
     "pagination": {
       "page": 1,
-      "pageSize": 20,
+      "limit": 20,
       "total": 100
     }
   }
@@ -2030,7 +2150,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 ---
 
-## 十二、🆕 简历 NER 模块（Resume NER）⏳ 待测试
+## 十四、简历 NER 模块（Resume NER）✅
 
 > 命名实体识别微服务（内部服务，无 REST 端点）
 
@@ -2048,12 +2168,12 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 ---
 
-## 十三、接口与页面映射对照表
+## 十五、接口与页面映射对照表
 
 | 前端页面 | 路由 | 对应 API |
 |----------|------|----------|
 | 登录页 | `/login` | `POST /auth/login`、`POST /auth/register` |
-| 首页仪表盘 | `/` | `GET /dashboard` |
+| 首页仪表盘 | `/` | 前端汇总多个 API 数据计算（`GET /resumes`、`GET /interviews`、`GET /career/plans` 等） |
 | 简历列表 | `/resume` | `GET /resumes` |
 | 简历详情 | `/resume/:id` | `GET /resumes/:id`、`PUT /resumes/:id`、`DELETE /resumes/:id` |
 | 简历上传 | `/resume/upload` | `POST /resumes/upload` |
@@ -2071,11 +2191,18 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 | 学习资源 | `/resources` | `GET /learning-resources`、`POST /learning-resources/recommendations` |
 | 面试题库 | `/question-bank` | `GET /question-bank`、`GET /question-bank/:id`、`POST /question-bank/generate` |
 | 语音面试 | `/voice-interview` | `POST /voice-interviews`、`GET /voice-interviews`、`GET /voice-interviews/:id/summary` |
-| 管理员 | `/admin` | `GET /admin/users`、`GET /admin/resumes`、`GET /admin/interviews`、`GET /admin/career-plans`、`GET /admin/question-bank`、`POST /admin/question-bank`、`PATCH /admin/question-bank/:id`、`DELETE /admin/question-bank/:id` |
+| 语音 ASR | （组件内使用） | `POST /voice/asr` — 语音转文字 |
+| 语音 TTS | （组件内使用） | `POST /voice/tts` — 文字转语音 |
+| AI 简历解析 | `/resume`（内嵌） | `POST /ai/resume/parse` |
+| AI 面试出题 | `/interview`（内嵌） | `POST /ai/interview/question` |
+| AI 面试评估 | `/interview/:id`（内嵌） | `POST /ai/interview/evaluate` |
+| AI 面试报告 | `/interview/:id/report`（内嵌） | `POST /ai/interview/report` |
+| AI 职业规划 | `/career-plan`（内嵌） | `POST /ai/career/plan` |
+| 管理员 | `/admin` | `GET /admin/users`、`GET /admin/resumes`、`GET /admin/interviews`、`GET /admin/career-plans`、`GET /admin/learning-resources`、`GET /admin/question-bank`、`POST /admin/question-bank`、`PATCH /admin/question-bank/:id`、`DELETE /admin/question-bank/:id` |
 
 ---
 
-## 十四、TS 类型定义（前后端共享）
+## 十六、TS 类型定义（前后端共享）
 
 ```typescript
 // 用户
@@ -2214,7 +2341,7 @@ interface QuestionBankItem {
   hint?: string;
 }
 
-// 语音面试
+// 语音面试（已实现，路由 /voice-interviews）
 interface VoiceInterview {
   id: string;
   position: string;
@@ -2274,8 +2401,48 @@ interface AdminUser {
   lastLoginAt?: string;
 }
 
+// 语音 ASR / TTS
+interface ASRResult {
+  text: string;
+}
+
+interface TTSResult {
+  url: string;
+}
+
+// AI 简历解析
+interface AIParseResult {
+  name: string;
+  phone: string;
+  email: string;
+  education: Education[];
+  experience: Experience[];
+  projects: Project[];
+  skills: string[];
+  summary: string;
+  suggestions: { category: string; content: string; priority: 'high' | 'medium' | 'low' }[];
+}
+
+// AI 评估
+interface AIEvaluation {
+  score: number;
+  feedback: string;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+}
+
+// AI 报告
+interface AIReport {
+  overallScore: number;
+  dimensions: Record<string, { score: number; comment: string }>;
+  strengths: string[];
+  weaknesses: string[];
+  improvementSuggestions: Suggestion[];
+}
+
 // 分页
 interface PaginatedResult<T> {
   list: T[];
-  pagination: { page: number; pageSize: number; total: number };
+  pagination: { page: number; limit: number; total: number };
 }
