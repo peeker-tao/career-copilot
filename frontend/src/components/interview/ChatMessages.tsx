@@ -19,6 +19,24 @@ export interface ChatMessagesProps {
   loading?: boolean
 }
 
+/** 从消息列表中提取上一条用户消息的评价信息，供 AI 消息展示 */
+function getPrevUserEval(messages: InterviewMessage[], currentIdx: number) {
+  // 从 currentIdx 往前找最近一条 role=user 的消息
+  for (let i = currentIdx - 1; i >= 0; i--) {
+    if (messages[i].role === 'user' && messages[i].feedback) {
+      return {
+        feedback: messages[i].feedback,
+        rating: messages[i].rating,
+        strengths: messages[i].strengths,
+        weaknesses: messages[i].weaknesses,
+      }
+    }
+    // 遇到上一条 AI 消息就停止（避免跨题匹配）
+    if (messages[i].role === 'assistant' || messages[i].role === 'ai') break
+  }
+  return null
+}
+
 export default function ChatMessages({ messages, aiStreamingId, instantStreaming, onRetry, voiceInterviewMode, onRetryLoadMessages, loading }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -47,7 +65,7 @@ export default function ChatMessages({ messages, aiStreamingId, instantStreaming
           className="pt-80"
         />
       )}
-      {messages.map((msg) => (
+      {messages.map((msg, idx) => (
         <MessageBubble
           key={msg.id}
           message={msg}
@@ -55,6 +73,7 @@ export default function ChatMessages({ messages, aiStreamingId, instantStreaming
           instantStreaming={instantStreaming}
           onRetry={onRetry}
           voiceInterviewMode={voiceInterviewMode}
+          prevUserEval={msg.role === 'ai' || msg.role === 'assistant' ? getPrevUserEval(messages, idx) : undefined}
         />
       ))}
       <div ref={bottomRef} />

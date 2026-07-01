@@ -127,7 +127,16 @@ export async function getRewriteSuggestions(
   id: string,
   targetPosition: string
 ): Promise<ApiResponse<{ suggestions: RewriteSuggestion[] }>> {
-  return apiClient.post(`/resumes/${id}/rewrite-suggestions`, { targetPosition })
+  const response: any = await apiClient.post(`/resumes/${id}/rewrite-suggestions`, { goal: targetPosition })
+  const raw = Array.isArray(response.data) ? response.data : (response.data?.suggestions ?? [])
+  const mapped = raw.map((item: any) => ({
+    section: item.section,
+    original: item.original || '',
+    suggested: item.suggested || item.suggestion || '',
+    reason: item.reason || '',
+    priority: item.priority || 'medium',
+  }))
+  return { code: response.code, message: response.message, data: { suggestions: mapped } }
 }
 
 /** 改写简历特定部分 */
@@ -135,5 +144,6 @@ export async function rewriteSection(
   id: string,
   data: { section: string; targetPosition: string; content: string }
 ): Promise<ApiResponse<{ rewritten: string; changes: string[] }>> {
-  return apiClient.post(`/resumes/${id}/rewrite-section`, data)
+  const { content, ...rest } = data
+  return apiClient.post(`/resumes/${id}/rewrite-section`, { section: rest.section, instruction: content })
 }

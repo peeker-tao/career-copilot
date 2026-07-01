@@ -58,6 +58,24 @@ export async function updateMatchStatus(id: string, status: JobMatchStatus): Pro
   return apiClient.patch(`/job-matching/matches/${id}/status`, { status })
 }
 
+/** 导入单条岗位匹配数据 */
+export async function importJobMatch(data: {
+  position: string
+  company?: string
+  location?: string
+  description?: string
+  matchScore: number
+  status?: string
+}): Promise<ApiResponse<any>> {
+  return apiClient.post('/job-matching/import', data)
+}
+
+/** 一键导入默认岗位基准数据（Kaggle 简历数据集） */
+export async function seedDefaultJobMatches(): Promise<ApiResponse<{ total: number; success: number; skipped: number; errors: string[] }>> {
+  const response: any = await apiClient.post('/job-matching/seed-default')
+  return { code: response.code, message: response.message, data: response.data }
+}
+
 /** 分析简历与目标岗位匹配度 */
 export async function analyzeMatch(resumeId: string, position: string): Promise<ApiResponse<MatchAnalysis>> {
   const response: any = await apiClient.post('/job-matching/analyze', { resumeId, position })

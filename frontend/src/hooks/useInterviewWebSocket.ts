@@ -16,7 +16,7 @@ export interface InterviewWSCallbacks {
     nextAction: string
     followUpContent: string | null
     nextQuestion: string | null
-    nextQuestionReferenceAnswer?: string[] | null
+    nextQuestionReferenceAnswer?: string | null
   }) => void
   onError: (code: number, message: string) => void
 }
@@ -72,6 +72,7 @@ export function useInterviewWebSocket({
       nextAction: string
       followUpContent: string | null
       nextQuestion: string | null
+      nextQuestionReferenceAnswer?: string | null
     }) => {
       onDone(data)
     })

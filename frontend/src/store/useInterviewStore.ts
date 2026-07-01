@@ -86,7 +86,7 @@ interface InterviewState {
     nextAction: string
     followUpContent: string | null
     nextQuestion: string | null
-    nextQuestionReferenceAnswer?: string[] | null
+    nextQuestionReferenceAnswer?: string | null
   }) => void
   handleWSError: (code: number, message: string) => void
 }
@@ -277,17 +277,32 @@ export const useInterviewStore = create<InterviewState>((set) => ({
         set({ isFinished: true })
       }
 
-      // 更新用户消息：用识别文本替换内容，标记为 sent
+      // 更新用户消息：用识别文本替换内容，标记为 sent，附上 AI 评价
       set((state) => ({
         currentMessages: state.currentMessages.map((m) =>
           m.id === msgId
-            ? { ...m, content: recognizedText, status: 'sent' as const }
+            ? {
+                ...m,
+                content: recognizedText,
+                status: 'sent' as const,
+                feedback: result.evaluation?.feedback || undefined,
+                rating: result.evaluation?.score ?? null,
+                strengths: result.evaluation?.strengths || undefined,
+                weaknesses: result.evaluation?.weaknesses || undefined,
+              }
             : m
         ),
       }))
 
-      // 评价+对话+答案模式：合并为一条 AI 消息
-      // content 只放下一题内容；若追问内容与 feedback 相同则跳过（避免重复）
+      // 统一 referenceAnswer 为 string[]（后端可能返回字符串或数组）
+      const rawRef = result.nextQuestion?.referenceAnswer
+      const refAnswer: string[] | undefined = Array.isArray(rawRef)
+        ? rawRef
+        : typeof rawRef === 'string' && rawRef.length > 0
+          ? rawRef.split('\n').map((s) => s.trim()).filter(Boolean)
+          : undefined
+
+      // AI 消息只含下一题内容，不包含评价文本（评价已附在用户消息上）
       const qContent = (result.nextQuestion?.content || '').trim()
       const fbContent = (result.evaluation?.feedback || '').trim()
       const hasScore = result.evaluation?.score != null
@@ -304,7 +319,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
         role: 'ai',
         content: aiContent,
         timestamp: new Date().toISOString(),
-        rating: result.evaluation?.score ?? null,
+        rating: null,
         questionType: result.nextQuestion?.questionType,
         feedback: result.evaluation?.feedback || undefined,
         referenceAnswer: normalizeReferenceAnswer(result.nextQuestion?.referenceAnswer),
@@ -474,19 +489,21 @@ export const useInterviewStore = create<InterviewState>((set) => ({
     console.log('followUpContent:', data.followUpContent)
     console.log('nextQuestion:', data.nextQuestion)
     console.log('nextAction:', data.nextAction)
-    console.log('参考回答:', data.nextQuestionReferenceAnswer)
+    console.log('nextQuestionReferenceAnswer:', data.nextQuestionReferenceAnswer)
     console.groupEnd()
 
     clearAiRespondingTimer()
     set((state) => {
       const messages = [...state.currentMessages]
-      // 用完整内容替换流式消息，同时保存 feedback
-      const idx = messages.findIndex((m) => m.id === data.messageId)
-      if (idx >= 0) {
-        // 评价+对话+答案模式：提取下一题内容作为消息文本（同 REST 模式行为）
-        const qContent = (data.nextQuestion || '').trim()
-        const fbContent = (data.feedback || '').trim()
-        const msgContent = qContent && qContent !== fbContent ? qContent : ''
+
+      // AI 消息更新：替换为最终内容，附带参考答案
+      const aiIdx = messages.findIndex((m) => m.id === data.messageId)
+      if (aiIdx >= 0) {
+        const rawRef = data.nextQuestionReferenceAnswer
+        const refAnswer: string[] | undefined =
+          typeof rawRef === 'string' && rawRef.length > 0
+            ? rawRef.split('\n').map((s) => s.trim()).filter(Boolean)
+            : undefined
 
         messages[idx] = {
           ...messages[idx],

@@ -182,6 +182,47 @@
   line-height: 1.6;
 }
 
+.qb-gen-item.clickable {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qb-gen-item.clickable:hover {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 生成结果中的选项 */
+.qb-gen-options {
+  margin: 6px 0 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qb-option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  padding: 3px 0;
+}
+
+.qb-option-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 /* 题目卡片列表 */
 .qb-list {
   display: flex;
@@ -293,11 +334,17 @@
   box-shadow: var(--shadow-xl);
 }
 
+.qb-modal.qb-answer-modal {
+  max-width: 640px;
+}
+
 .qb-modal h3 {
   font-size: 18px;
   font-weight: 600;
   color: var(--text-h);
   margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
 }
 
 .qb-modal-body {

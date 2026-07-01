@@ -4,7 +4,7 @@ import { UserOutlined, CameraOutlined, LoadingOutlined } from '@ant-design/icons
 export interface AvatarUploadProps {
   avatar: string
   nickname: string
-  onUpload: (url: string) => void
+  onUpload: (file: File) => void
 }
 
 const AvatarUpload: React.FC<AvatarUploadProps> = ({ avatar, nickname, onUpload }) => {
@@ -29,7 +29,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ avatar, nickname, onUpload 
     setUploading(true)
     setTimeout(() => {
       setUploading(false)
-      onUpload?.(URL.createObjectURL(file))
+      onUpload?.(file)
     }, 800)
   }
 

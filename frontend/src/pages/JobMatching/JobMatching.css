@@ -71,9 +71,16 @@
   background: var(--bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius);
-  padding: 20px;
   transition: all 0.25s ease;
   cursor: pointer;
+}
+
+.jm-rec-card.collapsed {
+  padding: 12px 16px;
+}
+
+.jm-rec-card.expanded {
+  padding: 16px 20px;
 }
 
 .jm-rec-card:hover {
@@ -129,6 +136,36 @@
   color: var(--text);
   margin: 8px 0 0;
   line-height: 1.6;
+}
+
+.jm-rec-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+}
+
+.jm-btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-h);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+}
+
+.jm-btn-save:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .jm-rec-skills {

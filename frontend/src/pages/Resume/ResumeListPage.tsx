@@ -10,6 +10,7 @@ import {
   SwapOutlined,
   CloseOutlined,
   CheckCircleOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '@/components/common'
 import { ResumeCard } from '@/components/resume'
@@ -139,6 +140,9 @@ const ResumeListPage = () => {
             onClick={toggleCompareMode}
           >
             <SwapOutlined /> {compareMode ? '退出对比' : '对比'}
+          </button>
+          <button className="btn-compare" onClick={() => navigate('/resume/screening')}>
+            <BarChartOutlined /> 筛选测试
           </button>
           <button
             className="btn-upload-resume"

@@ -16,6 +16,13 @@ export interface MessageBubbleProps {
   onRetry?: (message: InterviewMessage) => void
   /** 语音面试模式：AI 消息显示 TTS 播放按钮 */
   voiceInterviewMode?: boolean
+  /** 前一条用户回答的 AI 评价信息（在 AI 消息侧展示） */
+  prevUserEval?: {
+    feedback: string
+    rating?: number | null
+    strengths?: string[]
+    weaknesses?: string[]
+  } | null
 }
 
 /** 安全解析时间戳，兼容 ISO 字符串、MySQL datetime 等格式 */
@@ -31,7 +38,7 @@ function safeFormatTime(timestamp: string): string {
   return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function MessageBubble({ message, isStreaming, instantStreaming, onRetry, voiceInterviewMode }: MessageBubbleProps) {
+export default function MessageBubble({ message, isStreaming, instantStreaming, onRetry, voiceInterviewMode, prevUserEval }: MessageBubbleProps) {
   const isAI = message.role === 'ai' || message.role === 'assistant'
   const isVoice = message.type === 'voice' && !!message.audioUrl
   const isFailed = message.status === 'failed'
@@ -253,8 +260,8 @@ export default function MessageBubble({ message, isStreaming, instantStreaming, 
           <div className="message-sender">AI 面试官</div>
         )}
 
-        {/* 评价卡片（评价+对话+答案模式） */}
-        {isAI && message.feedback && (
+        {/* 评价卡片：展示上一条用户回答的 AI 评估结果（面试官的评价） */}
+        {isAI && prevUserEval?.feedback && (
           <div className="eval-card">
             <div className="eval-header">
               <span className="eval-label">📊 回答评价</span>
@@ -272,7 +279,7 @@ export default function MessageBubble({ message, isStreaming, instantStreaming, 
               </div>
             </div>
             <div className="eval-body">
-              {message.feedback.split('\n').map((line, i) => (
+              {prevUserEval.feedback.split('\n').map((line, i) => (
                 <p key={i}>{line || '\u00A0'}</p>
               ))}
             </div>

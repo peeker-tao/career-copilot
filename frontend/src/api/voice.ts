@@ -1,11 +1,3 @@
-/**
- * 语音服务 SDK — ASR / TTS
- *
- * API 端点：
- *   POST /api/voice/asr  — 语音识别，接受 FormData (audio file)，返回 { text }
- *   POST /api/voice/tts  — 语音合成，接受 { text, voice }，返回 audio blob
- */
-
 import apiClient from './client'
 import type { ApiResponse } from '@/types/api'
 import type { SpeechToTextResult, TextToSpeechResult } from '@/types/voice'
@@ -56,13 +48,11 @@ export async function speechToText(audioBlob: Blob): Promise<ApiResponse<SpeechT
     return { code: 200, message: 'success', data: result }
   }
 
-  const formData = new FormData()
-  formData.append('file', audioBlob, 'recording.webm')
-
-  const response: ApiResponse<SpeechToTextResult> = await apiClient.post('/voice/asr', formData, {
+  const form = new FormData()
+  form.append('audio', audioBlob, 'recording.webm')
+  return apiClient.post('/voice-interviews/stt', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
-  return response
 }
 
 /**
@@ -154,8 +144,10 @@ export async function getVoiceList(): Promise<string[]> {
 export function checkVoiceCapability() {
   return {
     microphoneSupported: !!navigator.mediaDevices?.getUserMedia,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    speechRecognitionSupported: !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition),
+    speechRecognitionSupported:
+      !!(
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      ),
     ttsSupported: !!window.speechSynthesis,
   }
 }
