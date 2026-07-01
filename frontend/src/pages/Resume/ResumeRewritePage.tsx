@@ -29,9 +29,9 @@ const ALL_SECTIONS: RewriteSection[] = ['experience', 'projects', 'skills']
 function getSectionContent(data: ParsedResumeData | undefined, section: RewriteSection): string {
   if (!data) return ''
   switch (section) {
-    case 'experience': return data.experience?.map((e) => `${e.company} - ${e.position}: ${e.description}`).join('\n') ?? ''
-    case 'skills': return data.skills?.join(', ') ?? ''
-    case 'projects': return data.projects?.map((p) => `${p.name}(${p.role}): ${p.description}`).join('\n') ?? ''
+    case 'experience': return Array.isArray(data.experience) ? data.experience.map((e) => `${e.company} - ${e.position}: ${e.description}`).join('\n') : ''
+    case 'skills': return Array.isArray(data.skills) ? data.skills.join(', ') : ''
+    case 'projects': return Array.isArray(data.projects) ? data.projects.map((p) => `${p.name}(${p.role}): ${p.description}`).join('\n') : ''
     default: return ''
   }
 }
