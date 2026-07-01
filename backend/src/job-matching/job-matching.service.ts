@@ -400,7 +400,7 @@ export class JobMatchingService {
             requirements: requirements as any || null,
             matchScore,
             matchDetails: matchDetails as any,
-            status: 'saved',
+            status: 'pending',
             source: 'external',
           },
         });

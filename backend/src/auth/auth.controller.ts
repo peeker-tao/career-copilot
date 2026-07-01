@@ -15,6 +15,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateModelConfigDto } from './dto/update-model-config.dto';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/forgot-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ThrottleGuard } from '../common/guards/throttle.guard';
@@ -75,6 +76,17 @@ export class AuthController {
     @Body() dto: UpdateModelConfigDto,
   ) {
     return this.authService.updateModelConfig(userId, dto as any);
+  }
+
+  @Patch('password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '修改密码', description: '登录用户修改自己的密码（需提供旧密码验证）' })
+  async changePassword(
+    @CurrentUser('id') userId: string,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(userId, dto.oldPassword, dto.newPassword);
   }
 
   @Post('forgot-password')

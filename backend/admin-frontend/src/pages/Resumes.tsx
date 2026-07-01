@@ -205,7 +205,7 @@ export default function Resumes() {
             </Descriptions.Item>
             {detail.parsedData && (
               <Descriptions.Item label="解析数据" span={2}>
-                <pre style={{ maxHeight: 300, overflow: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4, fontSize: 12 }}>
+                <pre style={{ maxHeight: 300, overflow: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4, fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                   {JSON.stringify(detail.parsedData, null, 2)}
                 </pre>
               </Descriptions.Item>

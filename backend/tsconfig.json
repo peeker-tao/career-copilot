@@ -1,5 +1,5 @@
 {
-  "exclude": ["node_modules", "admin-frontend"],
+  "exclude": ["node_modules", "dist", "admin-frontend"],
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",

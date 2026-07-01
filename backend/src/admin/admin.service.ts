@@ -2,19 +2,24 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PrismaService } from '../common/prisma.service';
+import { AiService } from '../ai/ai.service';
 import { AdminQueryDto, AdminUpdateUserDto, AdminChangePasswordDto } from './dto';
 
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private aiService: AiService,
+  ) {}
 
   /* ========================================
      Dashboard 统计
@@ -905,4 +910,57 @@ export class AdminService {
     return { message: `题目 "${question.title}" 已删除` };
   }
 
+  /** AI 生成学习资源 */
+  async generateLearningResource(data: { topic: string; count?: number }) {
+    const count = data.count || 5;
+    const systemPrompt = `你是一个专业的学习资源策划专家。根据用户指定的主题，生成高质量的学习资源推荐。
+以严格的 JSON 数组格式返回，每条包含：
+- title: 资源标题
+- description: 简要描述
+- url: 推荐的学习链接（可以是知名学习平台的通用链接，如 MDN、菜鸟教程、LeetCode 等）
+- category: 分类（前端/后端/算法/系统设计/职业发展）
+- type: 类型（article | video | course | documentation | tool）
+- difficulty: 难度（beginner | medium | advanced）
+- tags: 标签数组`;
+
+    const userPrompt = `请生成 ${count} 个学习资源，主题方向: ${data.topic}`;
+
+    try {
+      const raw = await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'learning:generate');
+      let resources: any[];
+      try {
+        resources = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      } catch {
+        throw new BadRequestException('AI 返回格式异常');
+      }
+
+      if (!Array.isArray(resources)) {
+        throw new BadRequestException('AI 返回格式异常');
+      }
+
+      // 批量保存到数据库
+      const created = [];
+      for (const r of resources) {
+        const saved = await this.prisma.learningResource.create({
+          data: {
+            title: r.title || 'Untitled',
+            description: r.description || '',
+            url: r.url || '',
+            category: r.category || '其他',
+            type: r.type || 'article',
+            difficulty: r.difficulty || 'medium',
+            tags: Array.isArray(r.tags) ? r.tags : [],
+            relevanceScore: 80,
+            usageCount: 0,
+          },
+        });
+        created.push(saved);
+      }
+
+      return { count: created.length, resources: created };
+    } catch (err) {
+      this.logger.error(`AI 生成学习资源失败: ${(err as Error).message}`);
+      throw new BadRequestException('AI 生成学习资源失败');
+    }
+  }
 }

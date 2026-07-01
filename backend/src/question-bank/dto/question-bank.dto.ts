@@ -41,6 +41,10 @@ export class GenerateQuestionsDto {
   @IsOptional() @IsString()
   category?: string;
 
+  @ApiPropertyOptional({ description: '技能标签', example: ['Spring Boot', 'MySQL'] })
+  @IsOptional() @IsArray() @IsString({ each: true })
+  skills?: string[];
+
   @ApiPropertyOptional({ description: '难度', example: 'medium' })
   @IsOptional() @IsString() @IsIn(['easy', 'medium', 'hard'])
   difficulty?: string;

@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Table, Button, Input, Space, Tag, Modal, Form, Select,
-  message, Popconfirm, Card, Typography,
+  message, Popconfirm, Card, Typography, InputNumber,
 } from 'antd';
 import {
   SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined,
-  ReloadOutlined, LinkOutlined,
+  ReloadOutlined, LinkOutlined, ThunderboltOutlined,
 } from '@ant-design/icons';
 import { resourceApi } from '../api';
 import type { LearningResource } from '../types';
@@ -23,6 +23,9 @@ export default function LearningResources() {
   const [modal, setModal] = useState(false);
   const [editItem, setEditItem] = useState<LearningResource | null>(null);
   const [form] = Form.useForm();
+  const [aiModal, setAiModal] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiForm] = Form.useForm();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -78,6 +81,24 @@ export default function LearningResources() {
       fetchData();
     } catch {
       message.error('删除失败');
+    }
+  };
+
+  const handleAiGenerate = async () => {
+    try {
+      const values = await aiForm.validateFields();
+      setAiLoading(true);
+      const res = await resourceApi.generate(values);
+      const d = res.data?.data || res.data;
+      message.success(`AI 成功生成 ${d?.count || 0} 个学习资源`);
+      setAiModal(false);
+      aiForm.resetFields();
+      fetchData();
+    } catch (err: any) {
+      if (err?.response?.data?.message) message.error(err.response.data.message);
+      else if (err?.message) message.error(err.message);
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -164,7 +185,10 @@ export default function LearningResources() {
             <Select.Option value="职业发展">职业发展</Select.Option>
           </Select>
           <Button icon={<ReloadOutlined />} onClick={fetchData}>刷新</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+          <Button type="primary" icon={<ThunderboltOutlined />} onClick={() => { aiForm.resetFields(); setAiModal(true); }}>
+            AI 生成
+          </Button>
+          <Button icon={<PlusOutlined />} onClick={handleAdd}>
             新增资源
           </Button>
         </Space>
@@ -218,6 +242,27 @@ export default function LearningResources() {
           </Form.Item>
           <Form.Item name="tags" label="标签">
             <Input placeholder="用逗号分隔" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* AI 生成学习资源 */}
+      <Modal
+        title={<><ThunderboltOutlined /> AI 生成学习资源</>}
+        open={aiModal}
+        onOk={handleAiGenerate}
+        onCancel={() => setAiModal(false)}
+        okText="开始生成"
+        cancelText="取消"
+        confirmLoading={aiLoading}
+        width={560}
+      >
+        <Form form={aiForm} layout="vertical">
+          <Form.Item name="topic" label="学习主题" rules={[{ required: true, message: '请输入学习主题' }]}>
+            <Input placeholder="如：React 性能优化、Spring Cloud 微服务…" />
+          </Form.Item>
+          <Form.Item name="count" label="生成数量" initialValue={5}>
+            <InputNumber min={1} max={20} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
       </Modal>

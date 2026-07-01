@@ -78,6 +78,8 @@ export const questionApi = {
   update: (id: string, data: Record<string, unknown>) =>
     api.patch(`/admin/question-bank/${id}`, data),
   remove: (id: string) => api.delete(`/admin/question-bank/${id}`),
+  generate: (data: { position?: string; category?: string; difficulty?: string; type?: string; count?: number }) =>
+    api.post('/question-bank/generate', data),
 };
 
 /* ====== 学习资源 API ====== */
@@ -89,6 +91,8 @@ export const resourceApi = {
   update: (id: string, data: Record<string, unknown>) =>
     api.patch(`/admin/learning-resources/${id}`, data),
   remove: (id: string) => api.delete(`/admin/learning-resources/${id}`),
+  generate: (data: { topic: string; count?: number }) =>
+    api.post('/admin/learning-resources/generate', data),
 };
 
 /* ====== Dashboard 统计 API ====== */

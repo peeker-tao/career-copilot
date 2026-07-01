@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AiService } from '../ai/ai.service';
-import { AiInterviewService, InterviewContext } from './ai-interview.service';
+import { AiInterviewService, InterviewContext, FirstQuestionResult } from './ai-interview.service';
 import { InterviewReportService } from './interview-report.service';
 import { QueueService } from '../queue/queue.service';
 import { normalizeNextAction } from './interview.utils';
@@ -64,53 +64,72 @@ export class InterviewService {
       }
     }
 
-    // 3. 用 AI 生成第一道面试题
-    try {
-      const context: InterviewContext = {
-        position: data.targetPosition,
-        difficulty: data.difficulty || 'medium',
-        resumeContext,
-      };
+    // 3. 用 AI 生成第一道面试题（失败自动重试 2 次）
+    const context: InterviewContext = {
+      position: data.targetPosition,
+      difficulty: data.difficulty || 'medium',
+      resumeContext,
+    };
 
-      const firstQuestion =
-        await this.aiInterviewService.generateFirstQuestion(context);
+    let firstAttempt = 1;
+    const maxAttempts = 3;
+    let firstQuestion: FirstQuestionResult | null = null;
+    let lastError: string = '';
 
-      // 4. 保存面试官的第一道题（含标准答案）
-      // 确保 referenceAnswer 是字符串（LLM 可能返回数组）
-      const referenceAnswer = Array.isArray(firstQuestion.referenceAnswer)
-        ? firstQuestion.referenceAnswer.join('\n')
-        : firstQuestion.referenceAnswer;
-
-      await this.prisma.interviewMessage.create({
-        data: {
-          interviewId: interview.id,
-          role: 'assistant',
-          content: firstQuestion.content,
-          questionType: firstQuestion.questionType,
-          referenceAnswer,
-        },
-      });
-
-      // 5. 更新题目计数
-      await this.prisma.interview.update({
-        where: { id: interview.id },
-        data: { questionCount: 1 },
-      });
-
-      return {
-        ...interview,
-        questionCount: 1,
-        firstQuestion: {
-          content: firstQuestion.content,
-          questionType: firstQuestion.questionType,
-          referenceAnswer: firstQuestion.referenceAnswer,
-        },
-      };
-    } catch (err) {
-      this.logger.error(`生成首题失败: ${(err as Error).message}`);
-      // AI 失败时仍然返回面试记录，让用户稍后重试
-      return interview;
+    while (firstAttempt <= maxAttempts) {
+      try {
+        firstQuestion = await this.aiInterviewService.generateFirstQuestion(context);
+        break;
+      } catch (err) {
+        lastError = (err as Error).message;
+        this.logger.warn(`生成首题失败（第 ${firstAttempt} 次）: ${lastError}`);
+        firstAttempt++;
+        if (firstAttempt <= maxAttempts) {
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
     }
+
+    // 所有重试均失败 → 抛出错误，让前端知道
+    if (!firstQuestion) {
+      // 删除已创建的面试记录
+      await this.prisma.interview.delete({ where: { id: interview.id } }).catch(() => {});
+      throw new BadRequestException(
+        `AI 生成首题失败（已重试 ${maxAttempts} 次）: ${lastError}。请稍后重试。`,
+      );
+    }
+
+    // 4. 保存面试官的第一道题（含标准答案）
+    // 确保 referenceAnswer 是字符串（LLM 可能返回数组）
+    const referenceAnswer = Array.isArray(firstQuestion.referenceAnswer)
+      ? firstQuestion.referenceAnswer.join('\n')
+      : firstQuestion.referenceAnswer;
+
+    await this.prisma.interviewMessage.create({
+      data: {
+        interviewId: interview.id,
+        role: 'assistant',
+        content: firstQuestion.content,
+        questionType: firstQuestion.questionType,
+        referenceAnswer,
+      },
+    });
+
+    // 5. 更新题目计数
+    await this.prisma.interview.update({
+      where: { id: interview.id },
+      data: { questionCount: 1 },
+    });
+
+    return {
+      ...interview,
+      questionCount: 1,
+      firstQuestion: {
+        content: firstQuestion.content,
+        questionType: firstQuestion.questionType,
+        referenceAnswer: firstQuestion.referenceAnswer,
+      },
+    };
   }
 
   async findAll(
