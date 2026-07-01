@@ -12,6 +12,7 @@ import {
   CheckCircleOutlined,
   DownloadOutlined,
   LinkOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons'
 import type { JobRecommendation, JobMatch, JobMatchStatus, MatchAnalysis, JobMatchStats } from '@/types/job-matching'
 import * as jobMatchingApi from '@/api/job-matching'
@@ -87,7 +88,7 @@ export default function JobMatchingPage() {
   const loadSavedMatches = useCallback(async (page: number) => {
     setSavedLoading(true)
     try {
-      const res = await jobMatchingApi.getMatches({ page, limit: savedPageSize })
+      const res = await jobMatchingApi.getMatches({ page, limit: savedPageSize, status: 'saved' })
       const data = res.data ?? {}
       setSavedMatches(Array.isArray(data.list) ? data.list : [])
       setSavedTotal(data.total ?? 0)
@@ -508,13 +509,20 @@ export default function JobMatchingPage() {
                     <div className={`jm-saved-score ${getScoreClass(item.matchScore)}`}>
                       {formatScore(item.matchScore)}
                     </div>
+                    <button
+                      className="jm-saved-unsave-btn"
+                      title="取消收藏"
+                      onClick={() => handleStatusChange(item.id, 'pending')}
+                    >
+                      <DeleteOutlined /> 取消收藏
+                    </button>
                     <select
                       className="jm-saved-select"
                       title="修改投递状态"
                       value={item.status}
                       onChange={(e) => handleStatusChange(item.id, e.target.value as JobMatchStatus)}
                     >
-                      {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                      {Object.entries(STATUS_LABELS).filter(([k]) => k !== 'saved').map(([k, v]) => (
                         <option key={k} value={k}>{v}</option>
                       ))}
                     </select>

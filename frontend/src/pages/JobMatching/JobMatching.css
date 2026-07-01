@@ -481,6 +481,26 @@
   font-family: var(--sans);
 }
 
+.jm-saved-unsave-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+}
+
+.jm-saved-unsave-btn:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* ====== 新增：推荐卡片操作按钮 ====== */
 .jm-rec-actions {
   display: flex;
