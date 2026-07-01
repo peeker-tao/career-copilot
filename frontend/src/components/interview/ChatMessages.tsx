@@ -21,7 +21,17 @@ export interface ChatMessagesProps {
 
 /** 从消息列表中提取上一条用户消息的评价信息，供 AI 消息展示 */
 function getPrevUserEval(messages: InterviewMessage[], currentIdx: number) {
-  // 从 currentIdx 往前找最近一条 role=user 的消息
+  // 方案1：当前 AI 消息自身已附带评价（WebSocket 流式模式 finalizeWSMessage 已设置）
+  const currentMsg = messages[currentIdx]
+  if (currentMsg?.feedback) {
+    return {
+      feedback: currentMsg.feedback,
+      rating: currentMsg.rating,
+      strengths: currentMsg.strengths,
+      weaknesses: currentMsg.weaknesses,
+    }
+  }
+  // 方案2：从 currentIdx 往前找最近一条 role=user 的消息（REST API 模式将评价附加到用户消息）
   for (let i = currentIdx - 1; i >= 0; i--) {
     if (messages[i].role === 'user' && messages[i].feedback) {
       return {

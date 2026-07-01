@@ -499,7 +499,25 @@ export const useInterviewStore = create<InterviewState>((set) => ({
           content: data.fullContent,
           rating: data.score,
           feedback: data.feedback || undefined,
+          strengths: data.strengths || undefined,
+          weaknesses: data.weaknesses || undefined,
           referenceAnswer: normalizeReferenceAnswer(data.nextQuestionReferenceAnswer),
+        }
+
+        // 同步更新上一条用户消息的评价（供 ChatMessages.getPrevUserEval 找到评价数据）
+        for (let i = aiIdx - 1; i >= 0; i--) {
+          if (messages[i].role === 'user') {
+            messages[i] = {
+              ...messages[i],
+              feedback: data.feedback || undefined,
+              rating: data.score ?? null,
+              strengths: data.strengths || undefined,
+              weaknesses: data.weaknesses || undefined,
+            }
+            break
+          }
+          // 遇到上一条 AI 消息就停止（避免跨题匹配）
+          if (messages[i].role === 'assistant' || messages[i].role === 'ai') break
         }
       }
 
