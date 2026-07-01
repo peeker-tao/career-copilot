@@ -11,15 +11,18 @@ export interface JobRecommendation {
 }
 
 /** 岗位匹配状态 */
-export type JobMatchStatus = 'saved' | 'applied' | 'interviewing' | 'offered' | 'rejected'
+export type JobMatchStatus = 'pending' | 'saved' | 'applied' | 'archived'
 
 /** 已保存的岗位匹配 */
 export interface JobMatch {
   id: string
   position: string
   company: string
+  location?: string
+  salaryRange?: string
   status: JobMatchStatus
   matchScore: number
+  requirements?: string[]
   notes?: string
   createdAt: string
 }
@@ -38,4 +41,34 @@ export interface MatchAnalysis {
     score: number
   }
   suggestions: string[]
+}
+
+/** 数据库统计 */
+export interface JobMatchStats {
+  total: number
+  statusDistribution: Record<string, number>
+  sourceDistribution: Record<string, number>
+  scoreStats: {
+    average: number
+    max: number
+    min: number
+  }
+  topPositions: {
+    position: string
+    count: number
+    avgMatchScore: number
+  }[]
+  topCompanies: {
+    company: string | null
+    count: number
+    avgMatchScore: number
+  }[]
+}
+
+/** 种子数据导入结果 */
+export interface SeedResult {
+  total: number
+  success: number
+  skipped: number
+  errors: string[]
 }

@@ -3,6 +3,8 @@ import { RobotOutlined, UserOutlined, LoadingOutlined, ExclamationCircleOutlined
 import type { InterviewMessage } from '@/types/interview'
 import { useStreamingText } from '@/hooks/useStreamingText'
 import { textToSpeech } from '@/api/voice'
+import { useVoiceStore } from '@/store/useVoiceStore'
+import { toast } from '@/store/useToastStore'
 import StarRating from './StarRating'
 
 export interface MessageBubbleProps {
@@ -47,6 +49,16 @@ export default function MessageBubble({ message, isStreaming, instantStreaming, 
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null)
   const ttsAnimRef = useRef<number>(0)
   const [textExpanded, setTextExpanded] = useState(false)
+  // 评价 TTS 播放状态
+  const [evalTtsLoading, setEvalTtsLoading] = useState(false)
+  const [evalTtsPlaying, setEvalTtsPlaying] = useState(false)
+  const [evalTtsDuration, setEvalTtsDuration] = useState(0)
+  const [evalTtsCurrentTime, setEvalTtsCurrentTime] = useState(0)
+  // TTS 错误状态（用于按钮视觉反馈）
+  const [ttsError, setTtsError] = useState(false)
+  const [evalTtsError, setEvalTtsError] = useState(false)
+  const evalTtsAudioRef = useRef<HTMLAudioElement | null>(null)
+  const evalTtsAnimRef = useRef<number>(0)
 
   // WebSocket 真实流式：speed=0 即时展示；REST 假流式：speed=25 打字机效果
   const streamingSpeed = instantStreaming ? 0 : 25
@@ -63,6 +75,8 @@ export default function MessageBubble({ message, isStreaming, instantStreaming, 
       audioRef.current?.pause()
       if (ttsAnimRef.current) cancelAnimationFrame(ttsAnimRef.current)
       ttsAudioRef.current?.pause()
+      if (evalTtsAnimRef.current) cancelAnimationFrame(evalTtsAnimRef.current)
+      evalTtsAudioRef.current?.pause()
     }
   }, [])
 
@@ -133,7 +147,9 @@ export default function MessageBubble({ message, isStreaming, instantStreaming, 
     // 否则生成新的 TTS 音频
     setTtsLoading(true)
     try {
-      const res = await textToSpeech(message.content)
+      // 使用用户选中的音色
+      const selectedVoice = useVoiceStore.getState().settings.voice
+      const res = await textToSpeech(message.content, selectedVoice)
       const audio = new Audio(res.data.audioUrl)
       ttsAudioRef.current = audio
       audio.onloadedmetadata = () => setTtsDuration(audio.duration)
@@ -143,8 +159,69 @@ export default function MessageBubble({ message, isStreaming, instantStreaming, 
       audio.play()
       setTtsPlaying(true)
       ttsAnimRef.current = requestAnimationFrame(updateTtsProgress)
-    } catch {
+    } catch (err) {
       setTtsLoading(false)
+      setTtsError(true)
+      setTimeout(() => setTtsError(false), 3000)
+      const msg = err instanceof Error ? err.message : 'TTS 播放失败'
+      toast.error(msg, 4000)
+    }
+  }
+
+  /** 评价 TTS 播放进度更新 */
+  const updateEvalTtsProgress = () => {
+    const audio = evalTtsAudioRef.current
+    if (!audio) return
+    setEvalTtsCurrentTime(audio.currentTime)
+    if (audio.currentTime < audio.duration) {
+      evalTtsAnimRef.current = requestAnimationFrame(updateEvalTtsProgress)
+    }
+  }
+
+  /** 播放/暂停评价 TTS 语音 */
+  const handleEvalTtsPlay = async () => {
+    const text = message.feedback
+    if (!text?.trim()) return
+    // 如果主 TTS 正在播放，先暂停
+    if (ttsAudioRef.current && ttsPlaying) {
+      ttsAudioRef.current.pause()
+      setTtsPlaying(false)
+      cancelAnimationFrame(ttsAnimRef.current)
+    }
+    // 如果已有评价音频且正在播放，暂停
+    if (evalTtsAudioRef.current && evalTtsPlaying) {
+      evalTtsAudioRef.current.pause()
+      setEvalTtsPlaying(false)
+      cancelAnimationFrame(evalTtsAnimRef.current)
+      return
+    }
+    // 如果已有评价音频但已暂停，恢复播放
+    if (evalTtsAudioRef.current && !evalTtsPlaying) {
+      evalTtsAudioRef.current.play()
+      setEvalTtsPlaying(true)
+      evalTtsAnimRef.current = requestAnimationFrame(updateEvalTtsProgress)
+      return
+    }
+    // 否则生成新的 TTS 音频
+    setEvalTtsLoading(true)
+    try {
+      const selectedVoice = useVoiceStore.getState().settings.voice
+      const res = await textToSpeech(text, selectedVoice)
+      const audio = new Audio(res.data.audioUrl)
+      evalTtsAudioRef.current = audio
+      audio.onloadedmetadata = () => setEvalTtsDuration(audio.duration)
+      audio.onended = () => { setEvalTtsPlaying(false); setEvalTtsCurrentTime(0) }
+      audio.onerror = () => { setEvalTtsPlaying(false); setEvalTtsCurrentTime(0); setEvalTtsLoading(false) }
+      setEvalTtsLoading(false)
+      audio.play()
+      setEvalTtsPlaying(true)
+      evalTtsAnimRef.current = requestAnimationFrame(updateEvalTtsProgress)
+    } catch (err) {
+      setEvalTtsLoading(false)
+      setEvalTtsError(true)
+      setTimeout(() => setEvalTtsError(false), 3000)
+      const msg = err instanceof Error ? err.message : '评价 TTS 播放失败'
+      toast.error(msg, 4000)
     }
   }
 
@@ -181,33 +258,46 @@ export default function MessageBubble({ message, isStreaming, instantStreaming, 
           <div className="eval-card">
             <div className="eval-header">
               <span className="eval-label">📊 回答评价</span>
-              {message.rating != null && (
-                <span className="eval-score">得分：{message.rating}</span>
-              )}
+              <div className="eval-header-right">
+                {message.rating != null && (
+                  <span className="eval-score">得分：{message.rating}</span>
+                )}
+                <span
+                  className={`eval-tts-btn ${evalTtsPlaying ? 'playing' : ''} ${evalTtsError ? 'error' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); handleEvalTtsPlay() }}
+                  title={evalTtsPlaying ? '暂停' : '朗读评价'}
+                >
+                  {evalTtsLoading ? <LoadingOutlined /> : evalTtsPlaying ? <PauseCircleFilled /> : <PlayCircleFilled />}
+                </span>
+              </div>
             </div>
             <div className="eval-body">
               {message.feedback.split('\n').map((line, i) => (
                 <p key={i}>{line || '\u00A0'}</p>
               ))}
             </div>
-            {/* 参考答案（可折叠） */}
-            {message.referenceAnswer && message.referenceAnswer.length > 0 && (
-              <details className="eval-ref">
-                <summary className="eval-ref-summary"><span>💡 参考答案</span></summary>
-                <div className="eval-ref-body">
-                  {message.referenceAnswer.map((point, i) => (
-                    <p key={i}>{i + 1}. {point || '\u00A0'}</p>
-                  ))}
-                </div>
-              </details>
+            {evalTtsPlaying && (
+              <div className="eval-tts-timer">{fmtDur(evalTtsCurrentTime)} / {fmtDur(evalTtsDuration)}</div>
             )}
           </div>
+        )}
+
+        {/* 参考答案（可折叠）— 独立于评价卡片，始终显示 */}
+        {isAI && message.referenceAnswer && message.referenceAnswer.length > 0 && (
+          <details className="eval-ref" style={{ marginTop: message.feedback ? 4 : 8 }}>
+            <summary className="eval-ref-summary"><span>💡 参考答案</span></summary>
+            <div className="eval-ref-body">
+              {message.referenceAnswer.map((point, i) => (
+                <p key={i}>{i + 1}. {point || '\u00A0'}</p>
+              ))}
+            </div>
+          </details>
         )}
 
         {/* 语音面试模式：AI 消息 — TTS 播放器在上，文字默认折叠 */}
         {isAI && voiceInterviewMode && !isFailed && (
           <>
-            <div className={`voice-wave-wrapper voice-wave-tts ${ttsPlaying ? 'playing' : ''}`} onClick={handleTtsPlay}>
+            <div className={`voice-wave-wrapper voice-wave-tts ${ttsPlaying ? 'playing' : ''} ${ttsError ? 'error' : ''}`} onClick={handleTtsPlay}>
               <span className="voice-play-btn">
                 {ttsLoading ? <LoadingOutlined /> : ttsPlaying ? <PauseCircleFilled /> : <PlayCircleFilled />}
               </span>

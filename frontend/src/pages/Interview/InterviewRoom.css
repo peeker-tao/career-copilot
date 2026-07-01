@@ -640,6 +640,15 @@
   transform: scale(1.15);
 }
 
+/* TTS 错误状态 — 红色闪烁 */
+.voice-wave-wrapper.error .voice-play-btn {
+  color: #ef4444;
+  animation: tts-error-shake 0.4s ease-in-out;
+}
+.voice-wave-wrapper.error .voice-wave-bars .vw-bar {
+  background: #ef4444;
+}
+
 /* 用户气泡内 — 白色图标 */
 .user-bubble .voice-play-btn {
   color: rgba(255, 255, 255, 0.9);
@@ -813,6 +822,37 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 6px;
+}
+
+.eval-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.eval-tts-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #d97706;
+  cursor: pointer;
+  transition: transform 0.2s, color 0.2s;
+  line-height: 1;
+}
+.eval-tts-btn:hover {
+  transform: scale(1.2);
+  color: #b45309;
+}
+.eval-tts-btn.playing {
+  color: #7c3aed;
+}
+
+.eval-tts-timer {
+  font-size: 11px;
+  color: #92400e;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
 }
 
 .eval-label {
@@ -1764,4 +1804,18 @@ details[open] .eval-ref-summary::before {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+
+/* === TTS 错误状态 === */
+.eval-tts-btn.error {
+  color: #ef4444 !important;
+  animation: tts-error-shake 0.4s ease-in-out;
+}
+
+@keyframes tts-error-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
 }

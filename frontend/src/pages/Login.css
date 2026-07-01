@@ -225,3 +225,150 @@
   transform: none;
   box-shadow: none;
 }
+
+/* ===== 忘记密码 ===== */
+.forgot-link {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s;
+  margin-top: -4px;
+}
+
+.forgot-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.forgot-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--text-h);
+}
+
+.forgot-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.forgot-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.forgot-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-soft);
+  color: var(--text-muted);
+  transition: all 0.3s ease;
+}
+
+.forgot-step.active .forgot-step-num {
+  background: var(--accent);
+  color: #fff;
+}
+
+.forgot-step-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.forgot-step.active .forgot-step-label {
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.forgot-step-line {
+  width: 24px;
+  height: 2px;
+  background: var(--border-light);
+  border-radius: 1px;
+}
+
+.forgot-step.active + .forgot-step-line {
+  background: var(--accent);
+}
+
+.forgot-back {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 4px 0;
+}
+
+.forgot-back:hover {
+  color: var(--accent);
+}
+
+.forgot-resend {
+  width: 100%;
+  padding: 10px 20px;
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.forgot-resend:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.forgot-resend:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.forgot-success {
+  text-align: center;
+  padding: 24px 0;
+}
+
+.forgot-success-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--success-bg, rgba(34, 197, 94, 0.12));
+  color: var(--success, #22c55e);
+  font-size: 28px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.forgot-success h3 {
+  font-size: 18px;
+  margin: 0 0 6px;
+  color: var(--text-h);
+}
+
+.forgot-success p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.mr-8 {
+  margin-right: 8px;
+}

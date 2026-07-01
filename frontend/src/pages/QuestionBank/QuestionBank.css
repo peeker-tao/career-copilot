@@ -330,6 +330,290 @@
   text-align: right;
 }
 
+/* 统计数据头部 */
+.qb-stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.qb-stats-count {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.qb-stats-count strong {
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.qb-clear-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+}
+
+.qb-clear-filters:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* 选择题选项 */
+.qb-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.qb-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  color: var(--text-h);
+  line-height: 1.5;
+}
+
+.qb-option:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.qb-option.qb-option-selected {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.qb-option.qb-option-correct {
+  border-color: var(--success);
+  background: var(--success-bg);
+}
+
+.qb-option.qb-option-wrong {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.qb-option-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.qb-option-selected .qb-option-label {
+  background: var(--accent);
+  color: #fff;
+}
+
+.qb-option-correct .qb-option-label {
+  background: var(--success);
+  color: #fff;
+}
+
+.qb-option-wrong .qb-option-label {
+  background: var(--danger);
+  color: #fff;
+}
+
+.qb-option-text {
+  flex: 1;
+  padding-top: 2px;
+}
+
+/* 答案提示/隐藏切换 */
+.qb-answer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+  margin-top: 8px;
+}
+
+.qb-answer-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 卡片内的操作栏 */
+.qb-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.qb-card-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+}
+
+.qb-card-action-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.qb-card-action-btn.qb-action-correct {
+  color: var(--success);
+  border-color: var(--success);
+  cursor: default;
+}
+
+.qb-card-action-btn.qb-action-wrong {
+  color: var(--danger);
+  border-color: var(--danger);
+  cursor: default;
+}
+
+/* 生成结果保存按钮 */
+.qb-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+}
+
+.qb-save-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.qb-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 生成结果项的头部 */
+.qb-gen-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* 答案区域 */
+.qb-answer-section {
+  margin-top: 8px;
+}
+
+.qb-answer-content {
+  padding: 10px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-top: 6px;
+}
+
+/* 生成数量选择器 */
+.qb-gen-count-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.qb-gen-count-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-h);
+  cursor: pointer;
+  font-size: 16px;
+  font-family: var(--sans);
+  transition: all 0.2s;
+}
+
+.qb-gen-count-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 弹窗增强 */
+.qb-modal-section {
+  margin-bottom: 16px;
+}
+
+.qb-modal-section:last-child {
+  margin-bottom: 0;
+}
+
+.qb-modal-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+/* 弹窗内答案显示 */
+.qb-modal-answer-reveal {
+  padding: 14px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.8;
+}
+
 @media (max-width: 640px) {
   .qb-gen-form { flex-direction: column; align-items: stretch; }
   .qb-gen-input { min-width: auto; width: 100%; }

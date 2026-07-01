@@ -438,6 +438,305 @@
   font-size: 13px;
 }
 
+/* ========== 新增增强样式 ========== */
+
+/* 搜索清除按钮 */
+.rs-search-clear {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.rs-search-clear:hover { color: var(--text-h); }
+
+/* 清除筛选按钮 */
+.rs-btn-clear {
+  font-size: 13px;
+  padding: 8px 14px;
+  color: var(--text-muted);
+}
+.rs-btn-clear:hover { color: var(--danger); border-color: var(--danger); }
+
+/* 列表头部统计 */
+.rs-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.rs-list-count {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.rs-list-count strong { color: var(--text-h); }
+
+/* 推荐评分圆 + 进度条 */
+.rs-rec-score-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  width: 44px;
+}
+.rs-rec-score-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+}
+.rs-rec-score-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.rs-rec-score-fill {
+  height: 100%;
+  background: var(--accent-gradient-strong);
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* 推荐元信息 */
+.rs-rec-meta {
+  display: flex;
+  gap: 6px;
+  margin: 2px 0 4px;
+}
+.rs-tag-sm {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+.rs-tag-sm.rs-diff-beginner { background: var(--success-bg); color: var(--success); }
+.rs-tag-sm.rs-diff-intermediate { background: var(--warning-bg); color: var(--warning); }
+.rs-tag-sm.rs-diff-advanced { background: var(--danger-bg); color: var(--danger); }
+
+/* 推荐跳转按钮 */
+.rs-rec-link-btn {
+  flex-shrink: 0;
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--accent-border);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+}
+.rs-rec-link-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* 卡片底部信息 */
+.rs-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+.rs-card-rating {
+  font-size: 12px;
+  color: #faad14;
+  font-weight: 600;
+}
+.rs-card-usage {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* 卡片收藏按钮 */
+.rs-card-fav-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+.rs-card-fav-btn:hover {
+  background: var(--accent-bg);
+}
+
+/* 推荐列表收藏按钮 */
+.rs-rec-fav-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  transition: background 0.2s;
+  color: var(--text-muted);
+}
+.rs-rec-fav-btn:hover {
+  background: var(--accent-bg);
+  color: #faad14;
+}
+
+/* 卡片热度指示器 */
+.rs-card-hotness {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  font-size: 11px;
+  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.12);
+  padding: 1px 6px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* 分类标签 */
+.rs-tag-cat {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+}
+
+/* 来源徽章 */
+.rs-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.rs-badge-ai {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+}
+.rs-badge-db {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+}
+
+/* 难度标签统一 */
+.rs-diff-beginner { background: var(--success-bg); color: var(--success); }
+.rs-diff-intermediate { background: var(--warning-bg); color: var(--warning); }
+.rs-diff-advanced { background: var(--danger-bg); color: var(--danger); }
+.rs-card .rs-diff-beginner { background: var(--success-bg); color: var(--success); }
+.rs-card .rs-diff-intermediate { background: var(--warning-bg); color: var(--warning); }
+.rs-card .rs-diff-advanced { background: var(--danger-bg); color: var(--danger); }
+
+/* 难度标签覆盖原 .rs-tag.beginner 等 */
+.rs-tag.rs-diff-beginner { background: var(--success-bg); color: var(--success); }
+.rs-tag.rs-diff-intermediate { background: var(--warning-bg); color: var(--warning); }
+.rs-tag.rs-diff-advanced { background: var(--danger-bg); color: var(--danger); }
+
+/* 详情弹窗增强 */
+.rs-modal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.rs-modal-desc {
+  color: var(--text);
+  line-height: 1.8;
+  font-size: 14px;
+}
+.rs-modal-score {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--accent-bg);
+  border-radius: var(--radius-sm);
+}
+.rs-modal-score span:first-child {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.rs-modal-score-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--border-light);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.rs-modal-score-fill {
+  height: 100%;
+  background: var(--accent-gradient-strong);
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+.rs-modal-score-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* 预设技能区域 */
+.rs-skill-presets {
+  margin-top: 4px;
+}
+.rs-skill-preset-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: var(--sans);
+}
+.rs-skill-preset-toggle:hover { color: var(--accent); }
+.rs-skill-preset-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.rs-skill-preset-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 10px;
+  border-radius: 14px;
+  font-size: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.rs-skill-preset-item:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+.rs-skill-preset-item.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 @media (max-width: 640px) {
   .rs-toolbar { flex-direction: column; }
   .rs-search { max-width: none; }

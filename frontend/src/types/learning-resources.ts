@@ -1,8 +1,11 @@
 /** 资源类型 */
-export type ResourceType = 'video' | 'article' | 'course' | 'book'
+export type ResourceType = 'video' | 'article' | 'course' | 'book' | 'documentation'
 
 /** 难度等级 */
 export type ResourceDifficulty = 'beginner' | 'intermediate' | 'advanced'
+
+/** 推荐来源 */
+export type RecommendationSource = 'database' | 'ai_generated' | 'database_fallback'
 
 /** 学习资源 */
 export interface LearningResource {
@@ -13,9 +16,13 @@ export interface LearningResource {
   difficulty: ResourceDifficulty
   url: string
   description: string
-  rating: number
+  rating?: number
   tags?: string[]
   duration?: string
+  usageCount?: number
+  relevanceScore?: number
+  aiGenerated?: boolean
+  source?: RecommendationSource
 }
 
 /** 资源分类 */
@@ -36,4 +43,12 @@ export interface ResourceRecommendationRequest {
   targetPosition: string
   preferredType?: ResourceType
   limit?: number
+}
+
+/** 推荐响应（后端完整结构） */
+export interface RecommendationResponse {
+  source: RecommendationSource
+  gapSkills: string[]
+  targetPosition: string
+  recommendations: LearningResource[]
 }

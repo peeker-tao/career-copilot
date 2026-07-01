@@ -15,6 +15,7 @@ interface AuthState {
   fetchProfile: () => Promise<void>
   fetchStats: () => Promise<void>
   updateProfile: (data: Partial<UserInfo>) => Promise<void>
+  changePassword: (oldPassword: string, newPassword: string) => Promise<void>
   clearError: () => void
 }
 
@@ -86,6 +87,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user: res.data, loading: false })
     } catch (err) {
       set({ error: (err as Error).message, loading: false })
+    }
+  },
+
+  changePassword: async (oldPassword, newPassword) => {
+    set({ loading: true, error: null })
+    try {
+      await authApi.changePassword({ oldPassword, newPassword })
+      set({ loading: false })
+    } catch (err) {
+      set({ error: (err as Error).message, loading: false })
+      throw err
     }
   },
 

@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeftOutlined, TrophyOutlined, ExclamationCircleOutlined, FileTextOutlined, BarChartOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, TrophyOutlined, ExclamationCircleOutlined, FileTextOutlined, BarChartOutlined, SoundOutlined, PauseCircleFilled, LoadingOutlined } from '@ant-design/icons'
 import { Loading, EmptyState } from '@/components/common'
 import type { InterviewReport } from '@/types/interview'
 import { getInterviewReport } from '@/api/interviews'
 import { useInterviewStore } from '@/store/useInterviewStore'
+import { textToSpeech } from '@/api/voice'
+import { useVoiceStore } from '@/store/useVoiceStore'
 import './InterviewReport.css'
 
 const getScoreLevel = (score: number): { label: string; color: string } => {
@@ -24,6 +26,13 @@ export default function InterviewReportPage() {
   const report = storedReport || fetchedReport
   const loading = !report && !error
   const [refresh, setRefresh] = useState(0) // 用于强制刷新 useEffect
+  // 报告 TTS 播放状态
+  const [reportTtsLoading, setReportTtsLoading] = useState(false)
+  const [reportTtsPlaying, setReportTtsPlaying] = useState(false)
+  const [reportTtsDuration, setReportTtsDuration] = useState(0)
+  const [reportTtsCurrentTime, setReportTtsCurrentTime] = useState(0)
+  const reportTtsAudioRef = useRef<HTMLAudioElement | null>(null)
+  const reportTtsAnimRef = useRef<number>(0)
 
   useEffect(() => {
     // store 中已有报告，无需 fetch
@@ -57,6 +66,82 @@ export default function InterviewReportPage() {
 
     return () => { mounted = false }
   }, [id, report, refresh])
+
+  /** 格式化时间 mm:ss */
+  const fmtDur = (sec: number) => {
+    const m = Math.floor(sec / 60)
+    const s = Math.floor(sec % 60)
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
+
+  /** 报告 TTS 进度更新 */
+  const updateReportTtsProgress = () => {
+    const audio = reportTtsAudioRef.current
+    if (!audio) return
+    setReportTtsCurrentTime(audio.currentTime)
+    if (audio.currentTime < audio.duration) {
+      reportTtsAnimRef.current = requestAnimationFrame(updateReportTtsProgress)
+    }
+  }
+
+  /** 构建报告朗读文本 */
+  const buildReportSpeechText = () => {
+    const parts: string[] = []
+    parts.push(`你的面试总体得分为${report.overallScore}分，${getScoreLevel(report.overallScore).label}。`)
+    if (report.strengths.length > 0) {
+      parts.push('优势方面：' + report.strengths.join('，'))
+    }
+    if (report.weaknesses.length > 0) {
+      parts.push('待改进方面：' + report.weaknesses.join('，'))
+    }
+    if (report.suggestions.length > 0) {
+      parts.push('学习建议：' + report.suggestions.join('，'))
+    }
+    if (report.skillScores.length > 0) {
+      const skillTexts = report.skillScores.map(s => `${s.name}：${s.score}分`)
+      parts.push('技能评分：' + skillTexts.join('，'))
+    }
+    if (report.summary) {
+      parts.push(report.summary)
+    }
+    return parts.join('。')
+  }
+
+  /** 播放/暂停报告 TTS */
+  const handleReportTtsPlay = async () => {
+    // 如果正在播放，暂停
+    if (reportTtsAudioRef.current && reportTtsPlaying) {
+      reportTtsAudioRef.current.pause()
+      setReportTtsPlaying(false)
+      cancelAnimationFrame(reportTtsAnimRef.current)
+      return
+    }
+    // 如果已暂停，恢复
+    if (reportTtsAudioRef.current && !reportTtsPlaying) {
+      reportTtsAudioRef.current.play()
+      setReportTtsPlaying(true)
+      reportTtsAnimRef.current = requestAnimationFrame(updateReportTtsProgress)
+      return
+    }
+    // 生成新音频
+    setReportTtsLoading(true)
+    try {
+      const text = buildReportSpeechText()
+      const selectedVoice = useVoiceStore.getState().settings.voice
+      const res = await textToSpeech(text, selectedVoice)
+      const audio = new Audio(res.data.audioUrl)
+      reportTtsAudioRef.current = audio
+      audio.onloadedmetadata = () => setReportTtsDuration(audio.duration)
+      audio.onended = () => { setReportTtsPlaying(false); setReportTtsCurrentTime(0) }
+      audio.onerror = () => { setReportTtsPlaying(false); setReportTtsCurrentTime(0); setReportTtsLoading(false) }
+      setReportTtsLoading(false)
+      audio.play()
+      setReportTtsPlaying(true)
+      reportTtsAnimRef.current = requestAnimationFrame(updateReportTtsProgress)
+    } catch {
+      setReportTtsLoading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -102,6 +187,21 @@ export default function InterviewReportPage() {
         <div className="report-header-text">
           <h1 className="report-title">面试报告</h1>
           <p className="report-desc">模拟面试已完成，以下是你的表现分析</p>
+          <div className="report-tts-bar">
+            <span
+              className={`report-tts-btn ${reportTtsPlaying ? 'playing' : ''}`}
+              onClick={handleReportTtsPlay}
+              title={reportTtsPlaying ? '暂停朗读' : '朗读报告'}
+            >
+              {reportTtsLoading ? <LoadingOutlined /> : reportTtsPlaying ? <PauseCircleFilled /> : <SoundOutlined />}
+            </span>
+            <span className={`report-tts-label ${reportTtsPlaying ? 'playing' : ''}`}>
+              {reportTtsLoading ? '生成语音中...' : reportTtsPlaying ? '朗读中...' : '朗读报告'}
+            </span>
+            {reportTtsPlaying && (
+              <span className="report-tts-timer">{fmtDur(reportTtsCurrentTime)} / {fmtDur(reportTtsDuration)}</span>
+            )}
+          </div>
         </div>
       </div>
 

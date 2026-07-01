@@ -121,8 +121,21 @@ export default function InterviewRoomPage() {
   })
 
   const handleStartInterview = async () => {
-    if (!targetPosition.trim()) {
+    const pos = targetPosition.trim()
+    if (!pos) {
       setSetupError('请输入目标岗位')
+      return
+    }
+    if (pos.length < 2) {
+      setSetupError('岗位名称至少需要 2 个字符')
+      return
+    }
+    if (pos.length > 50) {
+      setSetupError('岗位名称不能超过 50 个字符')
+      return
+    }
+    if (!/^[\u4e00-\u9fa5a-zA-Z0-9\s\/+\-]+$/.test(pos)) {
+      setSetupError('岗位名称只能包含中文、英文字母、数字、空格和少量符号（/ + -）')
       return
     }
     setSetupError(null)
@@ -130,7 +143,7 @@ export default function InterviewRoomPage() {
     try {
       const store = useInterviewStore.getState()
       const newId = await store.startInterview(
-        targetPosition.trim(),
+        pos,
         difficulty,
         selectedResumeId || undefined,
       )
@@ -169,15 +182,21 @@ export default function InterviewRoomPage() {
   // handleSend 从 store 中获取最新引用
   const handleSend = useCallback((content: string, type?: MessageType, audioUrl?: string, audioBlob?: Blob) => {
     if (id && !isNew) {
-      // 1. 同步添加消息（永远成功，消息立刻出现在列表中）
       const msgId = addMessage(content, type || 'text', audioUrl)
-      sendMessage(id, msgId, content, type || 'text', audioUrl, audioBlob)
-      // WebSocket 模式下才真正发出
-      if (wsEnabled) {
+      if (wsEnabled && wsConnected) {
+        // WebSocket 已连接：走 WS 流式通道，REST 只标记 sent
+        sendMessage(id, msgId, content, type || 'text', audioUrl, audioBlob)
         wsSendAnswer(content)
+      } else if (wsEnabled && !wsConnected) {
+        // WebSocket 未连接：降级到 REST API，同时发出警告
+        console.warn('[WS] WebSocket 未连接，降级到 REST API 提交回答')
+        sendMessage(id, msgId, content, type || 'text', audioUrl, audioBlob, true)
+      } else {
+        // 普通 REST 模式
+        sendMessage(id, msgId, content, type || 'text', audioUrl, audioBlob)
       }
     }
-  }, [id, isNew, addMessage, sendMessage, wsEnabled, wsSendAnswer])
+  }, [id, isNew, addMessage, sendMessage, wsEnabled, wsConnected, wsSendAnswer])
 
   // 最后一条 AI 消息内容，用于 TTS 朗读
   const lastAIContent = useMemo(() => {

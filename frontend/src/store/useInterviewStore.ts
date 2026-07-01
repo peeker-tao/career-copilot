@@ -4,6 +4,35 @@ import type { InterviewStats } from '@/components/interview/HistoryStats'
 import * as interviewApi from '@/api/interviews'
 import { toast } from '@/store/useToastStore'
 
+/** 后端返回的 referenceAnswer 是字符串，前端需要归一化为 string[] */
+function normalizeReferenceAnswer(val: unknown): string[] | undefined {
+  if (Array.isArray(val)) return val.length > 0 ? val : undefined
+  if (typeof val === 'string' && val.trim()) {
+    // 按换行或数字序号分割，兼容多种格式
+    return val.split('\n').map(s => s.trim()).filter(Boolean)
+  }
+  return undefined
+}
+
+/** aiResponding 自动复位定时器：防止因 WS/REST 未返回导致界面永久卡死 */
+let aiRespondingTimer: ReturnType<typeof setTimeout> | null = null
+function resetAiRespondingTimer() {
+  if (aiRespondingTimer) clearTimeout(aiRespondingTimer)
+  aiRespondingTimer = setTimeout(() => {
+    const state = useInterviewStore.getState()
+    if (state.aiResponding) {
+      console.warn('[aiResponding] 60s 超时，自动复位')
+      useInterviewStore.setState({ aiResponding: false })
+    }
+  }, 60000)
+}
+function clearAiRespondingTimer() {
+  if (aiRespondingTimer) {
+    clearTimeout(aiRespondingTimer)
+    aiRespondingTimer = null
+  }
+}
+
 interface InterviewState {
   // State
   interviews: Interview[]
@@ -36,7 +65,7 @@ interface InterviewState {
   /** 本地添加消息（同步，永远成功），返回消息 id */
   addMessage: (content: string, type?: MessageType, audioUrl?: string) => string
   /** 发送消息（异步），只更新已有消息的状态 */
-  sendMessage: (interviewId: string, msgId: string, content: string, type?: MessageType, audioUrl?: string, audioBlob?: Blob) => Promise<void>
+  sendMessage: (interviewId: string, msgId: string, content: string, type?: MessageType, audioUrl?: string, audioBlob?: Blob, forceRest?: boolean) => Promise<void>
   finishInterview: (interviewId: string) => Promise<void>
   fetchReport: (interviewId: string) => Promise<void>
   deleteInterview: (id: string) => Promise<void>
@@ -166,7 +195,13 @@ export const useInterviewStore = create<InterviewState>((set) => ({
         })
       }
       console.groupEnd()
-      set({ currentMessages: Array.isArray(res.data) ? res.data : [], loading: false })
+      const messages = Array.isArray(res.data) ? res.data : [];
+      // 归一化 referenceAnswer（后端存的是字符串，前端需要 string[]）
+      const normalized = messages.map((m) => ({
+        ...m,
+        referenceAnswer: normalizeReferenceAnswer(m.referenceAnswer),
+      }))
+      set({ currentMessages: normalized, loading: false })
     } catch (err) {
       console.error(`[对话] 加载消息失败 (${id}):`, (err as Error).message)
       set({ error: (err as Error).message, loading: false })
@@ -190,13 +225,16 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       currentMessages: [...state.currentMessages, msg],
       aiResponding: true,
     }))
+    // 安全网：60s 后自动复位 aiResponding（防止 WS/REST 未返回导致界面卡死）
+    resetAiRespondingTimer()
     return id
   },
 
   /** 发送消息（异步）：用 msgId 找到已有消息并更新其状态 */
-  sendMessage: async (interviewId, msgId, content, type, audioUrl, audioBlob) => {
+  sendMessage: async (interviewId, msgId, content, type, audioUrl, audioBlob, forceRest) => {
     // WebSocket 模式：实际发送由 useInterviewWebSocket hook 处理，这里只标记 sent
-    if (useInterviewStore.getState().useWebSocket) {
+    // 除非 forceRest=true（例如 WS 未连接时的降级）
+    if (useInterviewStore.getState().useWebSocket && !forceRest) {
       set((state) => ({
         currentMessages: state.currentMessages.map((m) =>
           m.id === msgId ? { ...m, status: 'sent' as const } : m
@@ -252,7 +290,15 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       // content 只放下一题内容；若追问内容与 feedback 相同则跳过（避免重复）
       const qContent = (result.nextQuestion?.content || '').trim()
       const fbContent = (result.evaluation?.feedback || '').trim()
-      const aiContent = qContent && qContent !== fbContent ? qContent : ''
+      const hasScore = result.evaluation?.score != null
+      const aiContent = qContent && qContent !== fbContent ? qContent : (fbContent || '')
+      // 无任何内容 → 不添加空白消息，仅复位状态并发出警告
+      if (!aiContent && !hasScore) {
+        console.warn('[sendMessage] AI 返回空内容，跳过添加消息')
+        clearAiRespondingTimer()
+        set({ aiResponding: false, streamingId: null })
+        return
+      }
       const aiMsg: InterviewMessage = {
         id: `ai-response-${Date.now()}`,
         role: 'ai',
@@ -261,9 +307,10 @@ export const useInterviewStore = create<InterviewState>((set) => ({
         rating: result.evaluation?.score ?? null,
         questionType: result.nextQuestion?.questionType,
         feedback: result.evaluation?.feedback || undefined,
-        referenceAnswer: result.nextQuestion?.referenceAnswer,
+        referenceAnswer: normalizeReferenceAnswer(result.nextQuestion?.referenceAnswer),
       }
 
+      clearAiRespondingTimer()
       set((state) => ({
         currentMessages: [...state.currentMessages, aiMsg],
         streamingId: aiMsg.id,
@@ -358,7 +405,8 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   },
 
   clearError: () => set({ error: null }),
-  resetRoom: () =>
+  resetRoom: () => {
+    clearAiRespondingTimer()
     set({
       interview: null,
       currentMessages: [],
@@ -367,7 +415,8 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       aiResponding: false,
       useWebSocket: false,
       report: null,
-    }),
+    })
+  },
 
   /* ══════════════════════════════════════════════
      WebSocket Actions
@@ -428,6 +477,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
     console.log('参考回答:', data.nextQuestionReferenceAnswer)
     console.groupEnd()
 
+    clearAiRespondingTimer()
     set((state) => {
       const messages = [...state.currentMessages]
       // 用完整内容替换流式消息，同时保存 feedback
@@ -443,7 +493,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
           content: msgContent,
           rating: data.score,
           feedback: data.feedback || undefined,
-          referenceAnswer: data.nextQuestionReferenceAnswer ?? undefined,
+          referenceAnswer: normalizeReferenceAnswer(data.nextQuestionReferenceAnswer),
         }
       }
 
@@ -471,6 +521,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
    * WebSocket 错误处理
    */
   handleWSError: (code, message) => {
+    clearAiRespondingTimer()
     if (code === 400 && (message.includes('已结束') || message.includes('已完成'))) {
       set({ isFinished: true, aiResponding: false, streamingId: null })
     } else {
