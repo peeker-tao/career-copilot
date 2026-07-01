@@ -39,11 +39,14 @@ const User: React.FC = () => {
   const [savedResources, setSavedResources] = useState<LearningResource[]>([])
   const [favLoading, setFavLoading] = useState(false)
 
+  const [savedJobsTotal, setSavedJobsTotal] = useState(0)
+
   /** 加载收藏岗位 */
   const fetchSavedJobs = useCallback(async () => {
     try {
       const res = await jobMatchingApi.getMatches({ status: 'saved', limit: 50 })
       setSavedJobs(res.data?.list ?? [])
+      setSavedJobsTotal(res.data?.total ?? 0)
     } catch { /* ignore */ }
   }, [])
 
@@ -80,6 +83,7 @@ const User: React.FC = () => {
     try {
       await jobMatchingApi.updateMatchStatus(id, 'archived')
       setSavedJobs((prev) => prev.filter((j) => j.id !== id))
+      setSavedJobsTotal((prev) => Math.max(0, prev - 1))
       toast.success('已取消收藏')
     } catch {
       toast.error('操作失败')
@@ -212,7 +216,7 @@ const User: React.FC = () => {
             onClick={() => setFavTab('jobs')}
           >
             <RiseOutlined /> 收藏岗位
-            {savedJobs.length > 0 && <span className="fav-badge">{savedJobs.length}</span>}
+            {savedJobsTotal > 0 && <span className="fav-badge">{savedJobsTotal > 50 ? '50+' : savedJobsTotal}</span>}
           </button>
           <button
             className={`fav-tab ${favTab === 'questions' ? 'fav-tab--active' : ''}`}

@@ -663,6 +663,8 @@
 
 .fav-list {
   min-height: 80px;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .fav-item {
