@@ -298,8 +298,7 @@ export default function LearningResourcesPage() {
             <p>配置您的技能缺口和目标岗位</p>
             <p style={{ fontSize: 13, marginTop: 4 }}>获取 AI 个性化学习资源推荐</p>
             <button
-              className="rs-btn-primary"
-              style={{ marginTop: 12 }}
+              className="rs-btn rs-btn-primary"
               onClick={() => setShowSkillGapModal(true)}
             >
               立即配置
@@ -500,7 +499,7 @@ export default function LearningResourcesPage() {
             <div className="rs-modal-footer">
               {detail.url && (
                 <button
-                  className="rs-btn-primary"
+                  className="rs-btn rs-btn-primary"
                   onClick={() => window.open(detail.url!, '_blank')}
                 >
                   去学习
@@ -583,7 +582,7 @@ export default function LearningResourcesPage() {
             <div className="rs-modal-footer">
               <button className="rs-btn" onClick={() => setShowSkillGapModal(false)}>取消</button>
               <button
-                className="rs-btn-primary"
+                className="rs-btn rs-btn-primary"
                 disabled={!targetPosition.trim() || skillGaps.length === 0}
                 onClick={handleLoadRecommendations}
               >

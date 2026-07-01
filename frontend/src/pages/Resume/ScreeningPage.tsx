@@ -94,7 +94,7 @@ export default function ScreeningPage() {
           从 CSV 数据集导入 1000 条岗位筛选基准记录
         </p>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button className="qb-btn-primary" disabled={seedLoading} onClick={handleSeed}>
+          <button className="qb-btn qb-btn-primary" disabled={seedLoading} onClick={handleSeed}>
             <DatabaseOutlined /> {seedLoading ? '导入中...' : '导入种子数据'}
           </button>
           {seedResult && (
@@ -126,7 +126,7 @@ export default function ScreeningPage() {
           onChange={(e) => setJsonRecords(e.target.value)}
         />
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button className="qb-btn-primary" disabled={!jsonRecords.trim() || jsonLoading} onClick={async () => {
+          <button className="qb-btn qb-btn-primary" disabled={!jsonRecords.trim() || jsonLoading} onClick={async () => {
             setJsonLoading(true)
             setJsonResult(null)
             try {
@@ -163,7 +163,7 @@ export default function ScreeningPage() {
               {ROLE_OPTIONS.map((r) => (<option key={r} value={r}>{r}</option>))}
             </select>
           </div>
-          <button className="qb-btn-primary" disabled={statsLoading} onClick={handleLoadStats}>
+          <button className="qb-btn qb-btn-primary" disabled={statsLoading} onClick={handleLoadStats}>
             <ReloadOutlined /> {statsLoading ? '加载中...' : '加载统计'}
           </button>
         </div>
@@ -224,7 +224,7 @@ export default function ScreeningPage() {
             <label className="qb-gen-label">项目数</label>
             <input className="qb-gen-input short" type="number" min={0} max={50} value={evalProjects} onChange={(e) => setEvalProjects(e.target.value)} />
           </div>
-          <button className="qb-btn-primary" disabled={!evalRole.trim() || !evalSkills.trim() || evalLoading} onClick={handleEvaluate}>
+          <button className="qb-btn qb-btn-primary" disabled={!evalRole.trim() || !evalSkills.trim() || evalLoading} onClick={handleEvaluate}>
             <ThunderboltOutlined /> {evalLoading ? '评估中...' : '评估'}
           </button>
         </div>

@@ -49,11 +49,27 @@
   gap: 8px;
 }
 
+/* 行式布局 */
 .qb-gen-form {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qb-gen-row {
+  display: flex;
+  gap: 12px;
   align-items: flex-end;
+}
+
+.qb-gen-row .qb-gen-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.qb-gen-row .qb-gen-field.field-sm {
+  flex: none;
+  width: 140px;
 }
 
 .qb-gen-field {
@@ -69,14 +85,16 @@
 }
 
 .qb-gen-input {
-  padding: 8px 14px;
+  padding: 5px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-h);
   background: var(--bg);
   outline: none;
-  min-width: 160px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   font-family: var(--sans);
 }
 
@@ -85,21 +103,108 @@
   box-shadow: 0 0 0 2px var(--accent-bg);
 }
 
-.qb-gen-input.short { width: 80px; min-width: 80px; }
+.qb-gen-input.short { width: 48px; text-align: center; }
 
 .qb-gen-select {
-  padding: 8px 14px;
+  padding: 5px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-h);
   background: var(--bg);
   cursor: pointer;
   outline: none;
+  width: 100%;
+  box-sizing: border-box;
   font-family: var(--sans);
 }
 
 .qb-gen-select:focus { border-color: var(--accent); }
+
+/* 技能标签输入框 */
+.qb-gen-tags-input {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: text;
+  box-sizing: border-box;
+}
+
+.qb-gen-tags-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+.qb-gen-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.qb-gen-tag-remove {
+  font-size: 10px;
+  cursor: pointer;
+  display: inline-flex;
+}
+
+.qb-gen-tag-input-inner {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-h);
+  font-size: 14px;
+  min-width: 100px;
+  flex: 1;
+  padding: 2px 0;
+  font-family: var(--sans);
+}
+
+/* 题型按钮组 */
+.qb-gen-type-group {
+  display: flex;
+  gap: 6px;
+}
+
+.qb-gen-type-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-h);
+}
+
+.qb-gen-type-btn:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.qb-gen-type-btn.active {
+  background: var(--accent-gradient-strong);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* 生成按钮容器 */
+.qb-gen-submit {
+  flex: none;
+  align-self: flex-end;
+}
 
 .qb-btn {
   display: inline-flex;
@@ -180,6 +285,17 @@
   font-size: 13px;
   color: var(--text);
   line-height: 1.6;
+}
+
+/* 生成结果中的操作按钮 */
+.qb-gen-action-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+.qb-gen-close-btn {
+  padding: 4px 14px;
+  font-size: 12px;
 }
 
 .qb-gen-item.clickable {
@@ -540,7 +656,7 @@
 }
 
 .qb-card-action-btn:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-border);
   color: var(--accent);
 }
 

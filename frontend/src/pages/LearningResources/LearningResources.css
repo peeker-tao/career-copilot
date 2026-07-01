@@ -103,6 +103,7 @@
 }
 
 .rs-card-icon {
+  position: relative;
   font-size: 26px;
   margin-bottom: 12px;
 }
@@ -356,10 +357,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 9px 20px;
-  border-radius: var(--radius-sm);
+  padding: 10px 24px;
+  border-radius: var(--radius);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   font-family: var(--sans);
@@ -375,6 +376,7 @@
   color: #fff;
   border: none;
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+  cursor: pointer;
 }
 
 .rs-btn-primary:hover {
@@ -383,10 +385,19 @@
   color: #fff;
 }
 
+.rs-btn-primary:disabled {
+  background: #d1d5db;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+  color: #9ca3af;
+}
+
 .rs-btn-ghost {
   background: transparent;
   border: 1px solid var(--accent-border);
   color: var(--accent);
+  border-radius: var(--radius);
 }
 
 .rs-btn-ghost:hover { background: var(--accent-bg); }
@@ -436,6 +447,15 @@
   padding: 24px;
   color: var(--text-muted);
   font-size: 13px;
+}
+.rs-empty-rec .rs-btn-primary {
+  margin-top: 12px;
+}
+
+/* 弹窗底部按钮对齐 */
+.rs-modal-footer .rs-btn-primary {
+  min-width: 100px;
+  justify-content: center;
 }
 
 /* ========== 新增增强样式 ========== */
@@ -606,6 +626,11 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.rs-card:hover .rs-card-hotness {
+  opacity: 1;
 }
 
 /* 分类标签 */

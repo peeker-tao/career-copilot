@@ -66,7 +66,7 @@ export default function QuestionBankPage() {
   const [genTypes, setGenTypes] = useState<QuestionType[]>(['short_answer'])
   const [genLoading, setGenLoading] = useState(false)
   const [generatedQuestions, setGeneratedQuestions] = useState<QuestionBankItem[]>([])
-  const [showGenAnswers, setShowGenAnswers] = useState(false)
+  const [collapsedGenAnswers, setCollapsedGenAnswers] = useState<Set<number>>(new Set())
   const [savingIds, setSavingIds] = useState<Record<string, boolean>>({})
 
   // 收藏（localStorage 持久化）
@@ -126,7 +126,7 @@ export default function QuestionBankPage() {
   const handleGenerate = async () => {
     if (!genPosition.trim()) return
     setGenLoading(true)
-    setShowGenAnswers(false)
+    setCollapsedGenAnswers(new Set())
     try {
       const res = await questionBankApi.generateQuestions({
         position: genPosition.trim(),
@@ -244,54 +244,80 @@ export default function QuestionBankPage() {
       <div className="qb-generate-section">
         <h3><ThunderboltOutlined /> AI 智能出题</h3>
         <div className="qb-gen-form">
-          <div className="qb-gen-field">
-            <label className="qb-gen-label">目标岗位</label>
-            <input className="qb-gen-input" placeholder="例如：后端开发工程师" value={genPosition} onChange={(e) => setGenPosition(e.target.value)} />
-          </div>
-          <div className="qb-gen-field">
-            <label className="qb-gen-label">技能标签</label>
-            <div className="qb-gen-input" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', minHeight: 36, padding: '4px 8px', cursor: 'text' }} onClick={() => document.getElementById('gen-skill-input')?.focus()}>
-              {genSkills.map((s) => (
-                <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '2px 8px', borderRadius: 12, fontSize: 12, background: 'var(--accent-bg)', color: 'var(--accent)' }}>
-                  {s}<CloseOutlined style={{ fontSize: 10, cursor: 'pointer' }} onClick={() => removeSkill(s)} />
-                </span>
-              ))}
-              <input id="gen-skill-input" style={{ border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-h)', fontSize: 14, minWidth: 100, flex: 1, padding: '2px 0', fontFamily: 'var(--sans)' }} placeholder={genSkills.length === 0 ? '技能关键词' : ''} value={genSkillInput} onChange={(e) => setGenSkillInput(e.target.value)} onKeyDown={handleSkillKeyDown} />
+          {/* 第1行：岗位 + 难度 + 数量 */}
+          <div className="qb-gen-row">
+            <div className="qb-gen-field">
+              <label className="qb-gen-label">目标岗位</label>
+              <input className="qb-gen-input" placeholder="例如：后端开发工程师" value={genPosition} onChange={(e) => setGenPosition(e.target.value)} />
+            </div>
+            <div className="qb-gen-field field-sm">
+              <label className="qb-gen-label">难度</label>
+              <select className="qb-gen-select" value={genDifficulty} onChange={(e) => setGenDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}>
+                <option value="easy">简单</option>
+                <option value="medium">中等</option>
+                <option value="hard">困难</option>
+              </select>
+            </div>
+            <div className="qb-gen-field field-sm">
+              <label className="qb-gen-label">数量</label>
+              <div className="qb-gen-count-group">
+                <button className="qb-gen-count-btn" onClick={() => setGenCount(Math.max(1, genCount - 1))}>−</button>
+                <input
+                  className="qb-gen-input short"
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={genCount}
+                  onChange={(e) => setGenCount(Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
+                />
+                <button className="qb-gen-count-btn" onClick={() => setGenCount(Math.min(20, genCount + 1))}>+</button>
+              </div>
             </div>
           </div>
-          <div className="qb-gen-field">
-            <label className="qb-gen-label">难度</label>
-            <select className="qb-gen-select" value={genDifficulty} onChange={(e) => setGenDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}>
-              <option value="easy">简单</option>
-              <option value="medium">中等</option>
-              <option value="hard">困难</option>
-            </select>
-          </div>
-          <div className="qb-gen-field">
-            <label className="qb-gen-label">数量</label>
-            <div className="qb-gen-count-group">
-              <button className="qb-gen-count-btn" onClick={() => setGenCount(Math.max(1, genCount - 1))}>−</button>
-              <input
-                className="qb-gen-input short"
-                type="number"
-                min={1}
-                max={20}
-                value={genCount}
-                onChange={(e) => setGenCount(Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
-              />
-              <button className="qb-gen-count-btn" onClick={() => setGenCount(Math.min(20, genCount + 1))}>+</button>
+
+          {/* 第2行：技能标签（独占一行） */}
+          <div className="qb-gen-row">
+            <div className="qb-gen-field">
+              <label className="qb-gen-label">技能标签</label>
+              <div className="qb-gen-tags-input" onClick={() => document.getElementById('gen-skill-input')?.focus()}>
+                {genSkills.map((s) => (
+                  <span key={s} className="qb-gen-tag">
+                    {s}<span className="qb-gen-tag-remove"><CloseOutlined onClick={() => removeSkill(s)} /></span>
+                  </span>
+                ))}
+                <input
+                  id="gen-skill-input"
+                  className="qb-gen-tag-input-inner"
+                  placeholder={genSkills.length === 0 ? '输入技能关键词后回车' : ''}
+                  value={genSkillInput}
+                  onChange={(e) => setGenSkillInput(e.target.value)}
+                  onKeyDown={handleSkillKeyDown}
+                />
+              </div>
             </div>
           </div>
-          <div className="qb-gen-field">
-            <label className="qb-gen-label">题型</label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {(['short_answer', 'choice', 'coding'] as QuestionType[]).map((t) => (
-                <button key={t} className={`qb-btn ${genTypes.includes(t) ? 'qb-btn-primary' : ''}`} style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => toggleGenType(t)}>{TYPE_LABELS[t]}</button>
-              ))}
+
+          {/* 第3行：题型 + 生成按钮 */}
+          <div className="qb-gen-row">
+            <div className="qb-gen-field">
+              <label className="qb-gen-label">题型</label>
+              <div className="qb-gen-type-group">
+                {(['short_answer', 'choice', 'coding'] as QuestionType[]).map((t) => (
+                  <button
+                    key={t}
+                    className={`qb-gen-type-btn ${genTypes.includes(t) ? 'active' : ''}`}
+                    onClick={() => toggleGenType(t)}
+                  >
+                    {TYPE_ICONS[t]} {TYPE_LABELS[t]}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div style={{ alignSelf: 'flex-end' }}>
-            <button className="qb-btn-primary" disabled={!genPosition.trim() || genLoading} onClick={handleGenerate}><ThunderboltOutlined /> {genLoading ? '生成中...' : '生成题目'}</button>
+            <div className="qb-gen-submit">
+              <button className="qb-btn qb-btn-primary" disabled={!genPosition.trim() || genLoading} onClick={handleGenerate}>
+                <ThunderboltOutlined /> {genLoading ? '生成中...' : '生成题目'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -301,17 +327,21 @@ export default function QuestionBankPage() {
               <span>生成结果 ({generatedQuestions.length}题)</span>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
-                  className="qb-btn"
-                  style={{ padding: '4px 10px', fontSize: 11 }}
-                  onClick={() => setShowGenAnswers(!showGenAnswers)}
+                  className="qb-btn qb-gen-action-btn"
+                  onClick={() => {
+                    if (collapsedGenAnswers.size === generatedQuestions.length) {
+                      setCollapsedGenAnswers(new Set())
+                    } else {
+                      setCollapsedGenAnswers(new Set(generatedQuestions.map((_, idx) => idx)))
+                    }
+                  }}
                 >
-                  {showGenAnswers ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-                  {showGenAnswers ? '隐藏答案' : '显示答案'}
+                  {collapsedGenAnswers.size === generatedQuestions.length ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                  {collapsedGenAnswers.size === generatedQuestions.length ? '全部展开' : '全部收起'}
                 </button>
                 <button
-                  className="qb-btn"
-                  style={{ padding: '4px 14px', fontSize: 12 }}
-                  onClick={() => { setGeneratedQuestions([]); setShowGenAnswers(false) }}
+                  className="qb-btn qb-gen-close-btn"
+                  onClick={() => { setGeneratedQuestions([]); setCollapsedGenAnswers(new Set()) }}
                 >
                   收起
                 </button>
@@ -335,13 +365,26 @@ export default function QuestionBankPage() {
                   <span className="qb-tag">{q.category}</span>
                 </div>
                 {q.type === 'choice' && q.options && renderChoiceOptions(q, undefined, undefined, undefined)}
-                {showGenAnswers && q.answer && (
+                {!collapsedGenAnswers.has(i) && (
                   <div className="qb-answer-section">
                     <div className="qb-answer-content">
-                      <strong>参考答案：</strong>{q.answer}
+                      <strong>参考答案：</strong>{q.answer || '暂无'}
                     </div>
                   </div>
                 )}
+                  <div style={{ marginTop: 4 }}>
+                    <button
+                      className="qb-card-action-btn"
+                      onClick={() => setCollapsedGenAnswers((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(i)) next.delete(i); else next.add(i)
+                        return next
+                      })}
+                    >
+                      {collapsedGenAnswers.has(i) ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                      {collapsedGenAnswers.has(i) ? '显示答案' : '收起答案'}
+                    </button>
+                  </div>
               </div>
             ))}
           </div>
@@ -388,8 +431,8 @@ export default function QuestionBankPage() {
           </div>
           <div className="qb-list">
             {questions.map((item) => (
-              <div key={item.id} className="qb-card">
-                <div className="qb-card-question" onClick={() => { setDetail(item); setDetailRevealAnswer(false); setDetailSelectedOption(null); setDetailAnswerResult(null) }}>{item.question}</div>
+              <div key={item.id} className="qb-card" onClick={() => { setDetail(item); setDetailRevealAnswer(false); setDetailSelectedOption(null); setDetailAnswerResult(null) }}>
+                <div className="qb-card-question">{item.question}</div>
                 <div className="qb-card-tags">
                   <span className={`qb-tag ${item.difficulty}`}>{DIFFICULTY_LABELS[item.difficulty] || item.difficulty}</span>
                   <span className="qb-tag">{TYPE_ICONS[item.type]} {TYPE_LABELS[item.type] || item.type}</span>
@@ -404,7 +447,7 @@ export default function QuestionBankPage() {
                     <span className={`qb-card-action-btn ${answerResults[item.id] === 'correct' ? 'qb-action-correct' : 'qb-action-wrong'}`}>
                       {answerResults[item.id] === 'correct' ? <><CheckOutlined /> 回答正确</> : <><CloseCircleOutlined /> 回答错误</>}
                     </span>
-                    <button className="qb-card-action-btn" onClick={() => toggleRevealAnswer(item.id)}>
+                    <button className="qb-card-action-btn" onClick={(e) => { e.stopPropagation(); toggleRevealAnswer(item.id) }}>
                       {revealedAnswers[item.id] ? <EyeInvisibleOutlined /> : <EyeOutlined />}
                       {revealedAnswers[item.id] ? '隐藏答案' : '正确答案'}
                     </button>
@@ -417,7 +460,7 @@ export default function QuestionBankPage() {
                 )}
                 {item.type !== 'choice' && !revealedAnswers[item.id] && (
                   <div className="qb-card-actions">
-                    <button className="qb-card-action-btn" onClick={() => toggleRevealAnswer(item.id)}>
+                    <button className="qb-card-action-btn" onClick={(e) => { e.stopPropagation(); toggleRevealAnswer(item.id) }}>
                       <EyeOutlined /> 查看答案
                     </button>
                   </div>
@@ -427,12 +470,17 @@ export default function QuestionBankPage() {
                     <div className="qb-answer-content">
                       <strong>参考答案：</strong>{item.answer}
                     </div>
+                    <div className="qb-card-actions" style={{ marginTop: 8 }}>
+                      <button className="qb-card-action-btn" onClick={(e) => { e.stopPropagation(); toggleRevealAnswer(item.id) }}>
+                        <EyeInvisibleOutlined /> 隐藏答案
+                      </button>
+                    </div>
                   </div>
                 )}
                 <div className="qb-card-actions" style={{ marginTop: 8 }}>
                   <button
                     className={`qb-card-action-btn ${favoriteIds.has(item.id) ? 'qb-action-saved' : ''}`}
-                    onClick={() => toggleFavorite(item.id, item.question.slice(0, 30))}
+                    onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id, item.question.slice(0, 30)) }}
                   >
                     <SaveOutlined /> {favoriteIds.has(item.id) ? '已收藏' : '收藏'}
                   </button>

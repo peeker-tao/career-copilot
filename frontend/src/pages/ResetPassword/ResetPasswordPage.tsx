@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
           <div style={{ textAlign: 'center' }}>
             <CheckCircleOutlined style={{ fontSize: 48, color: 'var(--success, #22c55e)', marginBottom: 12 }} />
             <p style={{ fontSize: 16, fontWeight: 500, color: 'var(--success, #22c55e)' }}>密码重置成功</p>
-            <button className="qb-btn-primary" style={{ marginTop: 20, padding: '10px 28px' }} onClick={() => navigate('/login')}>
+            <button className="qb-btn qb-btn-primary" style={{ marginTop: 20, padding: '10px 28px' }} onClick={() => navigate('/login')}>
               返回登录
             </button>
           </div>
@@ -73,7 +73,7 @@ export default function ResetPasswordPage() {
               </p>
             )}
 
-            <button className="qb-btn-primary" disabled={loading} onClick={handleReset} style={{ marginTop: 8, padding: '10px 0', width: '100%' }}>
+            <button className="qb-btn qb-btn-primary" disabled={loading} onClick={handleReset} style={{ marginTop: 8, padding: '10px 0', width: '100%' }}>
               {loading ? '重置中...' : '确认重置'}
             </button>
           </div>
