@@ -150,6 +150,34 @@ export class AuthService {
     return this.sanitizeUser(updated);
   }
 
+  async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new UnauthorizedException('用户不存在');
+    }
+
+    // 校验旧密码
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new BadRequestException('当前密码错误');
+    }
+
+    // 更新新密码
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { message: '密码修改成功' };
+  }
+
   async forgotPassword(email: string): Promise<{ message: string }> {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {

@@ -80,11 +80,13 @@ export class QuestionBankService {
 - title: 题目标题
 - content: { question, options?(选择题用), answer, explanation }`;
 
+    const skillsStr = dto.skills?.length ? dto.skills.join('、') : '无特定要求';
     const userPrompt = `请生成 ${dto.count || 5} 道面试题目：
 岗位方向: ${dto.position || '通用'}
 分类: ${dto.category || '综合'}
 难度: ${dto.difficulty || 'medium'}
-题型: ${dto.type || 'mixed'}`;
+题型: ${dto.type || 'mixed'}
+技能要求: ${skillsStr}`;
 
     try {
       const raw = await this.aiService.callLLM(systemPrompt, userPrompt, 0.3, 'question:generate');

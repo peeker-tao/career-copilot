@@ -177,6 +177,12 @@ export class AdminController {
     return this.adminService.deleteLearningResource(id);
   }
 
+  @Post('learning-resources/generate')
+  @ApiOperation({ summary: '管理员 - AI 生成学习资源' })
+  generateLearningResource(@Body() data: { topic: string; count?: number }) {
+    return this.adminService.generateLearningResource(data);
+  }
+
   /* ========================================
      题库管理
      ======================================== */

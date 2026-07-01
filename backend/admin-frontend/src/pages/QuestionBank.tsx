@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Table, Button, Input, Space, Tag, Modal, Form, Select,
-  message, Popconfirm, Card, Typography,
+  message, Popconfirm, Card, Typography, InputNumber,
 } from 'antd';
 import {
   SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined,
-  ReloadOutlined,
+  ReloadOutlined, ThunderboltOutlined,
 } from '@ant-design/icons';
 import { questionApi } from '../api';
 import type { QuestionBank as QuestionType } from '../types';
@@ -22,6 +22,9 @@ export default function QuestionBank() {
   const [modal, setModal] = useState(false);
   const [editItem, setEditItem] = useState<QuestionType | null>(null);
   const [form] = Form.useForm();
+  const [aiModal, setAiModal] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiForm] = Form.useForm();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -77,6 +80,24 @@ export default function QuestionBank() {
       fetchData();
     } catch {
       message.error('删除失败');
+    }
+  };
+
+  const handleAiGenerate = async () => {
+    try {
+      const values = await aiForm.validateFields();
+      setAiLoading(true);
+      const res = await questionApi.generate(values);
+      const d = res.data?.data || res.data;
+      message.success(`AI 成功生成 ${d?.count || 0} 道题目`);
+      setAiModal(false);
+      aiForm.resetFields();
+      fetchData();
+    } catch (err: any) {
+      if (err?.response?.data?.message) message.error(err.response.data.message);
+      else if (err?.message) message.error(err.message);
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -160,7 +181,10 @@ export default function QuestionBank() {
             <Select.Option value="项目">项目</Select.Option>
           </Select>
           <Button icon={<ReloadOutlined />} onClick={fetchData}>刷新</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+          <Button type="primary" icon={<ThunderboltOutlined />} onClick={() => { aiForm.resetFields(); setAiModal(true); }}>
+            AI 生成
+          </Button>
+          <Button icon={<PlusOutlined />} onClick={handleAdd}>
             新增题目
           </Button>
         </Space>
@@ -214,6 +238,50 @@ export default function QuestionBank() {
               <Select.Option value="medium">中等</Select.Option>
               <Select.Option value="hard">困难</Select.Option>
             </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* AI 生成题目 */}
+      <Modal
+        title={<><ThunderboltOutlined /> AI 生成题目</>}
+        open={aiModal}
+        onOk={handleAiGenerate}
+        onCancel={() => setAiModal(false)}
+        okText="开始生成"
+        cancelText="取消"
+        confirmLoading={aiLoading}
+        width={560}
+      >
+        <Form form={aiForm} layout="vertical">
+          <Form.Item name="position" label="岗位方向">
+            <Input placeholder="如：前端开发、Java 后端、数据分析…" />
+          </Form.Item>
+          <Form.Item name="category" label="分类">
+            <Select allowClear placeholder="选填">
+              <Select.Option value="技术">技术</Select.Option>
+              <Select.Option value="HR">HR</Select.Option>
+              <Select.Option value="行为">行为</Select.Option>
+              <Select.Option value="项目">项目</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="difficulty" label="难度">
+            <Select allowClear placeholder="选填">
+              <Select.Option value="easy">简单</Select.Option>
+              <Select.Option value="medium">中等</Select.Option>
+              <Select.Option value="hard">困难</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="type" label="题型">
+            <Select allowClear placeholder="选填">
+              <Select.Option value="choice">选择题</Select.Option>
+              <Select.Option value="short_answer">简答题</Select.Option>
+              <Select.Option value="coding">编程题</Select.Option>
+              <Select.Option value="behavioral">行为题</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="count" label="生成数量" initialValue={5}>
+            <InputNumber min={1} max={20} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
       </Modal>

@@ -14,7 +14,7 @@ async function bootstrap() {
 
   // 跨域配置
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://localhost:3000', 'null'],
+    origin: true, // 开发阶段允许所有来源
     credentials: true,
   });
 
@@ -124,11 +124,20 @@ async function bootstrap() {
 
   // SPA 路由回退：非 /api /reset-password.html 路径的 GET 请求返回 index.html
   app.use((req: Request, res: Response, next: NextFunction) => {
-    if (!req.path.startsWith('/api') && req.path !== '/reset-password.html' && req.method === 'GET') {
+    if (
+      !req.path.startsWith('/api') &&
+      req.path !== '/reset-password.html' &&
+      req.method === 'GET'
+    ) {
       res.sendFile(join(adminDistPath, 'index.html'), (err) => {
         if (err) {
           // admin-frontend 尚未构建，返回友好的提示页
-          res.status(200).type('text/html').send(`<!DOCTYPE html><html><body style="font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f3f4f6;"><div style="text-align:center;padding:40px;"><h1 style="color:#4F46E5;">🚀 Career Copilot</h1><p style="color:#6B7280;">管理后台正在启动中，请稍后刷新。</p><p style="color:#9CA3AF;font-size:14px;">提示：在 <code>backend/admin-frontend/</code> 目录下运行 <code>npm run dev</code> 启动开发服务器，或运行 <code>npm run build</code> 构建后刷新此页面。</p></div></body></html>`);
+          res
+            .status(200)
+            .type('text/html')
+            .send(
+              `<!DOCTYPE html><html><body style="font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f3f4f6;"><div style="text-align:center;padding:40px;"><h1 style="color:#4F46E5;">🚀 Career Copilot</h1><p style="color:#6B7280;">管理后台正在启动中，请稍后刷新。</p><p style="color:#9CA3AF;font-size:14px;">提示：在 <code>backend/admin-frontend/</code> 目录下运行 <code>npm run dev</code> 启动开发服务器，或运行 <code>npm run build</code> 构建后刷新此页面。</p></div></body></html>`,
+            );
         }
       });
     } else {
