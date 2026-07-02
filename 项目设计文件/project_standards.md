@@ -1,7 +1,8 @@
 # Career-Copilot 项目规范文档
 
-> 版本：v1.0 | 日期：2026-06-13
+> 版本：v1.1 | 日期：2026-06-28
 > 适用范围：全团队统一遵守
+> 状态：✅ 已实现 ⏳ 待测试
 
 ---
 
@@ -130,11 +131,17 @@ components/Button/
 
 ```
 src/api/
-├── request.ts          # Axios 实例（拦截器配置）
-├── auth.ts             # 认证相关 API
-├── resume.ts           # 简历相关 API
-├── interview.ts        # 面试相关 API
-└── career.ts           # 职业规划相关 API
+├── request.ts              # Axios 实例（拦截器配置）
+├── auth.ts                 # 认证相关 API
+├── resume.ts               # 简历相关 API
+├── interview.ts            # 面试相关 API
+├── career.ts               # 职业规划相关 API
+├── job-matching.ts         # 🆕 岗位匹配与推荐 API
+├── learning-resources.ts   # 🆕 学习资源推荐 API
+├── question-bank.ts        # 🆕 面试题库 API
+├── voice-interview.ts      # 🆕 语音面试 API
+├── admin.ts                # 🆕 管理员后台 API
+└── resume-ner.ts           # 🆕 简历 NER 解析 API
 ```
 
 ### 2.4 NestJS / 后端规范
@@ -147,9 +154,51 @@ src/resume/
 ├── resume.controller.ts    # 路由控制
 ├── resume.service.ts       # 业务逻辑
 ├── resume.parser.ts        # 工具服务
+├── resume.processor.ts     # Bull 队列消费者
 └── dto/
     ├── create-resume.dto.ts
     └── update-resume.dto.ts
+
+**v1.1 新增模块结构：**
+
+```
+src/job-matching/
+├── job-matching.module.ts
+├── job-matching.controller.ts    # 岗位匹配与推荐 API
+├── job-matching.service.ts
+└── dto/
+
+src/learning-resources/
+├── learning-resources.module.ts
+├── learning-resources.controller.ts  # 学习资源推荐 API
+├── learning-resources.service.ts
+└── dto/
+
+src/question-bank/
+├── question-bank.module.ts
+├── question-bank.controller.ts    # 面试题库 API
+├── question-bank.service.ts
+└── dto/
+
+src/voice-interview/
+├── voice-interview.module.ts
+├── voice-interview.controller.ts  # 语音面试 API
+├── voice-interview.service.ts
+├── voice-interview.gateway.ts     # WebSocket 实时语音网关
+└── dto/
+
+src/admin/
+├── admin.module.ts
+├── admin.controller.ts       # 管理员后台 API
+├── admin.service.ts
+└── dto/
+
+src/resume-ner/
+├── resume-ner.module.ts
+├── resume-ner.controller.ts  # 简历 NER 解析 API
+├── resume-ner.service.ts     # 调用 Python NER HTTP 服务
+└── dto/
+```
 ```
 
 - **DTO 验证**: 使用 `class-validator` 装饰器进行参数校验
@@ -169,6 +218,8 @@ export class RegisterDto {
 
 - **错误处理**: 统一使用 NestJS 异常过滤器，不直接在 controller 中 try-catch
 - **路由命名**: RESTful 风格，复数名词
+- **配置管理**: 所有敏感配置（JWT_SECRET、REDIS_URL、API Key 等）必须通过 `ConfigService` 注入，禁止使用 `process.env` 直接读取或硬编码默认值
+- **JSON 类型安全**: Prisma JSON 字段写入时使用 `as unknown as Prisma.InputJsonValue` 断言，禁止使用 `JSON.parse(JSON.stringify(obj))` 作为类型转换手段
 
 ---
 
@@ -226,17 +277,34 @@ export class RegisterDto {
 ```
 src/ai/prompts/
 ├── interview.system.prompt.ts    # 面试官 System Prompt
+├── interview.feedback.prompt.ts  # 面试报告 Prompt
 ├── resume.parse.prompt.ts        # 简历解析 Prompt
-└── career.plan.prompt.ts         # 职业规划 Prompt
+├── career.plan.prompt.ts         # 职业规划 Prompt
+├── market.insight.prompt.ts      # 市场洞察 Prompt
+├── job-matching.prompt.ts        # 🆕 岗位匹配 Prompt
+├── learning-resources.prompt.ts  # 🆕 学习资源推荐 Prompt
+├── question-bank.prompt.ts       # 🆕 面试题库 Prompt
+└── screening.prompt.ts           # 🆕 AI 简历筛选 Prompt
 ```
 
 - **降级策略**: LLM 调用失败时返回友好提示，不抛出 500
 - **超时设置**: LLM 请求超时 30 秒
 
-### 5.2 API Key 管理
+### 5.2 Python NER 服务规范（v1.1 新增）
+
+- **独立服务**: NER 解析为独立 Flask 服务（`backend/ner-service/`），通过 HTTP 与 NestJS 主服务通信
+- **端口**: NER 服务运行在 `http://localhost:8001`
+- **通信方式**: NestJS `resume-ner` 模块通过 `@nestjs/axios` HTTP 调用 NER 服务
+- **NER 输出格式**: BIO 标注字典 + 规则引擎，输出 JSON `{ entities: [{ text, label, start, end }] }`
+- **启动方式**: `python ner-service/app.py`，需独立启动
+- **环境变量**: `NER_SERVICE_URL=http://localhost:8001`
+
+### 5.3 API Key 管理
 
 - API Key 存储在 `.env` 文件中，不提交到代码仓库
 - `.env.example` 提供模板，标注所需的环境变量
+- 所有配置通过 `ConfigService` 注入，禁止 `process.env` 硬编码
+- 关键配置（JWT_SECRET、REDIS_URL）须在启动时校验，缺失则直接抛出异常
 
 ```
 # .env.example
@@ -267,10 +335,12 @@ LLM_BASE_URL="https://api.deepseek.com"
 
 | 版本 | 日期 | 说明 |
 |:----:|:----:|------|
-| v0.1 | 开发中 | 内部开发版本 |
-| v1.0 | TBD | MVP 版本（P0 功能全部完成） |
-| v1.1 | TBD | 迭代版本（P1 功能） |
-| v2.0 | TBD | 语音面试等增强功能 |
+| 版本 | 日期 | 说明 | 状态 |
+|:----:|:----:|------|:----:|
+| v0.1 | 2026-05 | 内部开发版本 | ✅ 已完成 |
+| v1.0 | 2026-06-13 | MVP 版本（P0 功能全部完成） | ✅ 已完成 |
+| v1.1 | 2026-06-28 | 全功能版本（P0+P1 功能，含岗位匹配、学习资源、面试题库、语音面试、管理员后台、简历NER） | ⏳ 待测试 |
+| v2.0 | TBD | 优化与部署（性能优化、生产部署） | 📅 规划中 |
 
 ---
 
@@ -324,6 +394,7 @@ pnpm prisma:generate        # 生成 Prisma Client
 pnpm prisma:migrate         # 执行数据库迁移
 pnpm prisma:seed            # 填充测试数据
 pnpm test                   # 运行测试
+pnpm nest:build             # 编译 NestJS（类型检查）
 
 # 前端
 pnpm dev                    # 启动开发模式

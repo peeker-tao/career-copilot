@@ -1,7 +1,8 @@
 # Career-Copilot API 接口文档
 
-> 版本：v1.0 | 日期：2026-06-13
-> 基础 URL：`/api/v1`
+> 版本：v2.0 | 日期：2026-07-28
+> 状态：✅ 已实现 ✅ 已验证
+> 基础 URL：`(无前缀)` — 所有路由直接挂载在根路径下，无 `/api` 或 `/api/v1` 前缀
 
 ---
 
@@ -57,7 +58,7 @@ Authorization: Bearer <access_token>
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `page` | number | 1 | 页码 |
-| `pageSize` | number | 10 | 每页条数（最大 50） |
+| `limit` | number | 20 | 每页条数（最大 100） |
 
 分页响应：
 
@@ -69,7 +70,7 @@ Authorization: Bearer <access_token>
     "list": [],
     "pagination": {
       "page": 1,
-      "pageSize": 10,
+      "limit": 10,
       "total": 100
     }
   }
@@ -204,6 +205,112 @@ Authorization: Bearer <access_token>
 
 **响应 `200`：** 返回更新后的用户信息
 
+### PATCH `/auth/password` — 修改密码
+
+**请求体：**
+
+```json
+{
+  "currentPassword": "oldPassword123",
+  "newPassword": "newPassword456"
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `currentPassword` | string | ✅ | 当前密码 |
+| `newPassword` | string | ✅ | 新密码（≥ 6 位） |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "密码修改成功"
+}
+```
+
+---
+
+### POST `/auth/forgot-password` — 忘记密码
+
+**请求体：**
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `email` | string | ✅ | 注册邮箱 |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "重置链接已发送至邮箱"
+}
+```
+
+> 限流：每小时最多 3 次请求
+
+### POST `/auth/reset-password` — 重置密码
+
+**请求体：**
+
+```json
+{
+  "token": "reset_token_xxx",
+  "password": "newPassword123"
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `token` | string | ✅ | 重置令牌 |
+| `password` | string | ✅ | 新密码（≥ 6 位） |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "密码重置成功"
+}
+```
+
+> 限流：每小时最多 5 次请求
+
+### PATCH `/auth/model-config` — 更新模型配置
+
+**请求体：**
+
+```json
+{
+  "provider": "deepseek",
+  "model": "deepseek-chat",
+  "apiKey": "sk-xxx"
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `provider` | string | | 服务商：`openai` / `dashscope` / `deepseek` |
+| `model` | string | | 模型名称 |
+| `apiKey` | string | | API Key（加密存储） |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "模型配置已更新"
+}
+```
+
 ---
 
 ## 三、简历模块（Resume）
@@ -232,7 +339,8 @@ Authorization: Bearer <access_token>
 }
 ```
 
-> 简历解析为异步任务。前端轮询 `GET /resumes/:id` 直到 `status` 变为 `completed`。
+> 简历解析为异步任务（通过 BullMQ 队列执行）。HTTP 请求立即返回，不阻塞线程。
+> 前端轮询 `GET /resumes/:id` 直到 `status` 变为 `completed` 或 `failed`。
 
 ### GET `/resumes` — 获取简历列表
 
@@ -254,7 +362,7 @@ Authorization: Bearer <access_token>
         "createdAt": "2026-06-13T08:00:00.000Z"
       }
     ],
-    "pagination": { "page": 1, "pageSize": 10, "total": 3 }
+    "pagination": { "page": 1, "limit": 10, "total": 3 }
   }
 }
 ```
@@ -319,6 +427,249 @@ Authorization: Bearer <access_token>
 }
 ```
 
+### POST `/resumes/:id/rewrite-suggestions` — 获取简历改写建议
+
+**请求体：**
+
+```json
+{
+  "targetPosition": "后端开发工程师"
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `targetPosition` | string | ✅ | 目标岗位 |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "suggestions": [
+      {
+        "section": "summary",
+        "original": "有两年开发经验",
+        "suggested": "拥有2年全栈开发经验，精通Java和Spring Boot框架",
+        "reason": "突出技术栈和年限，更具说服力"
+      }
+    ]
+  }
+}
+```
+
+### POST `/resumes/:id/rewrite-section` — 改写简历特定部分
+
+**请求体：**
+
+```json
+{
+  "section": "summary",
+  "targetPosition": "后端开发工程师",
+  "content": "有两年开发经验"
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `section` | string | ✅ | 改写部分：`summary` / `experience` / `skills` / `projects` |
+| `targetPosition` | string | ✅ | 目标岗位 |
+| `content` | string | ✅ | 原始内容 |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "rewritten": "拥有2年全栈开发经验，精通Java和Spring Boot框架",
+    "changes": ["补充技术栈细节", "优化表达方式"]
+  }
+}
+```
+
+### POST `/resumes/screening/benchmark-seed` — 导入默认基准数据集
+
+> 从系统内置 CSV 数据集（`datasets/AI_Resume_Screening/AI_Resume_Screening.csv`）自动导入 **1000 条** 岗位筛选基准记录，覆盖 4 类岗位：Software Engineer、Data Scientist、AI Researcher、Cybersecurity Analyst。
+>
+> **无需请求体**，调用即导入（追加模式，不会覆盖已有数据）。
+
+**响应 `201`：**
+
+```json
+{
+  "code": 201,
+  "message": "成功导入 1000 条基准评估记录",
+  "data": {
+    "imported": 1000,
+    "roles": ["Software Engineer", "Data Scientist", "AI Researcher", "Cybersecurity Analyst"]
+  }
+}
+```
+
+### POST `/resumes/screening/benchmark-import` — 导入自定义基准数据
+
+> 用于批量导入自定义简历筛选基准记录（**追加模式**，不会覆盖已有数据）。
+
+**请求体：**
+
+```json
+{
+  "records": [
+    {
+      "resumeId": 1,
+      "name": "张三",
+      "skills": ["Python", "Machine Learning", "SQL"],
+      "experienceYears": 3,
+      "education": "硕士",
+      "certifications": "PMP",
+      "jobRole": "Data Scientist",
+      "recruiterDecision": "Shortlist",
+      "salaryExpectation": 120000,
+      "projectsCount": 6,
+      "aiScore": 92
+    }
+  ]
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `records` | `ScreeningBenchmarkRecordDto[]` | ✅ | 基准记录列表 |
+
+**`ScreeningBenchmarkRecordDto` 字段：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `resumeId` | number | ✅ | 简历编号 |
+| `name` | string | ✅ | 候选人姓名 |
+| `skills` | string[] | ✅ | 技能列表 |
+| `experienceYears` | number | ✅ | 工作经验年数（0-50） |
+| `education` | string | ✅ | 学历（如 本科/硕士/博士） |
+| `certifications` | string | | 证书（可选） |
+| `jobRole` | string | ✅ | 岗位名称 |
+| `recruiterDecision` | string | ✅ | 招聘决策（Shortlist/Review/Reject） |
+| `salaryExpectation` | number | ✅ | 期望薪资 |
+| `projectsCount` | number | ✅ | 项目数量 |
+| `aiScore` | number | ✅ | AI 评分（0-100） |
+
+**响应 `201`：**
+
+```json
+{
+  "code": 201,
+  "message": "成功导入 50 条基准评估记录",
+  "data": {
+    "imported": 50,
+    "total": 50
+  }
+}
+```
+
+### GET `/resumes/screening/benchmark-stats` — 获取基准统计数据
+
+> 返回当前用户指定岗位的 AI 评分分布、招聘决策分布等统计。不传 `jobRole` 则返回所有岗位的汇总统计。
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `jobRole` | string | | 岗位名称（不传则返回全部岗位的统计） |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "jobRole": "Software Engineer",
+    "totalCount": 250,
+    "aiScoreDistribution": {
+      "min": 15,
+      "max": 98,
+      "avg": 65.4,
+      "median": 68
+    },
+    "decisionDistribution": {
+      "Shortlist": 80,
+      "Review": 100,
+      "Reject": 70
+    },
+    "educationDistribution": {
+      "本科": 120,
+      "硕士": 90,
+      "博士": 40
+    },
+    "avgExperience": 4.2,
+    "avgSalary": 95000
+  }
+}
+```
+
+### POST `/resumes/screening/evaluate` — AI 简历筛选评估
+
+> 基于岗位基准数据对候选人进行 AI 多维打分与匹配分析。
+
+**请求体：**
+
+```json
+{
+  "jobRole": "Software Engineer",
+  "skills": ["Python", "TypeScript", "React", "Docker", "AWS"],
+  "experienceYears": 6,
+  "education": "硕士",
+  "certifications": "AWS Certified Developer",
+  "projectsCount": 10
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `jobRole` | string | ✅ | 目标岗位（需与基准数据中的岗位名称一致） |
+| `skills` | string[] | ✅ | 技能列表 |
+| `experienceYears` | number | ✅ | 工作经验年数（0-50） |
+| `education` | string | ✅ | 学历 |
+| `certifications` | string | | 证书（可选） |
+| `projectsCount` | number | | 项目数量（可选） |
+
+> **Swagger 示例数据：** 在 `/api-docs` 中该接口已预置 3 组示例：
+> - 🏆 **高匹配候选人** — Software Engineer，6 年经验，技能匹配度高
+> - 📊 **中等匹配候选人** — Data Scientist，3 年经验，部分技能匹配
+> - 🌱 **入门级候选人** — Cybersecurity Analyst，1 年经验，基础技能
+
+**响应 `201`：**
+
+```json
+{
+  "code": 201,
+  "message": "评估完成",
+  "data": {
+    "overallScore": 72.5,
+    "dimensions": {
+      "skillsMatch": 85.0,
+      "experienceMatch": 62.5,
+      "educationMatch": 80.0,
+      "certificationsBonus": 5.0,
+      "projectsBonus": 5.0
+    },
+    "benchmarkContext": {
+      "matchedCount": 180,
+      "totalInRole": 250,
+      "avgScore": 65.4,
+      "avgExperience": 4.2,
+      "topSkills": ["Java", "Spring Boot", "TypeScript", "Python", "AWS"],
+      "percentile": 70
+    },
+    "recommendation": "建议面试",
+    "summary": "候选人技能栈与岗位匹配度良好，经验水平略低于岗位平均水平但综合评分处于中上水平。"
+  }
+}
+```
+
 ---
 
 ## 四、面试模块（Interview）
@@ -365,7 +716,7 @@ Authorization: Bearer <access_token>
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|:----:|------|
 | `page` | number | | 页码 |
-| `pageSize` | number | | 每页条数 |
+| `limit` | number | | 每页条数（默认 20） |
 | `status` | string | | 筛选：`in_progress` / `completed` |
 | `targetPosition` | string | | 按岗位筛选 |
 
@@ -388,7 +739,7 @@ Authorization: Bearer <access_token>
         "completedAt": "2026-06-13T08:25:00.000Z"
       }
     ],
-    "pagination": { "page": 1, "pageSize": 10, "total": 15 }
+    "pagination": { "page": 1, "limit": 10, "total": 15 }
   }
 }
 ```
@@ -449,6 +800,37 @@ Authorization: Bearer <access_token>
   }
 }
 ```
+
+### DELETE `/interviews/:id` — 删除面试记录
+
+**说明：** 删除指定的面试记录及其所有对话消息（级联删除）。
+
+**路径参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `id` | string | ✅ | 面试会话 ID |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": {
+    "message": "面试记录已成功删除",
+    "deletedInterview": {
+      "id": "intv_xxx",
+      "targetPosition": "Java后端开发",
+      "status": "completed"
+    }
+  }
+}
+```
+
+**错误响应：**
+
+- `404`: 面试记录不存在或不属于当前用户
 
 ### POST `/interviews/:id/answer` — 提交用户回答
 
@@ -541,7 +923,7 @@ Authorization: Bearer <access_token>
 **连接方式：**
 
 ```
-ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
+ws://host/ws/interview?token=&lt;access_token&gt;
 ```
 
 **消息格式（服务端 → 客户端）：**
@@ -647,7 +1029,12 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
       "averageSalary": "15K-30K",
       "demandTrend": "持续增长",
       "topSkills": ["Java", "Spring Boot", "MySQL", "Redis", "微服务"],
-      "experienceDistribution": { "应届": "20%", "1-3年": "35%", "3-5年": "30%", "5年以上": "15%" }
+      "experienceDistribution": {
+        "entry": "20%",
+        "junior": "35%",
+        "mid": "30%",
+        "senior": "15%"
+      }
     },
     "createdAt": "2026-06-13T08:00:00.000Z"
   }
@@ -673,7 +1060,7 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
         "createdAt": "2026-06-13T08:00:00.000Z"
       }
     ],
-    "pagination": { "page": 1, "pageSize": 10, "total": 2 }
+    "pagination": { "page": 1, "limit": 10, "total": 2 }
   }
 }
 ```
@@ -704,7 +1091,26 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 }
 ```
 
-### GET `/career/market-insight` — 获取市场数据
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `phase` | number | ✅ | 阶段序号 |
+| `progress` | number | ✅ | 进度百分比（0-100） |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": "plan_xxx",
+    "phase": 1,
+    "progress": 100
+  }
+}
+```
+
+### GET `/career/market-insight` — 获取市场洞察数据
 
 **查询参数：**
 
@@ -712,11 +1118,30 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 |------|------|:----:|------|
 | `position` | string | ✅ | 目标岗位 |
 
-**响应 `200`：** 同职业规划中的 `marketInsight` 结构
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "averageSalary": "15K-30K",
+    "demandTrend": "持续增长",
+    "topSkills": ["Java", "Spring Boot", "MySQL", "Redis", "微服务"],
+    "experienceDistribution": {
+      "entry": "20%",
+      "junior": "35%",
+      "mid": "30%",
+      "senior": "15%"
+    }
+  }
+}
 
 ---
 
 ## 六、仪表盘模块（Dashboard）
+
+> **说明：** 仪表盘 API 接口在 `src/app.controller.ts`（根控制器）中实现，路由为 `GET /dashboard`。首页仪表盘也支持由前端在页面加载时**并发请求**多个 API 汇总计算（如 `GET /resumes`、`GET /interviews`、`GET /career/plans` 等）。
 
 ### GET `/dashboard` — 获取首页概览数据
 
@@ -760,15 +1185,1011 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 
 ---
 
-## 七、接口与页面映射对照表
+## 七、岗位匹配模块（Job Matching）✅
+
+> 基于 AI 的岗位推荐与匹配度分析
+
+**基础路径：** `/job-matching`
+**认证：** 🔐 需要 JWT Bearer Token
+
+### GET `/job-matching/recommendations` — 获取 AI 智能岗位推荐
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `limit` | number | | 返回数量（1-50，默认 10） |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": "rec_001",
+      "position": "高级后端开发工程师",
+      "company": "字节跳动",
+      "location": "北京",
+      "matchScore": 92,
+      "reason": "您的 Java 和微服务经验与该岗位高度匹配",
+      "skills": ["Java", "Spring Boot", "微服务", "Redis"]
+    }
+  ]
+}
+```
+
+### GET `/job-matching/matches` — 获取用户保存的岗位列表
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `page` | number | | 页码（默认 1） |
+| `limit` | number | | 每页条数（默认 20） |
+| `status` | string | | 状态筛选：`saved` / `applied` / `interviewing` / `offered` / `rejected` |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": "match_001",
+        "position": "后端开发工程师",
+        "company": "阿里巴巴",
+        "status": "saved",
+        "matchScore": 88,
+        "createdAt": "2026-06-20T10:00:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 15
+    }
+  }
+}
+```
+
+### PATCH `/job-matching/matches/:id/status` — 更新岗位状态
+
+**请求体：**
+
+```json
+{
+  "status": "applied"
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `status` | string | ✅ | 新状态：`saved` / `applied` / `interviewing` / `offered` / `rejected` |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "状态更新成功"
+}
+```
+
+### POST `/job-matching/analyze` — 分析简历与目标岗位匹配度
+
+**请求体：**
+
+```json
+{
+  "resumeId": "res_001",
+  "position": "后端开发工程师"
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `resumeId` | string | ✅ | 简历 ID |
+| `position` | string | ✅ | 目标岗位 |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "overallScore": 85,
+    "skillMatch": {
+      "matched": ["Java", "MySQL", "Git"],
+      "missing": ["Kubernetes", "Docker"],
+      "score": 80
+    },
+    "experienceMatch": {
+      "requiredYears": 3,
+      "actualYears": 2.5,
+      "score": 75
+    },
+    "suggestions": [
+      "补充 Docker 和 Kubernetes 相关项目经验",
+      "突出微服务架构设计能力"
+    ]
+  }
+}
+```
+
+### POST `/job-matching/import` — 导入外部岗位匹配数据
+
+> 用于批量导入 Kaggle 等外部数据集
+
+**请求体：**
+
+```json
+{
+  "records": [
+    {
+      "resumeId": "ext_001",
+      "position": "Data Scientist",
+      "company": "Google",
+      "matchScore": 90
+    }
+  ]
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `records` | array | ✅ | 匹配记录列表 |
+
+**响应 `201`：**
+
+```json
+{
+  "code": 201,
+  "message": "导入成功",
+  "data": { "imported": 100 }
+}
+```
+
+---
+
+## 八、学习资源模块（Learning Resources）✅
+
+> 个性化学习资源推荐与浏览
+
+**基础路径：** `/learning-resources`
+**认证：** 🔐 需要 JWT Bearer Token
+
+### GET `/learning-resources` — 浏览学习资源
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `page` | number | | 页码（默认 1） |
+| `limit` | number | | 每页条数（默认 20） |
+| `category` | string | | 分类筛选 |
+| `keyword` | string | | 搜索关键词 |
+| `difficulty` | string | | 难度筛选：`beginner` / `intermediate` / `advanced` |
+| `type` | string | | 资源类型：`video` / `article` / `course` / `book` |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": "lr_001",
+        "title": "Spring Boot 实战教程",
+        "type": "course",
+        "category": "后端开发",
+        "difficulty": "intermediate",
+        "url": "https://example.com/spring-boot",
+        "description": "从零开始学习 Spring Boot",
+        "rating": 4.5
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 50
+    }
+  }
+}
+```
+
+### GET `/learning-resources/categories` — 获取所有资源分类
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    { "name": "前端开发", "count": 25 },
+    { "name": "后端开发", "count": 40 },
+    { "name": "数据结构与算法", "count": 15 }
+  ]
+}
+```
+
+### GET `/learning-resources/:id` — 获取单个资源详情
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "lr_001",
+    "title": "Spring Boot 实战教程",
+    "type": "course",
+    "category": "后端开发",
+    "difficulty": "intermediate",
+    "url": "https://example.com/spring-boot",
+    "description": "从零开始学习 Spring Boot",
+    "rating": 4.5,
+    "tags": ["Java", "Spring", "微服务"],
+    "duration": "12 小时"
+  }
+}
+```
+
+### POST `/learning-resources/recommendations` — AI 个性化资源推荐
+
+**请求体：**
+
+```json
+{
+  "skillGaps": ["Kubernetes", "Docker", "微服务架构"],
+  "targetPosition": "高级后端开发工程师",
+  "preferredType": "course",
+  "limit": 5
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `skillGaps` | string[] | ✅ | 技能缺口列表 |
+| `targetPosition` | string | ✅ | 目标岗位 |
+| `preferredType` | string | | 偏好资源类型 |
+| `limit` | number | | 返回数量（默认 5） |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": "lr_002",
+      "title": "Docker 与 Kubernetes 实战",
+      "type": "course",
+      "reason": "针对您缺少的容器化技能",
+      "relevanceScore": 95
+    }
+  ]
+}
+```
+
+---
+
+## 九、面试题库模块（Question Bank）✅
+
+> AI 驱动的面试题目生成与管理
+
+**基础路径：** `/question-bank`
+**认证：** 🔐 需要 JWT Bearer Token
+
+### GET `/question-bank` — 浏览题库
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `page` | number | | 页码（默认 1） |
+| `limit` | number | | 每页条数（默认 20） |
+| `category` | string | | 分类筛选 |
+| `difficulty` | string | | 难度：`easy` / `medium` / `hard` |
+| `type` | string | | 题型：`choice` / `short_answer` / `coding` |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": "qb_001",
+        "question": "请解释 Java 中 HashMap 的工作原理",
+        "type": "short_answer",
+        "category": "Java 基础",
+        "difficulty": "medium",
+        "tags": ["集合", "哈希"]
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 200
+    }
+  }
+}
+```
+
+### GET `/question-bank/categories` — 获取所有分类
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    { "name": "Java 基础", "count": 50 },
+    { "name": "Spring Boot", "count": 35 },
+    { "name": "数据库", "count": 40 }
+  ]
+}
+```
+
+### GET `/question-bank/:id` — 获取题目详情
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "qb_001",
+    "question": "请解释 Java 中 HashMap 的工作原理",
+    "type": "short_answer",
+    "category": "Java 基础",
+    "difficulty": "medium",
+    "tags": ["集合", "哈希"],
+    "answer": "HashMap 基于数组+链表+红黑树实现...",
+    "hint": "从 put() 方法入手"
+  }
+}
+```
+
+### POST `/question-bank/generate` — AI 生成面试题目
+
+**请求体：**
+
+```json
+{
+  "position": "后端开发工程师",
+  "skills": ["Java", "Spring Boot", "MySQL"],
+  "difficulty": "medium",
+  "count": 5,
+  "types": ["short_answer", "coding"]
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `position` | string | ✅ | 目标岗位 |
+| `skills` | string[] | ✅ | 技能列表 |
+| `difficulty` | string | | 难度（默认 `medium`） |
+| `count` | number | | 生成数量（默认 5，最大 20） |
+| `types` | string[] | | 题型列表 |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "questions": [
+      {
+        "question": "Spring Boot 中如何实现全局异常处理？",
+        "type": "short_answer",
+        "difficulty": "medium",
+        "category": "Spring Boot",
+        "answer": "使用 @ControllerAdvice 注解..."
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 十、语音模块（Voice — ASR/TTS）✅
+
+> 语音识别与合成服务，基于 DashScope Paraformer / CosyVoice + OpenAI 兜底
+
+**控制器：** `src/voice/voice.controller.ts`
+**基础路径：** `/voice`
+**认证：** 🔐 需要 JWT Bearer Token
+
+### POST `/voice/asr` — 语音识别（ASR）
+
+| 项目 | 描述 |
+|---|---|
+| **内容类型** | `multipart/form-data` |
+| **请求体** | 上传 `file` 字段，音频文件 |
+| **支持格式** | `mp3` / `wav` / `ogg` / `webm` / `m4a` / `flac` |
+| **文件大小限制** | 最大 20MB |
+| **后端模型** | DashScope Paraformer v2（优先）/ OpenAI Whisper-1（兜底） |
+| **响应** | `{ text: string }` — 识别后的文字 |
+
+### POST `/voice/tts` — 语音合成（TTS）
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | `{ text: string, voice?: string }` |
+| → `text` | `string` **必填** — 要合成的文本（最多 4096 字符） |
+| → `voice` | `string` **可选** — 发音人，默认 `"longanyang"` |
+| **可选语音** | `longanyang`（阳光大男孩）、`longxiaochun_v3`（知性积极女）、`longwan_v3`（细腻柔声女）、`longanyun_v3`（居家暖男）、`longanzhi_v3`（睿智轻熟男），以及 OpenAI 兼容的 `alloy`/`echo`/`fable`/`onyx`/`nova`/`shimmer` |
+| **后端模型** | DashScope CosyVoice v3（优先）/ OpenAI TTS-1（兜底） |
+| **响应** | `{ url: string }` — 音频文件 URL |
+
+---
+
+## 十一、AI 模块（AI）✅
+
+> AI 驱动接口，用于简历解析、面试问答、评估报告和职业规划生成
+
+**控制器：** `src/ai/ai.controller.ts`
+**基础路径：** `/ai`
+**认证：** 🔐 需要 JWT Bearer Token
+**注意：** 所有端点使用 `@HttpCode(200)` 返回 200 而非默认 201
+
+### POST `/ai/resume/parse` — AI 简历解析
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | `{ text: string }` — 简历原始文本（最少 10 字符） |
+| **响应** | 解析后的结构化 JSON |
+| → `name` | `string` |
+| → `phone` | `string` |
+| → `email` | `string` |
+| → `education` | `{ school, major, degree, startDate, endDate }[]` |
+| → `experience` | `{ company, position, startDate, endDate, description }[]` |
+| → `projects` | `{ name, role, description, techStack[] }[]` |
+| → `skills` | `string[]` |
+| → `summary` | `string` |
+| → `suggestions` | `{ category, content, priority: "high"\|"medium"\|"low" }[]` |
+
+### POST `/ai/interview/question` — 生成面试题目
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | `{ position, skills?, difficulty?, questionType? }` |
+| → `position` | `string` — 目标岗位 |
+| → `skills` | `string[]` **可选** — 技能列表 |
+| → `difficulty` | `string` **可选** (`easy` / `medium` / `hard`) |
+| → `questionType` | `string` **可选** (`technical` / `behavioral` / `project`) |
+| **响应** | `{ question, type, difficulty, skills, suggestions? }` |
+
+### POST `/ai/interview/evaluate` — 评估面试回答
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | `{ question, answer, position?, skills? }` |
+| **响应** | `{ score, feedback, strengths[], weaknesses[], suggestions[] }` |
+
+### POST `/ai/interview/report` — 生成面试报告
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | 面试消息列表 `{ messages: { role, content }[], position, skills? }` |
+| **响应** | `{ overallScore, dimensions, strengths[], weaknesses[], improvementSuggestions[] }` — 完整面试报告 |
+
+### POST `/ai/career/plan` — AI 生成职业规划
+
+| 项目 | 描述 |
+|---|---|
+| **请求体** | `{ targetPosition, currentSkills?, experience? }` |
+| **响应** | `{ targetPosition, gapSkills[], roadmap[], marketInsight? }` — 包含分阶段学习路线 |
+
+---
+
+## 十二、语音面试模块（Voice Interview）✅
+
+> **说明：** 后端已实现完整的语音面试会话管理，控制器位于 `src/voice/voice.controller.ts`，路由前缀为 `/voice-interviews`。语音处理（ASR/TTS）接口见上方 `/voice` 模块，面试流程 WebSocket 通信在 `src/interview/interview.gateway.ts` 中实现。
+
+**基础路径：** `/voice-interviews`
+**认证：** 🔐 需要 JWT Bearer Token
+
+### POST `/voice-interviews` — 创建语音面试会话
+
+**请求体：**
+
+```json
+{
+  "position": "后端开发工程师",
+  "difficulty": "medium",
+  "duration": 30
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `position` | string | ✅ | 面试岗位 |
+| `difficulty` | string | | 难度（默认 `medium`） |
+| `duration` | number | | 预计时长（分钟，默认 30） |
+
+**响应 `201`：**
+
+```json
+{
+  "code": 201,
+  "message": "创建成功",
+  "data": {
+    "id": "vi_001",
+    "position": "后端开发工程师",
+    "status": "in_progress",
+    "startedAt": "2026-06-27T10:00:00Z"
+  }
+}
+```
+
+### GET `/voice-interviews` — 获取语音面试历史
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `page` | number | | 页码（默认 1） |
+| `limit` | number | | 每页条数（默认 20） |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": "vi_001",
+        "position": "后端开发工程师",
+        "status": "completed",
+        "score": 85,
+        "duration": 25,
+        "createdAt": "2026-06-27T10:00:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 5
+    }
+  }
+}
+```
+
+### GET `/voice-interviews/:id` — 获取语音面试详情
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "vi_001",
+    "position": "后端开发工程师",
+    "status": "in_progress",
+    "questions": ["请介绍您的项目经验", "Java 中 HashMap 的原理是什么？"],
+    "answers": ["...", "..."],
+    "startedAt": "2026-06-27T10:00:00Z"
+  }
+}
+```
+
+### GET `/voice-interviews/:id/summary` — 获取 AI 生成面试摘要
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "overallScore": 82,
+    "strengths": ["技术基础扎实", "表达清晰"],
+    "weaknesses": ["项目经验描述不够具体"],
+    "recommendation": "建议补充分布式系统相关知识",
+    "transcript": "面试完整转录文本..."
+  }
+}
+```
+
+### PATCH `/voice-interviews/:id/toggle-pause` — 暂停/恢复面试
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "已暂停"
+}
+```
+
+### POST `/voice-interviews/:id/transcript` — 保存转录内容
+
+**请求体：**
+
+```json
+{
+  "content": "面试音频转录文本...",
+  "timestamp": "00:05:30"
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `content` | string | ✅ | 转录文本 |
+| `timestamp` | string | | 时间戳标记 |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "保存成功"
+}
+```
+
+### POST `/voice-interviews/:id/complete` — 结束语音面试
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "面试已结束",
+  "data": {
+    "summary": {
+      "score": 85,
+      "duration": 28,
+      "questionCount": 8
+    }
+  }
+}
+```
+
+### DELETE `/voice-interviews/:id` — 删除语音面试记录
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "删除成功"
+}
+```
+
+---
+
+## 十三、管理员模块（Admin）✅
+
+> 管理员后台管理功能
+
+**基础路径：** `/admin`
+**认证：** 🔐 需要 JWT Bearer Token + `admin` 角色
+
+### 用户管理
+
+#### GET `/admin/users` — 获取用户列表
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `page` | number | | 页码（默认 1） |
+| `limit` | number | | 每页条数（默认 20） |
+| `keyword` | string | | 搜索关键词（用户名/邮箱） |
+
+**响应 `200`：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": "user_001",
+        "username": "zhangsan",
+        "email": "zhangsan@example.com",
+        "role": "user",
+        "status": "active",
+        "createdAt": "2026-06-01T00:00:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 100
+    }
+  }
+}
+```
+
+#### GET `/admin/users/:id` — 获取用户详情
+
+#### PATCH `/admin/users/:id` — 修改用户信息
+
+**请求体：**
+
+```json
+{
+  "username": "新用户名",
+  "email": "new@example.com",
+  "role": "admin",
+  "status": "disabled"
+}
+```
+
+#### DELETE `/admin/users/:id` — 删除用户
+
+#### POST `/admin/users/:id/reset-password` — 重置用户密码
+
+**请求体：**
+
+```json
+{
+  "password": "newPassword123"
+}
+```
+
+### 简历管理
+
+#### GET `/admin/resumes` — 获取跨用户简历列表
+
+#### GET `/admin/resumes/:id` — 获取任意简历详情
+
+#### DELETE `/admin/resumes/:id` — 删除任意简历
+
+### 面试管理
+
+#### GET `/admin/interviews` — 获取跨用户面试列表
+
+#### GET `/admin/interviews/:id` — 获取面试详情（含消息）
+
+#### DELETE `/admin/interviews/:id` — 删除任意面试
+
+### 职业规划管理
+
+#### GET `/admin/career-plans` — 获取跨用户职业规划列表
+
+#### GET `/admin/career-plans/:id` — 获取职业规划详情
+
+#### DELETE `/admin/career-plans/:id` — 删除任意职业规划
+
+### 学习资源管理
+
+#### GET `/admin/learning-resources` — 获取学习资源列表（分页 + 筛选）
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `page` | number | | 页码（默认 1） |
+| `limit` | number | | 每页条数（默认 20） |
+| `category` | string | | 分类筛选 |
+| `search` | string | | 搜索关键词 |
+
+**响应 `200`：**
+
+```json
+{
+  "items": [
+    {
+      "id": "lr_001",
+      "title": "Java 入门教程",
+      "description": "适合初学者的 Java 基础教程",
+      "url": "https://example.com/java-tutorial",
+      "category": "java",
+      "type": "course",
+      "difficulty": "beginner",
+      "tags": ["java", "programming"],
+      "createdAt": "2026-06-30T10:00:00.000Z",
+      "updatedAt": "2026-06-30T10:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 50,
+    "totalPages": 3
+  }
+}
+```
+
+#### POST `/admin/learning-resources` — 创建学习资源
+
+**请求体：**
+
+```json
+{
+  "title": "Python 高级编程",
+  "description": "深入理解 Python 高级特性",
+  "url": "https://example.com/python-advanced",
+  "category": "python",
+  "type": "article",
+  "difficulty": "advanced",
+  "tags": ["python", "advanced"]
+}
+```
+
+#### PATCH `/admin/learning-resources/:id` — 更新学习资源
+
+**请求体：** 同创建，所有字段可选
+
+#### DELETE `/admin/learning-resources/:id` — 删除学习资源
+
+### 题库管理
+
+#### GET `/admin/question-bank` — 获取题目列表（分页 + 筛选）
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| `page` | number | | 页码（默认 1） |
+| `limit` | number | | 每页条数（默认 20） |
+| `category` | string | | 分类筛选 |
+| `search` | string | | 搜索关键词（搜索题目标题和内容） |
+
+**响应 `200`：**
+
+```json
+{
+  "items": [
+    {
+      "id": "qb_001",
+      "question": "什么是 JavaScript 闭包？",
+      "answer": "闭包是指有权访问另一个函数作用域中变量的函数...",
+      "explanation": "闭包是 JavaScript 的重要特性，常用于数据封装和回调函数。",
+      "category": "javascript",
+      "difficulty": "medium",
+      "type": "short_answer",
+      "tags": ["javascript", "closure", "frontend"],
+      "source": "ai_generated",
+      "usageCount": 15,
+      "createdAt": "2026-06-30T10:00:00.000Z",
+      "updatedAt": "2026-06-30T10:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 100,
+    "totalPages": 5
+  }
+}
+```
+
+**字段说明：**
+- `question`: 题目标题/内容
+- `answer`: 参考答案
+- `explanation`: 答案解析
+- `category`: 分类（如 javascript, java, python 等）
+- `difficulty`: 难度（easy / medium / hard）
+- `type`: 题型（choice / short_answer / coding / behavioral）
+- `tags`: 标签数组
+- `source`: 来源（manual / ai_generated / crawled）
+- `usageCount`: 使用次数
+
+#### GET `/admin/question-bank/:id` — 获取题目详情
+
+**响应 `200`：**
+
+```json
+{
+  "id": "qb_001",
+  "question": "什么是 JavaScript 闭包？",
+  "answer": "闭包是指有权访问另一个函数作用域中变量的函数...",
+  "explanation": "闭包是 JavaScript 的重要特性，常用于数据封装和回调函数。",
+  "options": null,
+  "category": "javascript",
+  "difficulty": "medium",
+  "type": "short_answer",
+  "tags": ["javascript", "closure", "frontend"],
+  "source": "ai_generated",
+  "usageCount": 15,
+  "createdAt": "2026-06-30T10:00:00.000Z",
+  "updatedAt": "2026-06-30T10:00:00.000Z"
+}
+```
+
+**注意：** 选择题会包含 `options` 字段，例如：`["选项A", "选项B", "选项C", "选项D"]`
+
+#### POST `/admin/question-bank` — 创建题目
+
+**请求体：**
+
+```json
+{
+  "question": "请解释 React 中的 useEffect 钩子",
+  "answer": "useEffect 是 React 的副作用处理钩子，用于执行数据获取、订阅设置、手动 DOM 操作等副作用。",
+  "explanation": "useEffect 在组件渲染后执行，可以模拟 componentDidMount、componentDidUpdate 和 componentWillUnmount。",
+  "category": "react",
+  "difficulty": "medium",
+  "type": "short_answer",
+  "tags": ["react", "hooks", "frontend"],
+  "source": "manual"
+}
+```
+
+**字段说明：**
+- `question`: 题目标题/内容（必填）
+- `answer`: 参考答案（可选）
+- `explanation`: 答案解析（可选）
+- `options`: 选项数组（仅选择题需要）
+- `category`: 分类（可选，默认 general）
+- `difficulty`: 难度（可选，默认 medium）
+- `type`: 题型（可选，默认 short_answer）
+- `tags`: 标签（可选，支持数组或逗号分隔字符串）
+- `source`: 来源（可选，默认 manual）
+
+**响应 `201`：** 返回创建的题目对象（格式同详情接口）
+
+#### PATCH `/admin/question-bank/:id` — 更新题目
+
+**请求体：** 同创建，所有字段可选
+
+**响应 `200`：** 返回更新后的题目对象
+
+#### DELETE `/admin/question-bank/:id` — 删除题目
+
+**响应 `200`：**
+
+```json
+{
+  "message": "题目 \"什么是 JavaScript 闭包？\" 已删除"
+}
+```
+
+---
+
+## 十四、简历 NER 模块（Resume NER）✅
+
+> 命名实体识别微服务（内部服务，无 REST 端点）
+
+简历 NER 模块是一个**无控制器的全局服务模块**，作为 Python NER 微服务的客户端，提供以下方法：
+
+| 方法 | 用途 | 调用后端 |
+|------|------|---------|
+| `extractEntities(text)` | 提取命名实体（人名、技能、学历等） | `POST {ner_api_url}`（mode=full） |
+| `extractStructured(text)` | 提取结构化简历信息 | `POST {ner_api_url}`（mode=structured） |
+| `healthCheck()` | 检查 NER 服务健康状态 | `GET {ner_api_url}/health` |
+
+- Python NER 服务默认地址：`http://localhost:8001`（可通过环境变量 `NER_API_URL` 配置）
+- NER 服务故障时自动降级，不影响主业务流程
+- 采用 BIO 字典匹配 + 规则引擎的中文简历实体识别方案
+
+---
+
+## 十五、接口与页面映射对照表
 
 | 前端页面 | 路由 | 对应 API |
 |----------|------|----------|
 | 登录页 | `/login` | `POST /auth/login`、`POST /auth/register` |
-| 首页仪表盘 | `/` | `GET /dashboard` |
+| 首页仪表盘 | `/` | 前端汇总多个 API 数据计算（`GET /resumes`、`GET /interviews`、`GET /career/plans` 等） |
 | 简历列表 | `/resume` | `GET /resumes` |
 | 简历详情 | `/resume/:id` | `GET /resumes/:id`、`PUT /resumes/:id`、`DELETE /resumes/:id` |
 | 简历上传 | `/resume/upload` | `POST /resumes/upload` |
+| 简历改写 | `/resume/:id/rewrite` | `POST /resumes/:id/rewrite-suggestions`、`POST /resumes/:id/rewrite-section` |
 | 面试准备 | `/interview` | `POST /interviews` |
 | 面试中 | `/interview/:id` | `WS /ws/interview/:id`、`POST /interviews/:id/answer` |
 | 面试报告 | `/interview/:id/report` | `GET /interviews/:id/messages`、`POST /interviews/:id/feedback` |
@@ -777,10 +2198,23 @@ ws://host/api/v1/ws/interview/intv_xxx?token=<access_token>
 | 规划详情 | `/career-plan/:id` | `GET /career/plans/:id` |
 | 个人中心 | `/profile` | `GET /auth/profile`、`PATCH /auth/profile` |
 | 市场洞察 | `/market-insight` | `GET /career/market-insight` |
+| 岗位推荐 | `/job-matching` | `GET /job-matching/recommendations` |
+| 岗位匹配管理 | `/job-matching/matches` | `GET /job-matching/matches`、`PATCH /job-matching/matches/:id/status` |
+| 学习资源 | `/resources` | `GET /learning-resources`、`POST /learning-resources/recommendations` |
+| 面试题库 | `/question-bank` | `GET /question-bank`、`GET /question-bank/:id`、`POST /question-bank/generate` |
+| 语音面试 | `/voice-interview` | `POST /voice-interviews`、`GET /voice-interviews`、`GET /voice-interviews/:id/summary` |
+| 语音 ASR | （组件内使用） | `POST /voice/asr` — 语音转文字 |
+| 语音 TTS | （组件内使用） | `POST /voice/tts` — 文字转语音 |
+| AI 简历解析 | `/resume`（内嵌） | `POST /ai/resume/parse` |
+| AI 面试出题 | `/interview`（内嵌） | `POST /ai/interview/question` |
+| AI 面试评估 | `/interview/:id`（内嵌） | `POST /ai/interview/evaluate` |
+| AI 面试报告 | `/interview/:id/report`（内嵌） | `POST /ai/interview/report` |
+| AI 职业规划 | `/career-plan`（内嵌） | `POST /ai/career/plan` |
+| 管理员 | `/admin` | `GET /admin/users`、`GET /admin/resumes`、`GET /admin/interviews`、`GET /admin/career-plans`、`GET /admin/learning-resources`、`GET /admin/question-bank`、`POST /admin/question-bank`、`PATCH /admin/question-bank/:id`、`DELETE /admin/question-bank/:id` |
 
 ---
 
-## 八、TS 类型定义（前后端共享）
+## 十六、TS 类型定义（前后端共享）
 
 ```typescript
 // 用户
@@ -863,4 +2297,164 @@ interface Phase {
   resources: Resource[];
   estimatedWeeks: number;
 }
-```
+
+// 岗位匹配
+interface JobRecommendation {
+  id: string;
+  position: string;
+  company: string;
+  location: string;
+  matchScore: number;
+  reason: string;
+  skills: string[];
+  url?: string;
+}
+
+interface JobMatch {
+  id: string;
+  position: string;
+  company: string;
+  status: 'saved' | 'applied' | 'interviewing' | 'offered' | 'rejected';
+  matchScore: number;
+  notes?: string;
+  createdAt: string;
+}
+
+interface MatchAnalysis {
+  overallScore: number;
+  skillMatch: { matched: string[]; missing: string[]; score: number };
+  experienceMatch: { requiredYears: number; actualYears: number; score: number };
+  suggestions: string[];
+}
+
+// 学习资源
+interface LearningResource {
+  id: string;
+  title: string;
+  type: 'video' | 'article' | 'course' | 'book';
+  category: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  url: string;
+  description: string;
+  rating: number;
+  tags?: string[];
+  duration?: string;
+}
+
+// 面试题库
+interface QuestionBankItem {
+  id: string;
+  question: string;
+  type: 'choice' | 'short_answer' | 'coding';
+  category: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  tags: string[];
+  answer?: string;
+  hint?: string;
+}
+
+// 语音面试（已实现，路由 /voice-interviews）
+interface VoiceInterview {
+  id: string;
+  position: string;
+  status: 'in_progress' | 'completed';
+  score?: number;
+  duration?: number;
+  questions: string[];
+  answers: string[];
+  startedAt: string;
+  completedAt?: string;
+}
+
+interface VoiceInterviewSummary {
+  overallScore: number;
+  strengths: string[];
+  weaknesses: string[];
+  recommendation: string;
+  transcript: string;
+}
+
+// 简历 NER
+interface NerEntityResult {
+  entities: Array<{ text: string; type: string; start: number; end: number }>;
+}
+
+interface NerStructuredResult {
+  name?: string;
+  phone?: string;
+  email?: string;
+  skills: string[];
+  education: Array<{ school: string; degree: string; major: string; period: string }>;
+  experience: Array<{ company: string; position: string; period: string; description: string }>;
+}
+
+// AI 筛选评估
+interface ScreeningResult {
+  overallScore: number;
+  dimensions: {
+    skillsMatch: number;
+    experience: number;
+    education: number;
+    keywordCoverage: number;
+    formatQuality: number;
+  };
+  recommendation: 'recommend' | 'pending' | 'reject';
+  summary: string;
+}
+
+// 管理员
+interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  role: 'user' | 'admin';
+  status: 'active' | 'disabled';
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+// 语音 ASR / TTS
+interface ASRResult {
+  text: string;
+}
+
+interface TTSResult {
+  url: string;
+}
+
+// AI 简历解析
+interface AIParseResult {
+  name: string;
+  phone: string;
+  email: string;
+  education: Education[];
+  experience: Experience[];
+  projects: Project[];
+  skills: string[];
+  summary: string;
+  suggestions: { category: string; content: string; priority: 'high' | 'medium' | 'low' }[];
+}
+
+// AI 评估
+interface AIEvaluation {
+  score: number;
+  feedback: string;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+}
+
+// AI 报告
+interface AIReport {
+  overallScore: number;
+  dimensions: Record<string, { score: number; comment: string }>;
+  strengths: string[];
+  weaknesses: string[];
+  improvementSuggestions: Suggestion[];
+}
+
+// 分页
+interface PaginatedResult<T> {
+  list: T[];
+  pagination: { page: number; limit: number; total: number };
+}

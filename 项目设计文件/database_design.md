@@ -1,7 +1,8 @@
 # Career-Copilot 数据库设计文档
 
-> 版本：v1.0 | 日期：2026-06-13
+> 版本：v1.2 | 日期：2026-06-28
 > 数据库：PostgreSQL 15+ | 缓存：Redis 7+
+> 状态：✅ 已实现 ⏳ 待测试 | 🆕 v1.1 新增 · 🆕 v1.2 缓存与 RAG
 
 ---
 
@@ -12,8 +13,14 @@ erDiagram
     users ||--o{ resumes : "拥有"
     users ||--o{ interviews : "发起"
     users ||--o{ career_plans : "拥有"
+    users ||--o{ job_matches : "拥有"
+    users ||--o{ voice_interview_sessions : "发起"
+    users ||--o{ resume_bookmarks : "收藏"
+    users ||--o{ password_reset_tokens : "重置令牌"
     interviews ||--o{ interview_messages : "包含"
     interviews }o--|| resumes : "关联"
+    resumes ||--o{ resume_bookmarks : "被收藏"
+    resumes ||--o{ resume_ner_cache : "NER 缓存"
 
     users {
         string id PK "CUID 主键"
@@ -24,6 +31,7 @@ erDiagram
         string education "教育背景（可空）"
         string targetPosition "目标岗位（可空）"
         string role "user | admin"
+        json modelConfig "LLM 配置（可空）"
         datetime createdAt "注册时间"
         datetime updatedAt "更新时间"
     }
@@ -35,6 +43,8 @@ erDiagram
         string fileUrl "文件地址（可空）"
         json parsedData "LLM 解析数据"
         string[] skills "技能标签"
+        json suggestions "优化建议（可空）"
+        json evaluations "六维评分（可空）"
         string status "parsing/completed/failed"
         datetime createdAt "上传时间"
         datetime updatedAt "更新时间"
@@ -75,6 +85,91 @@ erDiagram
         int progress "总进度 0-100"
         datetime createdAt "创建时间"
         datetime updatedAt "更新时间"
+    }
+
+    job_matches {
+        string id PK "CUID 主键"
+        string userId FK "所属用户"
+        string position "岗位名称"
+        string company "公司（可空）"
+        string location "地点（可空）"
+        string salaryRange "薪资范围（可空）"
+        string description "岗位描述（可空）"
+        json requirements "岗位要求（可空）"
+        float matchScore "匹配度 0-100"
+        json matchDetails "匹配详情（可空）"
+        string status "pending/saved/applied/archived"
+        string source "来源（可空）"
+        string applyUrl "投递链接（可空）"
+        datetime createdAt "创建时间"
+        datetime updatedAt "更新时间"
+    }
+
+    learning_resources {
+        string id PK "CUID 主键"
+        string title "资源标题"
+        string url "资源链接"
+        string type "course/article/video/book/documentation"
+        string category "技能分类"
+        string[] tags "标签"
+        string description "描述（可空）"
+        string provider "平台（可空）"
+        string difficulty "beginner/intermediate/advanced"
+        string duration "学习时长（可空）"
+        float rating "评分（可空）"
+        float relevanceScore "推荐相关度（可空）"
+        boolean aiGenerated "AI 生成（可空）"
+        int usageCount "使用次数"
+        datetime createdAt "创建时间"
+        datetime updatedAt "更新时间"
+    }
+
+    question_bank {
+        string id PK "CUID 主键"
+        string category "分类"
+        string type "choice/short_answer/coding/behavioral"
+        string difficulty "easy/medium/hard"
+        string title "题目标题"
+        json content "题目内容（含选项、答案、解析）"
+        string[] tags "标签"
+        string source "来源（可空）"
+        int usageCount "使用次数"
+        datetime createdAt "创建时间"
+        datetime updatedAt "更新时间"
+    }
+
+    voice_interview_sessions {
+        string id PK "CUID 主键"
+        string userId FK "所属用户"
+        string interviewId "关联面试（可空）"
+        string targetPosition "目标岗位"
+        string difficulty "easy/medium/hard"
+        string resumeId "关联简历（可空）"
+        string status "recording/paused/completed/cancelled"
+        string audioUrl "音频地址（可空）"
+        int durationSeconds "持续时间"
+        json transcript "对话转录"
+        datetime startedAt "开始时间"
+        datetime completedAt "结束时间（可空）"
+        datetime createdAt "创建时间"
+        datetime updatedAt "更新时间"
+    }
+
+    resume_bookmarks {
+        string id PK "CUID 主键"
+        string userId FK "所属用户"
+        string resumeId FK "被收藏简历"
+        string notes "备注（可空）"
+        datetime createdAt "创建时间"
+    }
+
+    password_reset_tokens {
+        string id PK "CUID 主键"
+        string userId FK "所属用户"
+        string token UK "重置令牌"
+        datetime expiresAt "过期时间"
+        boolean used "是否已使用"
+        datetime createdAt "创建时间"
     }
 ```
 
@@ -291,6 +386,188 @@ AI 生成的个性化职业发展路径。
 
 ---
 
+### 2.6 JobMatch（岗位匹配表）🆕 v1.1
+
+AI 推荐的岗位匹配记录，供用户查看与目标岗位的匹配度。
+
+| 字段 | 类型 | 约束 | 说明 |
+|------|------|:----:|------|
+| `id` | `VARCHAR(30)` | **PRIMARY KEY** | 唯一标识（CUID） |
+| `user_id` | `VARCHAR(30)` | **FK → users.id**, NOT NULL | 所属用户 |
+| `position` | `VARCHAR(100)` | NOT NULL | 岗位名称 |
+| `company` | `VARCHAR(100)` | nullable | 公司名称 |
+| `location` | `VARCHAR(100)` | nullable | 工作地点 |
+| `salary_range` | `VARCHAR(50)` | nullable | 薪资范围 |
+| `description` | `TEXT` | nullable | 岗位描述 |
+| `requirements` | `JSONB` | nullable | 岗位要求列表 |
+| `match_score` | `FLOAT` | NOT NULL | 匹配度（0-100） |
+| `match_details` | `JSONB` | nullable | 匹配详情 |
+| `status` | `VARCHAR(20)` | NOT NULL, DEFAULT `'pending'` | 状态：`pending` / `saved` / `applied` / `archived` |
+| `source` | `VARCHAR(30)` | nullable | 来源：`ai_recommended` / `manual` / `external` |
+| `apply_url` | `TEXT` | nullable | 投递链接 |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | 创建时间 |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | 更新时间 |
+
+**索引：**
+- 主键：`id`
+- 外键：`userId` → User.id
+- 复合索引：`(userId, status)` — 按用户和状态查询岗位列表
+- 索引：`(position)` — 按岗位筛选
+
+**`matchDetails` JSON 结构：**
+```json
+{
+  "matchedSkills": ["Java", "Spring Boot", "MySQL"],
+  "missingSkills": ["微服务", "Redis", "消息队列"],
+  "suggestions": [
+    { "skill": "微服务架构", "priority": "high", "resource": "Spring Cloud 官方文档" }
+  ]
+}
+```
+
+---
+
+### 2.7 LearningResource（学习资源表）🆕 v1.1
+
+全局共享的学习资源库，支持 AI 推荐与手动录入。
+
+| 字段 | 类型 | 约束 | 说明 |
+|------|------|:----:|------|
+| `id` | `VARCHAR(30)` | **PRIMARY KEY** | 唯一标识（CUID） |
+| `title` | `VARCHAR(255)` | NOT NULL | 资源标题 |
+| `url` | `TEXT` | NOT NULL | 资源链接 |
+| `type` | `VARCHAR(20)` | NOT NULL | 类型：`course` / `article` / `video` / `book` / `documentation` |
+| `category` | `VARCHAR(50)` | NOT NULL | 技能分类 |
+| `tags` | `TEXT[]` | NOT NULL, DEFAULT `'{}'` | 标签数组 |
+| `description` | `TEXT` | nullable | 资源描述 |
+| `provider` | `VARCHAR(100)` | nullable | 提供平台 |
+| `difficulty` | `VARCHAR(20)` | NOT NULL, DEFAULT `'intermediate'` | 难度：`beginner` / `intermediate` / `advanced` |
+| `duration` | `VARCHAR(50)` | nullable | 学习时长估计 |
+| `rating` | `FLOAT` | nullable | 评分（0-5） |
+| `relevance_score` | `FLOAT` | nullable | AI 推荐相关度 |
+| `ai_generated` | `BOOLEAN` | NOT NULL, DEFAULT `false` | 是否 AI 生成 |
+| `usage_count` | `INTEGER` | NOT NULL, DEFAULT `0` | 使用次数 |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | 创建时间 |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | 更新时间 |
+
+**索引：**
+- 主键：`id`
+- 复合索引：`(category, type)` — 按分类和类型查询
+- GIN 索引：`tags`
+
+---
+
+### 2.8 QuestionBank（面试题库表）🆕 v1.1
+
+全局面试题库，支持分类检索与 AI 生成题目。
+
+| 字段 | 类型 | 约束 | 说明 |
+|------|------|:----:|------|
+| `id` | `VARCHAR(30)` | **PRIMARY KEY** | 唯一标识（CUID） |
+| `category` | `VARCHAR(50)` | NOT NULL | 分类：`java` / `python` / `frontend` / `system-design` / `behavioral` 等 |
+| `type` | `VARCHAR(20)` | NOT NULL | 题型：`choice` / `short_answer` / `coding` / `behavioral` |
+| `difficulty` | `VARCHAR(10)` | NOT NULL, DEFAULT `'medium'` | 难度：`easy` / `medium` / `hard` |
+| `title` | `VARCHAR(255)` | NOT NULL | 题目标题 |
+| `content` | `JSONB` | NOT NULL | 题目内容 |
+| `tags` | `TEXT[]` | NOT NULL, DEFAULT `'{}'` | 标签数组 |
+| `source` | `VARCHAR(20)` | nullable | 来源：`manual` / `ai_generated` / `crawled` |
+| `usage_count` | `INTEGER` | NOT NULL, DEFAULT `0` | 使用次数 |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | 创建时间 |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | 更新时间 |
+
+**索引：**
+- 主键：`id`
+- 复合索引：`(category, difficulty)` — 按分类和难度筛选
+- GIN 索引：`tags`
+
+**`content` JSON 结构：**
+```json
+{
+  "question": "ArrayList 和 LinkedList 的区别是什么？",
+  "options": ["A. 线程安全", "B. 底层数据结构不同", "C. 允许空值"],
+  "answer": "B",
+  "explanation": "ArrayList 基于数组实现，LinkedList 基于双向链表实现..."
+}
+```
+
+---
+
+### 2.9 VoiceInterviewSession（语音面试会话表）🆕 v1.1
+
+语音面试的会话记录，包含音频与转录信息。
+
+| 字段 | 类型 | 约束 | 说明 |
+|------|------|:----:|------|
+| `id` | `VARCHAR(30)` | **PRIMARY KEY** | 唯一标识（CUID） |
+| `user_id` | `VARCHAR(30)` | **FK → users.id**, NOT NULL | 所属用户 |
+| `interview_id` | `VARCHAR(30)` | nullable | 关联面试（用于回放分析） |
+| `target_position` | `VARCHAR(100)` | NOT NULL | 目标岗位 |
+| `difficulty` | `VARCHAR(10)` | NOT NULL, DEFAULT `'medium'` | 难度：`easy` / `medium` / `hard` |
+| `resume_id` | `VARCHAR(30)` | nullable | 关联简历 |
+| `status` | `VARCHAR(20)` | NOT NULL, DEFAULT `'recording'` | 状态：`recording` / `paused` / `completed` / `cancelled` |
+| `audio_url` | `TEXT` | nullable | 音频文件地址 |
+| `duration_seconds` | `INTEGER` | NOT NULL, DEFAULT `0` | 会话时长（秒） |
+| `transcript` | `JSONB` | nullable | 对话转录 |
+| `started_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | 开始时间 |
+| `completed_at` | `TIMESTAMPTZ` | nullable | 结束时间 |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | 创建时间 |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | 更新时间 |
+
+**索引：**
+- 主键：`id`
+- 外键：`userId` → User.id
+- 复合索引：`(userId, status)` — 按用户和状态查询
+
+**`transcript` JSON 结构：**
+```json
+[
+  { "timestamp": "00:05", "speaker": "ai", "text": "请介绍一下你的项目经历" },
+  { "timestamp": "00:12", "speaker": "user", "text": "我参与过一个电商平台项目..." }
+]
+```
+
+---
+
+### 2.10 ResumeBookmark（简历收藏表）🆕 v1.1
+
+用户收藏他人/示例简历，用于参考学习。
+
+| 字段 | 类型 | 约束 | 说明 |
+|------|------|:----:|------|
+| `id` | `VARCHAR(30)` | **PRIMARY KEY** | 唯一标识（CUID） |
+| `user_id` | `VARCHAR(30)` | **FK → users.id**, NOT NULL | 收藏用户 |
+| `resume_id` | `VARCHAR(30)` | **FK → resumes.id**, NOT NULL | 被收藏简历 |
+| `notes` | `TEXT` | nullable | 收藏备注 |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | 收藏时间 |
+
+**索引：**
+- 主键：`id`
+- 外键：`userId` → User.id
+- 外键：`resumeId` → Resume.id
+- 唯一约束：`(userId, resumeId)` — 防止重复收藏
+
+---
+
+### 2.11 PasswordResetToken（密码重置令牌表）🆕 v1.1
+
+用户密码重置的临时令牌存储。
+
+| 字段 | 类型 | 约束 | 说明 |
+|------|------|:----:|------|
+| `id` | `VARCHAR(30)` | **PRIMARY KEY** | 唯一标识（CUID） |
+| `user_id` | `VARCHAR(30)` | **FK → users.id**, NOT NULL | 所属用户 |
+| `token` | `VARCHAR(255)` | **UNIQUE**, NOT NULL | 重置令牌 |
+| `expires_at` | `TIMESTAMPTZ` | NOT NULL | 过期时间 |
+| `used` | `BOOLEAN` | NOT NULL, DEFAULT `false` | 是否已使用 |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | 创建时间 |
+
+**索引：**
+- 主键：`id`
+- 唯一索引：`token`
+- 索引：`userId`
+
+---
+
 ## 三、表关系总览
 
 | 关系 | 类型 | 说明 |
@@ -298,8 +575,13 @@ AI 生成的个性化职业发展路径。
 | `users` → `resumes` | 1:N | 一个用户可上传多份简历 |
 | `users` → `interviews` | 1:N | 一个用户可进行多次面试 |
 | `users` → `career_plans` | 1:N | 一个用户可拥有多个职业规划 |
+| `users` → `job_matches` 🆕 | 1:N | 一个用户可拥有多个岗位匹配推荐 |
+| `users` → `voice_interview_sessions` 🆕 | 1:N | 一个用户可发起多次语音面试 |
+| `users` → `resume_bookmarks` 🆕 | 1:N | 一个用户可收藏多份简历 |
+| `users` → `password_reset_tokens` 🆕 | 1:N | 一个用户可拥有多个重置令牌 |
 | `interviews` → `interview_messages` | 1:N | 一次面试包含多条对话消息 |
 | `interviews` → `resumes` | N:1 | 一次面试可选关联一份简历 |
+| `resumes` → `resume_bookmarks` 🆕 | 1:N | 一份简历可被多个用户收藏 |
 
 **外键约束（DDL 中已定义，此处汇总）：**
 
@@ -459,6 +741,161 @@ COMMENT ON COLUMN career_plans.gap_skills IS '与目标岗位之间的技能差�
 COMMENT ON COLUMN career_plans.roadmap IS '分阶段学习路线（JSONB），包含阶段目标、学习资源、预估时间';
 COMMENT ON COLUMN career_plans.market_insight IS '目标岗位的市场数据洞察（JSONB），包含薪资范围、需求趋势';
 COMMENT ON COLUMN career_plans.progress IS '总完成进度百分比（0-100）';
+
+-- ============================================================
+-- 6. 岗位匹配表 🆕 v1.1
+-- ============================================================
+CREATE TABLE IF NOT EXISTS job_matches (
+    id              VARCHAR(30)     PRIMARY KEY,                -- CUID 主键
+    user_id         VARCHAR(30)     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    position        VARCHAR(100)    NOT NULL,                   -- 岗位名称
+    company         VARCHAR(100),                               -- 公司名称
+    location        VARCHAR(100),                               -- 工作地点
+    salary_range    VARCHAR(50),                                -- 薪资范围
+    description     TEXT,                                       -- 岗位描述
+    requirements    JSONB,                                      -- 岗位要求列表
+    match_score     DOUBLE PRECISION NOT NULL,                  -- 匹配度（0-100）
+    match_details   JSONB,                                      -- 匹配详情
+    status          VARCHAR(20)     NOT NULL DEFAULT 'pending', -- pending / saved / applied / archived
+    source          VARCHAR(30),                                -- ai_recommended / manual / external
+    apply_url       TEXT,                                       -- 投递链接
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_job_matches_user_id_status ON job_matches(user_id, status);
+CREATE INDEX idx_job_matches_position ON job_matches(position);
+
+COMMENT ON TABLE job_matches IS 'AI 推荐的岗位匹配记录';
+COMMENT ON COLUMN job_matches.user_id IS '所属用户 ID，外键 → users.id';
+COMMENT ON COLUMN job_matches.position IS '岗位名称，如：Java 后端开发工程师';
+COMMENT ON COLUMN job_matches.match_score IS '与用户简历的匹配度，0-100';
+COMMENT ON COLUMN job_matches.match_details IS '匹配详情（JSONB），包含匹配技能、缺失技能和改进建议';
+COMMENT ON COLUMN job_matches.status IS '状态：pending（待处理）/ saved（已收藏）/ applied（已投递）/ archived（已归档）';
+COMMENT ON COLUMN job_matches.source IS '来源：ai_recommended（AI 推荐）/ manual（手动添加）/ external（外部导入）';
+
+-- ============================================================
+-- 7. 学习资源表 🆕 v1.1
+-- ============================================================
+CREATE TABLE IF NOT EXISTS learning_resources (
+    id              VARCHAR(30)     PRIMARY KEY,                -- CUID 主键
+    title           VARCHAR(255)    NOT NULL,                   -- 资源标题
+    url             TEXT            NOT NULL,                   -- 资源链接
+    type            VARCHAR(20)     NOT NULL,                   -- course / article / video / book / documentation
+    category        VARCHAR(50)     NOT NULL,                   -- 技能分类
+    tags            TEXT[]          NOT NULL DEFAULT '{}',      -- 标签数组
+    description     TEXT,                                       -- 资源描述
+    provider        VARCHAR(100),                               -- 提供平台
+    difficulty      VARCHAR(20)     NOT NULL DEFAULT 'intermediate', -- beginner / intermediate / advanced
+    duration        VARCHAR(50),                                -- 学习时长估计
+    rating          DOUBLE PRECISION,                           -- 评分（0-5）
+    relevance_score DOUBLE PRECISION,                           -- AI 推荐相关度
+    ai_generated    BOOLEAN         NOT NULL DEFAULT false,     -- 是否 AI 生成
+    usage_count     INTEGER         NOT NULL DEFAULT 0,         -- 使用次数
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_learning_resources_category_type ON learning_resources(category, type);
+-- GIN 索引支持 tags 数组查询
+CREATE INDEX idx_learning_resources_tags ON learning_resources USING GIN(tags);
+
+COMMENT ON TABLE learning_resources IS '全局共享的学习资源库';
+COMMENT ON COLUMN learning_resources.type IS '资源类型：course（课程）/ article（文章）/ video（视频）/ book（书籍）/ documentation（文档）';
+COMMENT ON COLUMN learning_resources.category IS '技能分类，如：Java / Spring Boot / Redis';
+COMMENT ON COLUMN learning_resources.difficulty IS '难度：beginner（初级）/ intermediate（中级）/ advanced（高级）';
+COMMENT ON COLUMN learning_resources.ai_generated IS '是否由 AI 自动生成推荐';
+
+-- ============================================================
+-- 8. 面试题库表 🆕 v1.1
+-- ============================================================
+CREATE TABLE IF NOT EXISTS question_bank (
+    id              VARCHAR(30)     PRIMARY KEY,                -- CUID 主键
+    category        VARCHAR(50)     NOT NULL,                   -- java / python / frontend / system-design / behavioral
+    type            VARCHAR(20)     NOT NULL,                   -- choice / short_answer / coding / behavioral
+    difficulty      VARCHAR(10)     NOT NULL DEFAULT 'medium',  -- easy / medium / hard
+    title           VARCHAR(255)    NOT NULL,                   -- 题目标题
+    content         JSONB           NOT NULL,                   -- 题目内容
+    tags            TEXT[]          NOT NULL DEFAULT '{}',      -- 标签数组
+    source          VARCHAR(20),                                -- manual / ai_generated / crawled
+    usage_count     INTEGER         NOT NULL DEFAULT 0,         -- 使用次数
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_question_bank_category_difficulty ON question_bank(category, difficulty);
+CREATE INDEX idx_question_bank_tags ON question_bank USING GIN(tags);
+
+COMMENT ON TABLE question_bank IS '全局面试题库';
+COMMENT ON COLUMN question_bank.category IS '题目分类，如：java / python / frontend / system-design / behavioral';
+COMMENT ON COLUMN question_bank.type IS '题型：choice（选择题）/ short_answer（简答题）/ coding（编程题）/ behavioral（行为题）';
+COMMENT ON COLUMN question_bank.content IS '题目内容（JSONB），包含题目、选项、答案和解析';
+COMMENT ON COLUMN question_bank.source IS '来源：manual（手动录入）/ ai_generated（AI 生成）/ crawled（爬取）';
+
+-- ============================================================
+-- 9. 语音面试会话表 🆕 v1.1
+-- ============================================================
+CREATE TABLE IF NOT EXISTS voice_interview_sessions (
+    id              VARCHAR(30)     PRIMARY KEY,                -- CUID 主键
+    user_id         VARCHAR(30)     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    interview_id    VARCHAR(30)     REFERENCES interviews(id) ON DELETE SET NULL,
+    target_position VARCHAR(100)    NOT NULL,                   -- 目标岗位
+    difficulty      VARCHAR(10)     NOT NULL DEFAULT 'medium',  -- easy / medium / hard
+    resume_id       VARCHAR(30),                                -- 关联简历 ID
+    status          VARCHAR(20)     NOT NULL DEFAULT 'recording', -- recording / paused / completed / cancelled
+    audio_url       TEXT,                                       -- 音频文件地址
+    duration_seconds INTEGER       NOT NULL DEFAULT 0,          -- 会话时长（秒）
+    transcript      JSONB,                                      -- 对话转录
+    started_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),     -- 开始时间
+    completed_at    TIMESTAMPTZ,                                -- 结束时间
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_voice_interview_user_id_status ON voice_interview_sessions(user_id, status);
+
+COMMENT ON TABLE voice_interview_sessions IS '语音面试的会话记录';
+COMMENT ON COLUMN voice_interview_sessions.user_id IS '所属用户 ID，外键 → users.id';
+COMMENT ON COLUMN voice_interview_sessions.interview_id IS '关联的文本面试会话 ID（可选）';
+COMMENT ON COLUMN voice_interview_sessions.status IS '状态：recording（录制中）/ paused（已暂停）/ completed（已完成）/ cancelled（已取消）';
+COMMENT ON COLUMN voice_interview_sessions.transcript IS '对话转录文本（JSONB），包含时间戳、说话人和内容';
+
+-- ============================================================
+-- 10. 简历收藏表 🆕 v1.1
+-- ============================================================
+CREATE TABLE IF NOT EXISTS resume_bookmarks (
+    id              VARCHAR(30)     PRIMARY KEY,                -- CUID 主键
+    user_id         VARCHAR(30)     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    resume_id       VARCHAR(30)     NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+    notes           TEXT,                                       -- 收藏备注
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),     -- 收藏时间
+    -- 唯一约束防止重复收藏
+    CONSTRAINT uq_resume_bookmarks UNIQUE (user_id, resume_id)
+);
+
+COMMENT ON TABLE resume_bookmarks IS '用户收藏他人/示例简历';
+COMMENT ON COLUMN resume_bookmarks.user_id IS '收藏用户 ID，外键 → users.id';
+COMMENT ON COLUMN resume_bookmarks.resume_id IS '被收藏简历 ID，外键 → resumes.id';
+COMMENT ON COLUMN resume_bookmarks.notes IS '收藏时的备注信息';
+
+-- ============================================================
+-- 11. 密码重置令牌表 🆕 v1.1
+-- ============================================================
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id              VARCHAR(30)     PRIMARY KEY,                -- CUID 主键
+    user_id         VARCHAR(30)     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token           VARCHAR(255)    NOT NULL UNIQUE,            -- 重置令牌
+    expires_at      TIMESTAMPTZ     NOT NULL,                   -- 过期时间
+    used            BOOLEAN         NOT NULL DEFAULT false,     -- 是否已使用
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT now()      -- 创建时间
+);
+
+CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+
+COMMENT ON TABLE password_reset_tokens IS '密码重置的临时令牌存储';
+COMMENT ON COLUMN password_reset_tokens.token IS '重置令牌，唯一标识';
+COMMENT ON COLUMN password_reset_tokens.expires_at IS '令牌过期时间';
+COMMENT ON COLUMN password_reset_tokens.used IS '是否已被使用';
 ```
 
 ---
@@ -482,6 +919,12 @@ career-copilot:<模块>:<业务>:<ID>
 | `career-copilot:token:refresh:{userId}` | `String` | 7d | Refresh Token 存储 |
 | `career-copilot:rate-limit:{ip}` | `String (Int)` | 1min | 接口频率限制计数 |
 | `career-copilot:market-insight:{position}` | `String (JSON)` | 1d | 市场数据缓存（减少 LLM 调用） |
+| `career-copilot:job-match:{matchId}` 🆕 | `String (JSON)` | 1h | 岗位匹配详情缓存 |
+| `career-copilot:voice-session:{sessionId}` 🆕 | `String (JSON)` | 2h | 语音面试会话状态缓存 |
+| `career-copilot:question-bank:{category}` 🆕 | `String (JSON)` | 1h | 面试题库分类缓存 |
+| `career-copilot:learning:{category}` 🆕 | `String (JSON)` | 1h | 学习资源分类缓存 |
+| `career-copilot:ai:cache:{sha256}` 🆕 | `String (JSON)` | 见 TTL 表 | AI 调用请求-响应对缓存（按场景区分 TTL） |
+| `career-copilot:rag:embedding:{namespace}` 🆕 | `Sorted Set` | 永久 | RAG 知识库嵌入向量存储（cosine 相似度检索） |
 
 ### 5.3 面试会话缓存结构
 
@@ -512,6 +955,10 @@ career-copilot:<模块>:<业务>:<ID>
 |-------|------|----------|
 | `resume-parser` | 简历异步解析任务 | Resume Module |
 | `feedback-generator` | 面试反馈生成任务 | Interview Module |
+| `job-matching` 🆕 | 岗位匹配分析任务 | JobMatching Module |
+| `voice-interview` 🆕 | 语音面试转录与评估任务 | VoiceInterview Module |
+| `screening` 🆕 | AI 简历筛选分析任务 | AI Module |
+| `learning-recommend` 🆕 | 学习资源推荐生成任务 | LearningResources Module |
 
 ---
 
@@ -637,6 +1084,20 @@ services:
       timeout: 5s
       retries: 5
 
+  python-ner: # 🆕 v1.1 简历命名实体识别服务
+    build:
+      context: ../datasets
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - FLASK_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   pgdata:
   redisdata:
@@ -675,6 +1136,10 @@ volumes:
 | 简历列表 | `SELECT * FROM resumes WHERE user_id = ? ORDER BY created_at DESC` | 已建 `(userId, createdAt)` 复合索引 |
 | 面试历史 | `SELECT * FROM interviews WHERE user_id = ? AND status = ?` | 已建 `(userId, status, createdAt)` 复合索引 |
 | 消息记录 | `SELECT * FROM interview_messages WHERE interview_id = ? ORDER BY created_at` | 已建 `(interviewId, createdAt)` 索引 |
+| 岗位匹配列表 🆕 | `SELECT * FROM job_matches WHERE user_id = ? AND status = ?` | 已建 `(userId, status)` 复合索引 |
+| 学习资源检索 🆕 | `SELECT * FROM learning_resources WHERE category = ? AND type = ?` | 已建 `(category, type)` 复合索引 |
+| 题库分类查询 🆕 | `SELECT * FROM question_bank WHERE category = ? AND difficulty = ?` | 已建 `(category, difficulty)` 复合索引 |
+| 语音面试列表 🆕 | `SELECT * FROM voice_interview_sessions WHERE user_id = ? AND status = ?` | 已建 `(userId, status)` 复合索引 |
 
 ### 9.2 JSONB 字段查询
 
@@ -751,4 +1216,20 @@ DB_PORT=5432
 DB_NAME=career_copilot
 DB_USER=app
 DB_PASSWORD=your_password_here
+
+# 🆕 v1.1 LLM 供应商配置（三选一，按优先级：OPENAI > DASHESCOPE > DEEPSEEK）
+OPENAI_API_KEY=sk-your-openai-api-key
+OPENAI_BASE_URL=https://api.openai.com/v1
+DASHSCOPE_API_KEY=sk-your-dashscope-api-key
+DEEPSEEK_API_KEY=sk-your-deepseek-api-key
+
+# 🆕 v1.1 LLM 模型选择
+LLM_PROVIDER=dashscope           # openai / dashscope / deepseek
+LLM_MODEL=qwen-plus              # 不同 provider 支持的模型不同
+
+# 🆕 v1.1 Python NER 服务地址
+PYTHON_NER_URL=http://localhost:8001
+
+# 🆕 v1.1 语音面试相关
+VOICE_UPLOAD_DIR=./uploads/voice
 ```

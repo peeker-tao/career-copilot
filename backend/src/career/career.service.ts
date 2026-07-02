@@ -1,0 +1,124 @@
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../common/prisma.service';
+import { CareerPlanner } from './career.planner';
+
+@Injectable()
+export class CareerService {
+  private readonly logger = new Logger(CareerService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private careerPlanner: CareerPlanner,
+  ) {}
+
+  async createPlan(
+    userId: string,
+    data: {
+      targetPosition: string;
+      currentSkills?: string[];
+      resumeId?: string;
+    },
+  ) {
+    // 1. 调用 AI 生成职业规划（差距分析 + 学习路线 + 市场洞察）
+    const planResult = await this.careerPlanner.generate({
+      targetPosition: data.targetPosition,
+      currentSkills: data.currentSkills || [],
+    });
+
+    this.logger.log(
+      `✅ 职业规划 AI 生成完成: gapSkills=${planResult.gapSkills.length} 项, roadmap=${planResult.roadmap.length} 阶段`,
+    );
+
+    // 2. 持久化到数据库 — Prisma 5 支持直接传入 JSON 对象
+    const plan = await this.prisma.careerPlan.create({
+      data: {
+        userId,
+        targetPosition: data.targetPosition,
+        currentSkills: data.currentSkills || [],
+        gapSkills: planResult.gapSkills,
+        roadmap: planResult.roadmap as any,
+        marketInsight: planResult.marketInsight as any,
+        progress: 0,
+      },
+    });
+
+    return plan;
+  }
+
+  async getPlans(userId: string) {
+    return this.prisma.careerPlan.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getPlan(id: string, userId: string) {
+    const plan = await this.prisma.careerPlan.findFirst({
+      where: { id, userId },
+    });
+
+    if (!plan) {
+      throw new NotFoundException('职业规划不存在');
+    }
+
+    return plan;
+  }
+
+  async deletePlan(id: string, userId: string) {
+    // 先验证规划存在且属于当前用户
+    await this.getPlan(id, userId);
+
+    // 删除规划
+    await this.prisma.careerPlan.delete({
+      where: { id },
+    });
+
+    this.logger.log(`🗑️ 职业规划已删除: planId=${id}, userId=${userId}`);
+  }
+
+  async updateProgress(
+    id: string,
+    userId: string,
+    data: { phase: number; progress: number },
+  ) {
+    // 1. 验证规划存在且属于当前用户
+    const plan = await this.getPlan(id, userId);
+
+    // 2. 验证进度范围
+    if (data.progress < 0 || data.progress > 100) {
+      throw new Error('进度必须在 0-100 之间');
+    }
+
+    // 3. 更新指定阶段的进度
+    const roadmap = plan.roadmap as any[];
+    if (!roadmap || !roadmap[data.phase]) {
+      throw new NotFoundException(`阶段 ${data.phase} 不存在`);
+    }
+
+    roadmap[data.phase].progress = data.progress;
+
+    // 4. 计算整体进度（所有阶段的平均进度）
+    const totalProgress = roadmap.reduce(
+      (sum, phase) => sum + (phase.progress || 0),
+      0,
+    );
+    const averageProgress = Math.round(totalProgress / roadmap.length);
+
+    // 5. 更新数据库
+    const updatedPlan = await this.prisma.careerPlan.update({
+      where: { id },
+      data: {
+        roadmap: roadmap as any,
+        progress: averageProgress,
+      },
+    });
+
+    this.logger.log(
+      `📊 职业规划进度已更新: planId=${id}, phase=${data.phase}, progress=${data.progress}%, overall=${averageProgress}%`,
+    );
+
+    return updatedPlan;
+  }
+}
+
+

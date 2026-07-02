@@ -1,5 +1,7 @@
 # Career-Copilot 项目架构规划
 
+> 版本：v1.3 | 日期：2026-07-15
+> 状态：✅ 已实现 ⏳ 待测试 ✅ RAG 已实现
 > AI 模拟面试官 + 智能职业规划平台
 
 ---
@@ -28,8 +30,11 @@
 | 框架 | **NestJS** | 模块化架构、装饰器、TS 原生支持 |
 | 数据库 | **PostgreSQL** | 关系型数据存储 |
 | ORM | **Prisma** | TS 优先、类型安全 |
-| 缓存 | **Redis** | 面试会话缓存、token 存储 |
-| AI/LLM | **OpenAI API / 通义千问 API / DeepSeek API** | 面试题生成、追问、反馈 |
+| 缓存 | **Redis** | 面试会话缓存、token 存储、LLM 响应缓存 |
+| AI/LLM | **DeepSeek API / 通义千问 API** | 面试题生成、追问、反馈（OpenAI 兼容接口） |
+| AI 缓存 | **AiCacheService (SHA256)** | LLM 请求去重，按场景 TTL 自动过期 |
+| RAG | **SimpleRagService + LocalEmbedderService** | 本地 BGE 模型 + Python Worker 嵌入 + Redis 向量检索 |
+| RAG 模型 | **BAAI/bge-small-zh-v1.5 (fastembed / ONNX)** | 轻量中文 Embedding 模型，约 30MB，512 维向量 |
 | 语音 | **Azure Speech Services / 阿里云语音** | 语音合成（TTS）+ 语音识别（ASR） |
 | 认证 | **JWT (Access + Refresh Token)** | 用户鉴权 |
 | 消息队列 | **Bull (基于 Redis)** | 异步任务（简历解析） |
@@ -40,29 +45,40 @@
 ## 二、系统整体架构图
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Frontend (React + Vite)                  │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
-│  │ 用户页面  │  │ 面试模拟  │  │ 职业规划  │  │ 简历管理   │  │
-│  │ (登录/    │  │ (数字人   │  │ (路径     │  │ (上传/     │  │
-│  │  注册)    │  │  对话)   │  │  推荐)   │  │  解析)    │  │
-│  └──────────┘  └──────────┘  └──────────┘  └────────────┘  │
-└──────────────────────┬──────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                       Frontend (React + Vite)                     │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
+│  │ 用户页面  │ │ 面试模拟  │ │ 职业规划  │ │ 简历管理  │ │ 岗位匹配│ │
+│  │ (登录/    │ │ (数字人   │ │ (路径     │ │ (上传/    │ │ (推荐/  │ │
+│  │  注册)    │ │  对话)   │ │  推荐)   │ │  解析)   │ │ 分析)  │ │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └────────┘ │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────────┐  │
+│  │ 学习资源  │ │ 面试题库  │ │ 语音面试  │ │ 管理员后台        │  │
+│  └──────────┘ └──────────┘ └──────────┘ └────────────────────┘  │
+└──────────────────────┬───────────────────────────────────────────┘
                        │ HTTP / WebSocket
-┌──────────────────────▼──────────────────────────────────────┐
-│                  API Gateway (NestJS)                        │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
-│  │ Auth     │  │ Interview│  │ Career   │  │ Resume     │  │
-│  │ Module   │  │ Module   │  │ Module   │  │ Module     │  │
-│  └──────────┘  └──────────┘  └──────────┘  └────────────┘  │
-└──────┬──────────────┬──────────────┬────────────────────────┘
+┌──────────────────────▼───────────────────────────────────────────┐
+│                     API Gateway (NestJS)                          │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
+│  │ Auth     │ │ Interview│ │ Career   │ │ Resume   │ │Admin   │ │
+│  │ Module   │ │ Module   │ │ Module   │ │ Module   │ │Module  │ │
+│  ├──────────┤ ├──────────┤ ├──────────┤ ├──────────┤ ├────────┤ │
+│  │JobMatch  │ │ Learning │ │Question  │ │Voice     │ │Resume  │ │
+│  │ Module   │ │ Resources│ │ Bank     │ │Interview │ │NER(svc)│ │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └────────┘ │
+└──────┬──────────────┬──────────────┬─────────────────────────────┘
        │              │              │
 ┌──────▼──────┐ ┌─────▼──────┐ ┌────▼──────────────────┐
 │ PostgreSQL  │ │   Redis    │ │  AI Services           │
 │ (用户/简历/ │ │ (会话缓存/ │ │  ├─ LLM (面试生成)     │
-│  面试记录)  │ │  消息队列) │ │  ├─ 语音识别 (ASR)     │
-└─────────────┘ └────────────┘ │  └─ 语音合成 (TTS)     │
-                               └────────────────────────┘
+│  面试/题库) │ │  消息队列) │ │  ├─ 语音识别 (ASR)     │
+│  岗位/资源) │ │            │ │  ├─ 语音合成 (TTS)     │
+│            │ │            │ │  ├─ NER 实体识别       │
+│            │ │            │ │  ├─ AI Cache (SHA256)  │
+│            │ │            │ │  ├─ RAG (Embedding)    │
+│            │ │            │ │  └─ Python Worker      │
+│            │ │            │ │     (embed_worker.py)  │
+└─────────────┘ └────────────┘ └────────────────────────┘
 ```
 
 ---
@@ -141,6 +157,122 @@ model CareerPlan {
 
   user            User     @relation(fields: [userId], references: [id])
 }
+
+// ═══════════════ 🆕 新增 v1.1 模型 ⏳ 待测试 ═══════════════
+
+model JobMatch {
+  id              String   @id @default(cuid())
+  userId          String
+  resumeId        String?
+  targetPosition  String   // 目标岗位
+  matchScore      Float?   // 匹配度 (0-100)
+  matchData       Json?    // 匹配详情（技能匹配、经验匹配等）
+  recommendations Json?    // 推荐的岗位列表
+  status          String   @default("completed")
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id])
+  resume          Resume?  @relation(fields: [resumeId], references: [id])
+}
+
+model LearningResource {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  url         String?
+  resourceType String  // course | article | video | book | project
+  tags        String[]
+  difficulty  String?  // beginner | intermediate | advanced
+  relevanceScore Float?
+  source      String?  // 来源：system | ai_recommended | user_saved
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model QuestionBank {
+  id          String   @id @default(cuid())
+  userId      String?
+  position    String   // 目标岗位
+  question    String
+  answer      String?
+  questionType String  // technical | behavioral | project | hr
+  difficulty  String   @default("medium") // easy | medium | hard
+  tags        String[]
+  source      String?  // ai_generated | user_added
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id])
+}
+
+model VoiceInterviewSession {
+  id              String   @id @default(cuid())
+  userId          String
+  interviewId     String?
+  status          String   @default("in_progress") // in_progress | completed | cancelled
+  audioUrl        String?  // 录音文件地址
+  duration        Int?     // 持续时间（秒）
+  questionCount   Int      @default(0)
+  transcript      Json?    // 语音转文字记录
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+
+  user            User     @relation(fields: [userId], references: [id])
+  interview       Interview? @relation(fields: [interviewId], references: [id])
+}
+
+model VoiceInterviewSummary {
+  id              String   @id @default(cuid())
+  sessionId       String   @unique
+  overallScore    Float?   // 综合评分
+  fluencyScore    Float?   // 流利度评分
+  pronunciationScore Float? // 发音评分
+  contentScore    Float?   // 内容评分
+  feedback        Json?    // 分题反馈
+  suggestions     String?  // 改进建议
+  createdAt       DateTime @default(now())
+
+  session         VoiceInterviewSession @relation(fields: [sessionId], references: [id])
+}
+
+model AdminLog {
+  id          String   @id @default(cuid())
+  adminId     String
+  action      String   // 操作类型
+  target      String?  // 操作对象
+  detail      Json?    // 操作详情
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  admin       User     @relation(fields: [adminId], references: [id])
+}
+
+model ScreeningResult {
+  id          String   @id @default(cuid())
+  resumeId    String
+  position    String   // 招聘岗位
+  score       Float    // 综合评分 (0-100)
+  details     Json?    // 各维度评分详情
+  isQualified Boolean? // 是否合格
+  createdAt   DateTime @default(now())
+
+  resume      Resume   @relation(fields: [resumeId], references: [id])
+}
+
+model ResumeNerCache {
+  id          String   @id @default(cuid())
+  resumeId    String   @unique
+  rawText     String?  // 原始文本
+  entities    Json?    // NER 实体列表
+  structured  Json?    // 结构化结果
+  modelVersion String? // NER 模型版本
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resume      Resume   @relation(fields: [resumeId], references: [id])
+}
 ```
 
 ---
@@ -159,6 +291,18 @@ model CareerPlan {
 | `/career-plan` | 职业规划 | 目标岗位选择、路径推荐 |
 | `/career-plan/:id` | 路径详情 | 分阶段学习计划、课程推荐 |
 | `/profile` | 个人中心 | 修改资料、查看历史 |
+| `/job-matching` | 岗位匹配 | 岗位推荐、匹配度分析 |
+| `/job-matching/:id` | 匹配详情 | 技能匹配详情、推荐岗位列表 |
+| `/learning-resources` | 学习资源 | 课程/文章/视频推荐列表 |
+| `/learning-resources/:id` | 资源详情 | 学习资源详情 |
+| `/question-bank` | 面试题库 | 按岗位/题型筛选面试题 |
+| `/question-bank/:id` | 题目详情 | 题目答案、参考解析 |
+| `/voice-interview` | 语音面试 | 语音面试入口 |
+| `/voice-interview/:id` | 语音面试中 | 语音对话界面 |
+| `/voice-interview/:id/report` | 语音面试报告 | 语音评估报告 |
+| `/admin` | 管理后台 | 用户管理、数据统计 |
+| `/admin/users` | 用户管理 | 用户列表、角色管理 |
+| `/admin/logs` | 操作日志 | 管理员操作审计日志 |
 
 ---
 
@@ -230,6 +374,242 @@ LLM + 市场数据分析技能差距
 - 市场招聘数据（爬取或公开数据集）
 - LLM 对岗位要求的理解
 
+### 5.4 岗位匹配与推荐
+
+**流程：**
+
+```
+用户简历 + 目标岗位 → 技能提取与标准化
+          ↓
+LLM 分析技能差距与匹配度
+          ↓
+生成匹配度评分 + 各维度详情
+          ↓
+推荐相关岗位 / 技能提升建议
+```
+
+**技术要点：**
+
+- 基于简历解析结果提取技能标签
+- LLM 进行技能匹配度分析（JSON 结构化输出）
+- 支持按岗位名称、技能关键词筛选
+- 匹配结果包含：整体评分、技能匹配、经验匹配、教育匹配
+
+### 5.5 学习资源推荐
+
+**流程：**
+
+```
+技能差距分析结果 → 生成学习需求
+          ↓
+系统推荐 + LLM 推荐学习资源
+          ↓
+按类型（课程/文章/视频/书籍）分类展示
+          ↓
+用户收藏、标记完成
+```
+
+**技术要点：**
+
+- 内置学习资源库 + LLM 动态推荐
+- 资源与技能差距直接关联
+- 用户可标记学习完成状态
+- 支持难度分级（初级/中级/高级）
+
+### 5.6 面试题库
+
+**流程：**
+
+```
+按岗位 + 题型生成面试题
+          ↓
+LLM 生成题目 + 参考答案 + 解析
+          ↓
+用户练习、查看答案
+          ↓
+收藏高频考题
+```
+
+**技术要点：**
+
+- 支持四种题型：技术题、行为题、项目经验题、HR 题
+- LLM 按岗位动态生成题目
+- 可作为面试前的独立练习模块
+
+### 5.7 语音面试
+
+**流程：**
+
+```
+用户发起语音面试 → 前端录音 → 音频流上传
+          ↓
+后端 ASR 语音转文字 → LLM 评估回答
+          ↓
+TTS 语音合成 AI 提问 → 播放给用户
+          ↓
+多轮对话 → 生成语音面试报告
+```
+
+**技术要点：**
+
+- 前端使用 MediaRecorder API 录音
+- ASR 支持：Azure Speech / 阿里云语音识别
+- TTS 支持：Azure Speech / 阿里云语音合成
+- 录音文件暂存至服务器，面试结束后清理
+- 评估维度：流利度、发音、内容、综合评分
+
+### 5.8 管理员后台
+
+**功能模块：**
+
+- **用户管理**：用户列表、角色分配、账号启用/停用
+- **数据统计**：注册用户数、面试次数、活跃度统计
+- **操作审计**：管理员操作日志记录与查询
+- **系统配置**：AI 模型参数、面试题配置
+
+**技术要点：**
+
+- 基于角色（user/admin）的权限控制
+- 所有管理员操作记录 AdminLog
+- 数据统计支持按时间范围筛选
+
+### 5.9 简历 NER 实体识别
+
+**流程：**
+
+```
+上传简历 → Python NER 服务 (port 8001)
+          ↓
+BIO 字典匹配 + 规则引擎
+          ↓
+识别人名、电话、邮箱、技能、学历等实体
+          ↓
+返回结构化结果 → 前端展示
+```
+
+**技术要点：**
+
+- 独立 Python 服务，基于 Flask/FastAPI
+- 使用 BIO 标注模式进行实体识别
+- 字典匹配 + 正则规则双引擎
+- 覆盖 10+ 类简历实体
+- 结果缓存至 ResumeNerCache 表
+
+### 5.10 AI 缓存与 RAG 增强 ✅ 已实现 (v1.2)
+
+**架构理念：**
+
+```
+┌──────────────┐    ┌──────────────────┐    ┌──────────────┐
+│  调用方       │    │  AiService        │    │  LLM Provider │
+│ (各 Service)  │───▶│  callLLM()        │───▶│  (DeepSeek/   │
+│              │    │                   │    │   通义千问等)  │
+└──────────────┘    └───────┬───────────┘    └──────────────┘
+                            │
+               ┌────────────┼────────────┐
+               ▼            ▼            ▼
+        ┌──────────┐ ┌──────────┐ ┌──────────────────────────┐
+        │ Redis    │ │  AiCache │ │  SimpleRagService         │
+        │ Service  │ │  Service │ │  ├─ LocalEmbedderService  │
+        │ (ioredis)│ │ (SHA256) │ │  │   (Python Worker)     │
+        └──────────┘ └──────────┘ │  └─ Redis 向量检索       │
+                                  └──────────────────────────┘
+                                               │
+                                    ┌──────────▼──────────┐
+                                    │  embed_worker.py     │
+                                    │  (child_process)     │
+                                    │  ┌────────────────┐  │
+                                    │  │ BAAI/bge-small │  │
+                                    │  │ -zh-v1.5       │  │
+                                    │  │ (ONNX Runtime) │  │
+                                    │  └────────────────┘  │
+                                    │  stdin/stdout JSON    │
+                                    │  行协议               │
+                                    └───────────────────────┘
+```
+
+**缓存层 (AiCacheService)：**
+
+| 特性 | 说明 |
+|------|------|
+| 缓存键 | `SHA256(systemPrompt + userMessage)` — 内容寻址，相同请求命中相同缓存 |
+| 存储后端 | Redis，通过 `RedisService` 统一存取 |
+| 场景 TTL | 每类请求独立过期时间，精确控制缓存有效期 |
+| 降级策略 | `@Optional()` 注入 —— 无可用缓存时直接调用 LLM，零侵入 |
+
+**TTL 策略：**
+
+| 缓存前缀 | TTL | 说明 |
+|:--------:|:---:|------|
+| `resume:parse` | 7 天 | 简历解析结果长期稳定 |
+| `resume:rewrite` | 7 天 | 简历润色/分析结果 |
+| `resume:screening` | 1 小时 | 简历筛选需实时准确 |
+| `interview:question` | 24 小时 | 同岗位题目可复用 |
+| `interview:evaluate` | 1 小时 | 评估结果需最新判断 |
+| `interview:report` | 1 小时 | 报告生成需最新评分 |
+| `interview:voice` | 24 小时 | 语音分析结果 |
+| `career:plan` | 24 小时 | 职业规划可复用 |
+| `career:insight` | 24 小时 | 市场洞察数据 |
+| `learning:recommend` | 24 小时 | 学习资源推荐 |
+| `job:matching` | 1 小时 | 匹配度需实时准确 |
+| `job:recommend` | 24 小时 | 岗位推荐 |
+| `question:generate` | 24 小时 | 题库生成 |
+| `general` | 1 小时 | 默认 TTL（兜底） |
+
+**RAG 增强层 (SimpleRagService)：**
+
+| 特性 | 说明 |
+|------|------|
+| 嵌入模型 | **`BAAI/bge-small-zh-v1.5`** (本地模型) |
+| 运行方式 | **Python Worker 子进程** — `LocalEmbedderService` 通过 `child_process.spawn` 启动 `embed_worker.py`，模型常驻进程内存 |
+| Embedding 库 | **fastembed** (ONNX Runtime) — 无需 PyTorch，模型约 30MB |
+| 向量维度 | **512 维** (ONNX 版本输出，非官方 384 维) |
+| 存储后端 | **Redis** — 每个文档存两条：`{namespace}:{key}`(内容+向量+元数据) + `{namespace}:vec:{key}`(向量+内容+元数据) |
+| 相似度算法 | **Cosine Similarity** (全量扫描计算) |
+| 检索策略 | **Top-K** (默认 K=3) — 返回最相似的 3 条知识片段 |
+| 增强方式 | 检索到的知识作为额外上下文拼入 System Prompt，格式：`[参考 N]\n（相似度: X%）\n{content}` |
+| 命名空间 | 支持按场景隔离 — `rag:interview`(面试问答)、`rag:career`(职业规划)、`rag:resume`(简历模板) |
+| 已填充数据 | **29 条面试题目** (覆盖 Java、Python、前端、系统设计、行为、数据库、网络等类别) |
+
+**Python Worker 通信协议：**
+
+```
+Node.js (LocalEmbedderService)                 Python (embed_worker.py)
+         │                                            │
+         │  spawn( )                                   │
+         │─────────────────────────────────────────────▶│ 加载模型
+         │                                            │
+         │  ← {"ok":true,"ready":true,"model":"..."}   │ 就绪通知
+         │                                            │
+         │  {"text":"要嵌入的文本","id":"1"}\n          │
+         │─────────────────────────────────────────────▶│
+         │                                            │ 生成向量
+         │  ← {"ok":true,"embedding":[...],"id":"1"}   │
+         │                                            │
+         │  {"text":"另一段文本","id":"2"}\n            │
+         │─────────────────────────────────────────────▶│
+         │  ← {"ok":true,"embedding":[...],"id":"2"}   │
+         │  ... (复用同一进程，不清除模型)                ...
+```
+
+> **Windows 兼容性说明：** Windows 下 Python `sys.stdin` 默认使用系统编码 (CP936/GBK)。Node.js 发送的 UTF-8 中文数据会被错误解码。修复方式：`sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')` (stdout 同理)。
+
+**调用流程（`callLLM` 方法）：**
+
+```
+1. 计算 SHA256(systemPrompt + userMessage)
+2. 查缓存 → 命中直接返回
+3. (可选) RAG 增强：调用 SimpleRagService.augmentCall()
+   ├─ 查询向量化 (LocalEmbedderService → Python Worker)
+   ├─ Redis 检索 top-3 相似文档 (全量余弦相似度)
+   └─ 将结果追加到 systemPrompt
+4. 调用 LLM → 解析 JSON
+5. 写入缓存 (SETEX)
+6. 返回结果
+```
+
+> 所有接入方只需传入 `cachePrefix` 和可选的 `ragNamespace` 参数，即可自动获得缓存加速和 RAG 增强能力。
+
 ---
 
 ## 六、项目目录结构
@@ -252,6 +632,11 @@ career-copilot/
 │   │   │   ├── Resume/
 │   │   │   ├── Interview/
 │   │   │   ├── CareerPlan/
+│   │   │   ├── JobMatching/     # 岗位匹配
+│   │   │   ├── LearningResource/# 学习资源
+│   │   │   ├── QuestionBank/    # 面试题库
+│   │   │   ├── VoiceInterview/  # 语音面试
+│   │   │   ├── Admin/           # 管理员后台
 │   │   │   └── Profile/
 │   │   ├── store/               # Zustand 状态
 │   │   ├── types/               # TS 类型定义
@@ -267,6 +652,11 @@ career-copilot/
 ├── backend/                     # 后端项目 (NestJS)
 │   ├── prisma/
 │   │   └── schema.prisma        # 数据库模型
+│   ├── scripts/                 # 数据初始化 & Embedding 脚本
+│   │   ├── embed_worker.py      # Embedding Worker (fastembed/BGE)
+│   │   ├── seed-questionbank.ts # 题库填充脚本
+│   │   ├── seed-knowledge.ts    # RAG 知识库向量化脚本
+│   │   └── test-rag-e2e.ts      # RAG 端到端测试
 │   ├── src/
 │   │   ├── auth/                # 认证模块
 │   │   │   ├── auth.controller.ts
@@ -277,22 +667,66 @@ career-copilot/
 │   │   ├── resume/              # 简历模块
 │   │   │   ├── resume.controller.ts
 │   │   │   ├── resume.service.ts
-│   │   │   └── resume.parser.ts # 简历解析服务
+│   │   │   ├── resume.parser.ts        # 简历解析引擎
+│   │   │   └── resume.processor.ts     # BullMQ 队列消费者（异步解析）
 │   │   ├── interview/           # 面试模块（核心）
 │   │   │   ├── interview.controller.ts
 │   │   │   ├── interview.service.ts
-│   │   │   ├── interview.gateway.ts  # WebSocket
-│   │   │   ├── ai-interview.service.ts # AI 面试逻辑
+│   │   │   ├── interview.gateway.ts       # WebSocket
+│   │   │   ├── interview.utils.ts         # 面试动作标准化
+│   │   │   ├── interview-report.service.ts# 面试报告生成
+│   │   │   ├── ai-interview.service.ts    # AI 面试逻辑
 │   │   │   └── dto/
 │   │   ├── career/              # 职业规划模块
 │   │   │   ├── career.controller.ts
 │   │   │   ├── career.service.ts
-│   │   │   └── career.planner.ts
+│   │   │   ├── career.planner.ts
+│   │   │   └── market-insight.service.ts  # 市场洞察
+│   │   ├── job-matching/        # 🆕 岗位匹配模块（v1.1）⏳ 待测试
+│   │   │   ├── job-matching.controller.ts
+│   │   │   ├── job-matching.service.ts
+│   │   │   └── dto/
+│   │   ├── learning-resources/  # 🆕 学习资源模块（v1.1）⏳ 待测试
+│   │   │   ├── learning-resources.controller.ts
+│   │   │   ├── learning-resources.service.ts
+│   │   │   └── dto/
+│   │   ├── question-bank/       # 🆕 面试题库模块（v1.1）⏳ 待测试
+│   │   │   ├── question-bank.controller.ts
+│   │   │   ├── question-bank.service.ts
+│   │   │   └── dto/
+│   │   ├── voice-interview/     # 🆕 语音面试模块（v1.1）⏳ 待测试
+│   │   │   ├── voice-interview.controller.ts
+│   │   │   ├── voice-interview.service.ts
+│   │   │   ├── voice-interview.gateway.ts    # WebSocket
+│   │   │   └── dto/
+│   │   ├── admin/               # 🆕 管理员模块（v1.1）⏳ 待测试
+│   │   │   ├── admin.controller.ts
+│   │   │   ├── admin.service.ts
+│   │   │   └── dto/
+│   │   ├── resume-ner/          # 🆕 简历NER模块（v1.1）⏳ 待测试
+│   │   │   ├── resume-ner.controller.ts
+│   │   │   ├── resume-ner.service.ts
+│   │   │   └── ner-python-client.ts    # Python 服务客户端
 │   │   ├── ai/                  # AI 统一入口
-│   │   │   ├── ai.service.ts
-│   │   │   ├── llm.provider.ts  # LLM 适配器
-│   │   │   └── voice.service.ts # 语音服务
+│   │   │   ├── ai.module.ts
+│   │   │   ├── ai.service.ts         # callLLM() — 缓存优先 + RAG 增强
+│   │   │   ├── ai-cache.service.ts   # SHA256 缓存 + 场景 TTL
+│   │   │   ├── ai.controller.ts       # 5 个 AI 端点
+│   │   │   ├── llm.provider.ts       # LLM 适配器
+│   │   │   ├── dto/
+│   │   │   ├── providers/            # LLM Provider 实现
+│   │   │   ├── prompts/              # 5 个 Prompt 模板
+│   │   │   └── rag/                  # RAG 向量检索
+│   │   │       ├── simple-rag.service.ts      # Embedding + Cosine 检索
+│   │   │       └── local-embedder.service.ts  # Python Worker 进程管理
+│   │   ├── queue/               # 消息队列
+│   │   │   ├── queue.module.ts       # BullMQ 配置
+│   │   │   └── queue.service.ts      # 作业调度
+│   │   ├── redis/               # Redis 缓存
+│   │   │   ├── redis.module.ts       # Redis 连接
+│   │   │   └── redis.service.ts      # 缓存方法
 │   │   ├── common/              # 公共模块
+│   │   ├── types/               # 全局类型定义
 │   │   ├── app.module.ts
 │   │   └── main.ts
 │   ├── docker-compose.yml       # PostgreSQL + Redis
@@ -321,27 +755,29 @@ career-copilot/
 | POST | `/api/auth/login` | 登录 |
 | POST | `/api/auth/refresh` | 刷新 Token |
 | GET  | `/api/auth/profile` | 获取用户信息 |
+| PATCH | `/api/auth/profile` | 修改个人资料 |
 
 ### 简历模块
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/resumes/upload` | 上传简历文件 |
-| GET  | `/api/resumes` | 获取简历列表 |
+| POST | `/api/resumes/upload` | 上传简历文件（异步解析） |
+| GET  | `/api/resumes` | 获取简历列表（分页） |
 | GET  | `/api/resumes/:id` | 获取简历详情（含解析数据） |
+| PUT  | `/api/resumes/:id` | 编辑简历 |
 | DELETE | `/api/resumes/:id` | 删除简历 |
 
 ### 面试模块
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/interviews` | 创建面试会话 |
-| GET  | `/api/interviews` | 获取面试历史 |
+| POST | `/api/interviews` | 创建面试会话（AI 自动出题） |
+| GET  | `/api/interviews` | 获取面试历史（分页+筛选） |
 | GET  | `/api/interviews/:id` | 获取面试详情 |
 | GET  | `/api/interviews/:id/messages` | 获取对话历史 |
-| POST | `/api/interviews/:id/answer` | 提交回答 |
+| POST | `/api/interviews/:id/answer` | 提交回答（AI 评估+追问/下一题） |
 | POST | `/api/interviews/:id/feedback` | 获取面试反馈报告 |
-| WS   | `/ws/interview/:id` | WebSocket 实时对话 |
+| WS   | `/ws/interview` | WebSocket 实时对话（流式） |
 
 ### 职业规划模块
 
@@ -350,47 +786,129 @@ career-copilot/
 | POST | `/api/career/plan` | 生成职业规划 |
 | GET  | `/api/career/plans` | 获取规划列表 |
 | GET  | `/api/career/plans/:id` | 获取规划详情 |
-| GET  | `/api/career/market-insight` | 获取岗位市场数据 |
+| DELETE | `/api/career/plans/:id` | 删除规划 |
+| POST | `/api/career/market-insight` | 获取岗位市场数据 |
+
+### AI 统一服务层
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/ai/resume/parse` | 简历文本 → 结构化 JSON |
+| POST | `/api/ai/interview/question` | 根据岗位生成面试题 |
+| POST | `/api/ai/interview/evaluate` | 评估用户回答 |
+| POST | `/api/ai/interview/report` | 面试对话 → 综合评价报告 |
+| POST | `/api/ai/career/plan` | 技能分析 → 职业规划 + 学习路线 |
+
+### 🆕 岗位匹配模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/job-matching/match` | 简历与目标岗位匹配度分析 |
+| GET  | `/api/job-matching/matches` | 获取匹配历史列表 |
+| GET  | `/api/job-matching/matches/:id` | 获取匹配详情 |
+| POST | `/api/job-matching/recommend` | 基于简历推荐岗位 |
+| DELETE | `/api/job-matching/matches/:id` | 删除匹配记录 |
+
+### 🆕 学习资源模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET  | `/api/learning-resources` | 获取学习资源列表（分页+筛选） |
+| GET  | `/api/learning-resources/:id` | 获取资源详情 |
+| POST | `/api/learning-resources` | 新增学习资源 |
+| PATCH | `/api/learning-resources/:id` | 更新资源状态（完成/收藏） |
+
+### 🆕 面试题库模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET  | `/api/question-bank` | 获取题目列表（分页+筛选） |
+| GET  | `/api/question-bank/:id` | 获取题目详情 |
+| POST | `/api/question-bank/generate` | 按岗位生成面试题 |
+| POST | `/api/question-bank` | 手动添加题目 |
+
+### 🆕 语音面试模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/voice-interview/sessions` | 创建语音面试会话 |
+| GET  | `/api/voice-interview/sessions` | 获取会话列表 |
+| GET  | `/api/voice-interview/sessions/:id` | 获取会话详情 |
+| POST | `/api/voice-interview/sessions/:id/upload` | 上传音频片段 |
+| POST | `/api/voice-interview/sessions/:id/evaluate` | 评估回答 |
+| POST | `/api/voice-interview/sessions/:id/complete` | 结束会话 |
+| GET  | `/api/voice-interview/sessions/:id/report` | 获取评估报告 |
+| WS   | `/ws/voice-interview` | 语音面试实时通信 |
+
+### 🆕 管理员模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET  | `/api/admin/users` | 用户列表（分页+筛选） |
+| PATCH | `/api/admin/users/:id` | 更新用户角色/状态 |
+| GET  | `/api/admin/stats` | 系统数据统计 |
+| GET  | `/api/admin/logs` | 操作日志列表 |
+| POST | `/api/admin/logs` | 写入操作日志 |
+| DELETE | `/api/admin/logs` | 清理过期日志 |
+
+### 🆕 简历 NER 模块（v1.1 新增）⏳ 待测试
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/resume-ner/parse` | NER 实体识别（调用 Python 服务） |
+| POST | `/api/resume-ner/parse-structured` | NER + 结构化输出 |
+| GET  | `/api/resume-ner/cache/:resumeId` | 获取缓存的 NER 结果 |
 
 ---
 
 ## 八、开发阶段规划
 
-### 第一阶段：基础搭建（1-2 周）
+### 第一阶段：基础搭建（1-2 周） ✅ 已实现 ⏳ 待测试
 
-- [ ] 初始化前后端项目（Vite + NestJS）
-- [ ] 配置 PostgreSQL + Redis（Docker Compose）
-- [ ] 实现用户注册/登录（JWT）
-- [ ] 搭建前端 Layout 框架 + 路由
+- [x] 初始化前后端项目（Vite + NestJS）
+- [x] 配置 PostgreSQL + Redis（Docker Compose）
+- [x] 实现用户注册/登录（JWT）
+- [x] 搭建前端 Layout 框架 + 路由
 
-### 第二阶段：简历管理（1 周）
+### 第二阶段：简历管理（1 周） ✅ 已实现 ⏳ 待测试
 
-- [ ] 简历上传与文件解析
-- [ ] LLM 简历信息提取
-- [ ] 简历列表与详情展示
-- [ ] 技能雷达图可视化
+- [x] 简历上传与文件解析
+- [x] LLM 简历信息提取
+- [x] 简历列表与详情展示
+- [x] 技能雷达图可视化
 
-### 第三阶段：AI 面试官（核心，2-3 周）
+### 第三阶段：AI 面试官（核心，2-3 周） ✅ 已实现 ⏳ 待测试
 
-- [ ] LLM API 接入与 Prompt 工程
-- [ ] 面试创建与多轮对话逻辑
-- [ ] WebSocket 实时通信
-- [ ] 前端数字人对话界面
-- [ ] 面试报告生成
+- [x] LLM API 接入与 Prompt 工程
+- [x] 面试创建与多轮对话逻辑
+- [x] WebSocket 实时通信
+- [x] 前端数字人对话界面
+- [x] 面试报告生成
 
-### 第四阶段：职业规划（1-2 周）
+### 第四阶段：职业规划（1-2 周） ✅ 已实现 ⏳ 待测试
 
-- [ ] 技能差距分析
-- [ ] 学习路线生成
-- [ ] 市场数据整合
-- [ ] 规划展示页面
+- [x] 技能差距分析
+- [x] 学习路线生成
+- [x] 市场数据整合
+- [x] 规划展示页面
 
-### 第五阶段：优化与部署（1 周）
+### 第五阶段：新增业务模块（1-2 周） ✅ 已实现 ⏳ 待测试
 
-- [ ] 语音合成/识别（可选）
-- [ ] 响应式适配
-- [ ] Docker 部署
-- [ ] 项目文档完善
+- [x] 岗位匹配与推荐模块
+- [x] 学习资源推荐模块
+- [x] 面试题库模块
+- [x] 语音面试模块（ASR/TTS）
+- [x] 管理员后台模块
+- [x] 简历 NER 实体识别服务（Python）
+
+### 第六阶段：优化与部署（1 周） ✅ 已实现
+
+- [x] 语音合成/识别集成
+- [x] 响应式适配
+- [x] Docker 部署
+- [x] 项目文档完善
+- [x] RAG 知识库搭建（本地 BGE 模型 + 29 条面试题向量填充）
+- [x] AI 缓存体系 (AiCacheService + SHA256)
 
 ---
 
@@ -398,9 +916,16 @@ career-copilot/
 
 | 成员 | 建议分工 |
 |------|---------|
-| **陶宏阳**（负责人） | 项目架构、AI 核心逻辑、后端面试模块、代码审查 |
-| **邓继舟** | 前端开发（面试对话页、数字人组件、简历页） |
-| **赵原一** | 后端开发（用户/简历模块、数据库设计、API） |
-| **李烨** | 前端开发（职业规划页、仪表盘、样式与交互） |
+| **陶宏阳**（负责人） | 项目架构、AI 核心逻辑、后端面试模块、语音面试、代码审查 |
+| **邓继舟** | 前端开发（面试对话页、数字人组件、简历页、语音面试） |
+| **赵原一** | 后端开发（用户/简历/岗位匹配/学习资源模块、数据库设计、API） |
+| **李烨** | 前端开发（职业规划页、仪表盘、岗位匹配、管理员后台、样式与交互） |
 
+> **v1.1 新增模块分工：**
+> - **岗位匹配 + 学习资源**：赵原一（后端）+ 李烨（前端）
+> - **面试题库**：陶宏阳（后端）+ 邓继舟（前端）
+> - **语音面试**：陶宏阳（后端 + 语音集成）+ 邓继舟（前端）
+> - **管理员后台**：赵原一（后端）+ 李烨（前端）
+> - **简历 NER 服务**：陶宏阳（Python 服务搭建）
+>
 > 建议全员都了解整体架构，前后端接口协商一致后再各自开发。

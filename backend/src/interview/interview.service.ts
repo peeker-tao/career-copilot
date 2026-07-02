@@ -1,0 +1,526 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
+import { PrismaService } from '../common/prisma.service';
+import { AiService } from '../ai/ai.service';
+import { AiInterviewService, InterviewContext, FirstQuestionResult } from './ai-interview.service';
+import { InterviewReportService } from './interview-report.service';
+import { QueueService } from '../queue/queue.service';
+import { normalizeNextAction } from './interview.utils';
+import { readdir, stat } from 'fs/promises';
+import { join, extname } from 'path';
+import { existsSync } from 'fs';
+
+@Injectable()
+export class InterviewService {
+  private readonly logger = new Logger(InterviewService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private aiInterviewService: AiInterviewService,
+    private aiService: AiService,
+    private interviewReportService: InterviewReportService,
+    private queueService: QueueService,
+  ) {}
+
+  async create(
+    userId: string,
+    data: { targetPosition: string; difficulty?: string; resumeId?: string; type?: string },
+  ) {
+    // 0. 如果传了 resumeId，先验证简历存在且属于当前用户
+    if (data.resumeId) {
+      const resume = await this.prisma.resume.findFirst({
+        where: { id: data.resumeId, userId },
+      });
+      if (!resume) {
+        throw new BadRequestException(
+          `简历不存在或不属于当前用户: ${data.resumeId}`,
+        );
+      }
+    }
+
+    // 1. 创建面试记录
+    const interview = await this.prisma.interview.create({
+      data: {
+        userId,
+        targetPosition: data.targetPosition,
+        difficulty: data.difficulty || 'medium',
+        resumeId: data.resumeId || null,
+        type: data.type || 'text',
+      },
+    });
+
+    // 2. 如果有简历，获取简历解析内容作为上下文
+    let resumeContext: string | undefined;
+    if (data.resumeId) {
+      const resume = await this.prisma.resume.findUnique({
+        where: { id: data.resumeId },
+      });
+      if (resume?.parsedData) {
+        resumeContext = JSON.stringify(resume.parsedData);
+      }
+    }
+
+    // 3. 用 AI 生成第一道面试题（失败自动重试 2 次）
+    const context: InterviewContext = {
+      position: data.targetPosition,
+      difficulty: data.difficulty || 'medium',
+      resumeContext,
+    };
+
+    let firstAttempt = 1;
+    const maxAttempts = 3;
+    let firstQuestion: FirstQuestionResult | null = null;
+    let lastError: string = '';
+
+    while (firstAttempt <= maxAttempts) {
+      try {
+        firstQuestion = await this.aiInterviewService.generateFirstQuestion(context);
+        break;
+      } catch (err) {
+        lastError = (err as Error).message;
+        this.logger.warn(`生成首题失败（第 ${firstAttempt} 次）: ${lastError}`);
+        firstAttempt++;
+        if (firstAttempt <= maxAttempts) {
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
+    }
+
+    // 所有重试均失败 → 抛出错误，让前端知道
+    if (!firstQuestion) {
+      // 删除已创建的面试记录
+      await this.prisma.interview.delete({ where: { id: interview.id } }).catch(() => {});
+      throw new BadRequestException(
+        `AI 生成首题失败（已重试 ${maxAttempts} 次）: ${lastError}。请稍后重试。`,
+      );
+    }
+
+    // 4. 保存面试官的第一道题（含标准答案）
+    // 确保 referenceAnswer 是字符串（LLM 可能返回数组）
+    const referenceAnswer = Array.isArray(firstQuestion.referenceAnswer)
+      ? firstQuestion.referenceAnswer.join('\n')
+      : firstQuestion.referenceAnswer;
+
+    await this.prisma.interviewMessage.create({
+      data: {
+        interviewId: interview.id,
+        role: 'assistant',
+        content: firstQuestion.content,
+        questionType: firstQuestion.questionType,
+        referenceAnswer,
+      },
+    });
+
+    // 5. 更新题目计数
+    await this.prisma.interview.update({
+      where: { id: interview.id },
+      data: { questionCount: 1 },
+    });
+
+    return {
+      ...interview,
+      questionCount: 1,
+      firstQuestion: {
+        content: firstQuestion.content,
+        questionType: firstQuestion.questionType,
+        referenceAnswer: firstQuestion.referenceAnswer,
+      },
+    };
+  }
+
+  async findAll(
+    userId: string,
+    options: { page?: number; limit?: number; status?: string },
+  ) {
+    const { page = 1, limit = 10, status } = options;
+    const skip = (page - 1) * limit;
+
+    const where: any = { userId };
+    if (status) {
+      where.status = status;
+    }
+
+    const [items, total, totalAll] = await Promise.all([
+      this.prisma.interview.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { startedAt: 'desc' },
+        select: {
+          id: true,
+          targetPosition: true,
+          difficulty: true,
+          type: true,
+          status: true,
+          score: true,
+          questionCount: true,
+          startedAt: true,
+          completedAt: true,
+        },
+      }),
+      this.prisma.interview.count({ where }),
+      this.prisma.interview.count({ where: { userId } }),
+    ]);
+
+    return {
+      items,
+      total,
+      totalAll,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async findOne(id: string, userId: string) {
+    const interview = await this.prisma.interview.findFirst({
+      where: { id, userId },
+      include: { messages: { orderBy: { createdAt: 'asc' } } },
+    });
+
+    if (!interview) {
+      throw new NotFoundException('面试记录不存在');
+    }
+
+    return interview;
+  }
+
+  async getMessages(id: string, userId: string) {
+    const interview = await this.findOne(id, userId);
+    return {
+      interview: {
+        id: interview.id,
+        targetPosition: interview.targetPosition,
+        difficulty: interview.difficulty,
+        type: interview.type,
+        status: interview.status,
+        score: interview.score,
+        questionCount: interview.questionCount,
+        startedAt: interview.startedAt,
+        completedAt: interview.completedAt,
+        overallFeedback: interview.overallFeedback,
+      },
+      messages: interview.messages,
+    };
+  }
+
+  async submitAnswer(id: string, userId: string, content: string) {
+    const interview = await this.findOne(id, userId);
+
+    if (interview.status === 'completed') {
+      throw new BadRequestException('面试已结束');
+    }
+
+    // 1. 保存用户回答
+    await this.prisma.interviewMessage.create({
+      data: {
+        interviewId: id,
+        role: 'user',
+        content,
+      },
+    });
+
+    // 2. 构建面试上下文（从已有消息中获取）
+    const messages = await this.prisma.interviewMessage.findMany({
+      where: { interviewId: id },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // 3. 获取简历上下文
+    let resumeContext: string | undefined;
+    if (interview.resumeId) {
+      const resume = await this.prisma.resume.findUnique({
+        where: { id: interview.resumeId },
+      });
+      if (resume?.parsedData) {
+        resumeContext = JSON.stringify(resume.parsedData);
+      }
+    }
+
+    const context: InterviewContext = {
+      position: interview.targetPosition,
+      difficulty: interview.difficulty,
+      resumeContext,
+    };
+
+    // 4. 调用 AI 评估回答
+    let evaluation;
+    try {
+      evaluation = await this.aiInterviewService.evaluateAndContinue(
+        context,
+        content,
+        messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          questionType: m.questionType || undefined,
+        })),
+      );
+    } catch (err) {
+      this.logger.error(`AI 评估失败: ${(err as Error).message}`);
+      return {
+        message: '回答已记录，AI 评估暂时不可用',
+        evaluation: null,
+      };
+    }
+
+    // 4b. 更新用户回答消息，附上 AI 评价（score/feedback/strengths/weaknesses）
+    // 获取刚保存的用户回答消息（最新一条 role=user 的消息）
+    const userMessage = await this.prisma.interviewMessage.findFirst({
+      where: { interviewId: id, role: 'user' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (userMessage) {
+      await this.prisma.interviewMessage.update({
+        where: { id: userMessage.id },
+        data: {
+          feedback: evaluation.feedback,
+          score: evaluation.score,
+          strengths: evaluation.strengths ?? undefined,
+          weaknesses: evaluation.weaknesses ?? undefined,
+        },
+      });
+    }
+
+    // 5. 根据 nextAction 处理后续（使用共享归一化函数）
+    const action = normalizeNextAction(evaluation.nextAction || '');
+
+    let nextQuestion: { content: string; questionType: string; referenceAnswer?: string } | undefined;
+    let isComplete = false;
+
+    if (action === 'followUp' && evaluation.followUpContent) {
+      // 追问：保存面试官的追问
+      await this.prisma.interviewMessage.create({
+        data: {
+          interviewId: id,
+          role: 'assistant',
+          content: evaluation.followUpContent,
+          questionType: 'technical',
+        },
+      });
+      nextQuestion = {
+        content: evaluation.followUpContent,
+        questionType: 'technical',
+      };
+      // 追问不增加 questionCount
+    } else if (action === 'nextQuestion') {
+      // 下一题：AI 可能没返回 nextQuestion，兜底用通用题目
+      const qContent =
+        evaluation.nextQuestion ||
+        `请继续介绍你在 ${interview.targetPosition} 方面的其他项目或实践经验。`;
+      const qType = evaluation.nextQuestionType || 'technical';
+
+      await this.prisma.interviewMessage.create({
+        data: {
+          interviewId: id,
+          role: 'assistant',
+          content: qContent,
+          questionType: qType,
+          referenceAnswer: evaluation.nextQuestionReferenceAnswer,
+        },
+      });
+      nextQuestion = {
+        content: qContent,
+        questionType: qType,
+        referenceAnswer: evaluation.nextQuestionReferenceAnswer,
+      };
+      await this.prisma.interview.update({
+        where: { id },
+        data: { questionCount: { increment: 1 } },
+      });
+    } else if (action === 'complete') {
+      // 结束面试
+      isComplete = true;
+      await this.prisma.interview.update({
+        where: { id },
+        data: {
+          status: 'completed',
+          completedAt: new Date(),
+          score: evaluation.score,
+        },
+      });
+    }
+
+    // ── 调试日志：追踪 REST 响应中的新题目与参考答案 ──
+    this.logger.log(`===== REST submitAnswer 结果 (面试: ${id}) =====`);
+    this.logger.log(`action: ${action}, isComplete: ${isComplete}`);
+    this.logger.log(`nextQuestion: ${nextQuestion ? `"${nextQuestion.content.slice(0, 80)}..." (referenceAnswer: ${!!nextQuestion.referenceAnswer})` : '❌ null/undefined'}`);
+    this.logger.log(`nextQuestion.referenceAnswer: ${nextQuestion?.referenceAnswer ? `"${String(nextQuestion.referenceAnswer).slice(0, 100)}..."` : '❌ null/undefined'}`);
+    this.logger.log(`evaluation.feedback: "${(evaluation.feedback || '').slice(0, 60)}..."`);
+    this.logger.log(`evaluation.score: ${evaluation.score}`);
+    this.logger.log(`========================================`);
+
+    return {
+      evaluation: {
+        score: evaluation.score,
+        feedback: evaluation.feedback,
+        strengths: evaluation.strengths,
+        weaknesses: evaluation.weaknesses,
+      },
+      nextQuestion,
+      isComplete,
+      summary: evaluation.summary,
+    };
+  }
+
+  async generateFeedback(id: string, userId: string) {
+    const interview = await this.findOne(id, userId);
+
+    if (interview.status !== 'completed') {
+      throw new BadRequestException('面试未完成，无法生成报告');
+    }
+
+    try {
+      return await this.interviewReportService.generateReport(id, userId);
+    } catch (err) {
+      this.logger.error(`生成报告失败: ${(err as Error).message}`);
+      throw new BadRequestException(
+        (err as Error).message || '报告生成失败，请稍后重试',
+      );
+    }
+  }
+
+  /**
+   * 异步生成面试报告（入队列）
+   * 立即返回 jobId，前端可轮询 /:id/feedback/status?jobId=xxx 获取状态
+   */
+  async generateFeedbackAsync(id: string, userId: string) {
+    const interview = await this.findOne(id, userId);
+
+    if (interview.status !== 'completed') {
+      throw new BadRequestException('面试未完成，无法生成报告');
+    }
+
+    if (interview.overallFeedback) {
+      // 已有缓存报告，直接返回
+      return {
+        type: 'cached',
+        data: interview.overallFeedback,
+      };
+    }
+
+    // 提前检查对话是否充足（排除 system 消息）
+    const nonSystemMessages = interview.messages.filter(
+      (m) => m.role !== 'system',
+    );
+    if (nonSystemMessages.length < 2) {
+      return {
+        type: 'failed',
+        status: 'failed',
+        message: '对话记录不足，无法生成报告',
+      };
+    }
+
+    // 入队列
+    const job = await this.queueService.addFeedbackJob(id, userId);
+
+    return {
+      type: 'queued',
+      jobId: job.id,
+      message: '报告生成任务已加入队列，请使用返回的 jobId 轮询结果',
+    };
+  }
+
+  /**
+   * 查询异步反馈任务状态
+   */
+  async getFeedbackJobStatus(id: string, userId: string, jobId: string) {
+    const interview = await this.findOne(id, userId);
+
+    // 先检查报告是否已生成（可能在两次查询之间已完成）
+    if (interview.overallFeedback) {
+      return {
+        status: 'completed',
+        data: interview.overallFeedback,
+      };
+    }
+
+    const jobStatus = await this.queueService.getFeedbackJobStatus(jobId);
+
+    return jobStatus;
+  }
+
+  async complete(id: string, userId: string) {
+    const interview = await this.findOne(id, userId);
+
+    return this.prisma.interview.update({
+      where: { id },
+      data: {
+        status: 'completed',
+        completedAt: new Date(),
+      },
+    });
+  }
+
+  async remove(id: string, userId: string) {
+    // 先验证面试存在且属于当前用户
+    const interview = await this.findOne(id, userId);
+
+    // 删除面试记录（级联删除相关的消息）
+    await this.prisma.interview.delete({
+      where: { id },
+    });
+
+    this.logger.log(`🗑️ 面试记录已删除: interviewId=${id}, userId=${userId}`);
+
+    return {
+      message: '面试记录已成功删除',
+      deletedInterview: {
+        id: interview.id,
+        targetPosition: interview.targetPosition,
+        status: interview.status,
+      },
+    };
+  }
+
+  /**
+   * 获取语音文件列表
+   */
+  async findVoiceList(options: { page?: number; limit?: number; baseUrl?: string }) {
+    const { page = 1, limit = 10, baseUrl = '' } = options;
+    const audioDir = join(process.cwd(), 'uploads', 'audio');
+
+    // 确保目录存在
+    if (!existsSync(audioDir)) {
+      return { items: [], total: 0, page, limit, totalPages: 0 };
+    }
+
+    const files = await readdir(audioDir);
+    const audioExts = ['.mp3', '.wav', '.ogg', '.webm', '.mp4', '.m4a', '.flac'];
+    const audioFiles = files.filter((f) => audioExts.includes(extname(f).toLowerCase()));
+
+    // 获取文件详细信息
+    const items = await Promise.all(
+      audioFiles.map(async (name) => {
+        const filePath = join(audioDir, name);
+        const fileStat = await stat(filePath);
+        return {
+          name,
+          size: fileStat.size,
+          createdAt: fileStat.birthtime,
+          modifiedAt: fileStat.mtime,
+          url: `${baseUrl}/uploads/audio/${name}`,
+        };
+      }),
+    );
+
+    // 按创建时间降序排列
+    items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    const total = items.length;
+    const totalPages = Math.ceil(total / limit);
+    const skip = (page - 1) * limit;
+    const paginatedItems = items.slice(skip, skip + limit);
+
+    return {
+      items: paginatedItems,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+}

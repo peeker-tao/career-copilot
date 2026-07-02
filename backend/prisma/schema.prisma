@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  name          String
+  avatar        String?
+  education     String?
+  targetPosition String?  @map("target_position")
+  role          String    @default("user")
+  modelConfig   Json?     @map("model_config")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  resumes             Resume[]
+  interviews          Interview[]
+  careerPlans         CareerPlan[]
+  passwordResetTokens PasswordResetToken[]
+  jobMatches          JobMatch[]
+  resumeBookmarks     ResumeBookmark[]
+  screeningBenchmarks ScreeningBenchmark[]
+
+  @@map("users")
+}
+
+model Resume {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  title       String
+  fileUrl     String?   @map("file_url")
+  parsedData  Json?     @map("parsed_data")
+  skills      String[]
+  suggestions Json?     @map("suggestions")        // 简历改进建议列表
+  evaluations Json?     @map("evaluations")        // 六维评估分数 [{name, score, comment}]
+  status      String    @default("parsing")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interviews  Interview[]
+  resumeBookmarks ResumeBookmark[]
+
+  @@index([userId, createdAt])
+  @@map("resumes")
+}
+
+model Interview {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  resumeId        String?   @map("resume_id")
+  targetPosition  String    @map("target_position")
+  difficulty      String    @default("medium")
+  status          String    @default("in_progress")
+  type            String    @default("text") @map("type")
+  questionCount   Int       @default(0) @map("question_count")
+  score           Int?
+  startedAt       DateTime  @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  overallFeedback Json?     @map("overall_feedback")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume          Resume?   @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  messages        InterviewMessage[]
+
+  @@index([userId, status, startedAt])
+  @@index([targetPosition])
+  @@map("interviews")
+}
+
+model InterviewMessage {
+  id              String    @id @default(cuid())
+  interviewId     String    @map("interview_id")
+  role            String
+  content         String
+  questionType    String?   @map("question_type")
+  referenceAnswer String?   @map("reference_answer")
+  feedback        String?
+  score           Int?
+  strengths       Json?
+  weaknesses      Json?
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  interview       Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@index([interviewId, createdAt])
+  @@map("interview_messages")
+}
+
+model CareerPlan {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  targetPosition  String    @map("target_position")
+  currentSkills   String[]  @map("current_skills")
+  gapSkills       String[]  @map("gap_skills")
+  roadmap         Json
+  marketInsight   Json?     @map("market_insight")
+  progress        Int       @default(0)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("career_plans")
+}
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  email     String    @map("email")
+  token     String    @map("token")
+  expiresAt DateTime  @map("expires_at")
+  used      Boolean   @default(false)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email, token])
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model QuestionBank {
+  id          String   @id @default(cuid())
+  category    String            // 分类: java, python, frontend, system-design, behavioral, etc.
+  type        String            // choice | short_answer | coding | behavioral
+  difficulty  String   @default("medium") // easy | medium | hard
+  title       String
+  content     Json              // 题目内容：{ question, options?, answer, explanation }
+  tags        String[]
+  source      String?           // 来源：manual | ai_generated | crawled
+  usageCount  Int      @default(0) @map("usage_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([category, difficulty])
+  @@index([tags])
+  @@map("question_bank")
+}
+
+model JobMatch {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  position      String             // 岗位名称
+  company       String?            // 公司名称
+  location      String?            // 工作地点
+  salaryRange   String?   @map("salary_range")
+  description   String?            // 岗位描述
+  requirements  Json?              // 岗位要求列表
+  matchScore    Float    @map("match_score")   // 匹配度 0-100
+  matchDetails  Json?    @map("match_details") // { matched_skills, missing_skills, suggestions }
+  status        String   @default("pending")   // pending | saved | applied | archived
+  source        String?            // 来源: ai_recommended | manual | external
+  applyUrl      String?   @map("apply_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([position])
+  @@map("job_matches")
+}
+
+model LearningResource {
+  id            String   @id @default(cuid())
+  title         String
+  url           String
+  type          String              // course | article | video | book | documentation
+  category      String              // 技能分类
+  tags          String[]
+  description   String?
+  provider      String?             // Coursera, Udemy, YouTube, etc.
+  difficulty    String   @default("intermediate") // beginner | intermediate | advanced
+  duration      String?             // 学习时长估计
+  rating        Float?              // 评分 0-5
+  relevanceScore Float?  @map("relevance_score") // AI 推荐相关度
+  aiGenerated   Boolean  @default(false) @map("ai_generated")
+  usageCount    Int      @default(0) @map("usage_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([category, type])
+  @@index([tags])
+  @@map("learning_resources")
+}
+
+model ResumeBookmark {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  resumeId  String   @map("resume_id")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume    Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, resumeId])
+  @@map("resume_bookmarks")
+}
+
+model ScreeningBenchmark {
+  id                  String    @id @default(cuid())
+  userId              String    @map("user_id")
+  resumeId            Int
+  name                String
+  skills              String[]
+  experienceYears     Float     @map("experience_years")
+  education           String
+  certifications      String?
+  jobRole             String    @map("job_role")
+  recruiterDecision   String    @map("recruiter_decision")
+  salaryExpectation   Int       @map("salary_expectation")
+  projectsCount       Int       @map("projects_count")
+  aiScore             Int       @map("ai_score")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, jobRole])
+  @@map("screening_benchmarks")
+}
