@@ -1,6 +1,6 @@
 import apiClient from './client'
 import type { ApiResponse } from '@/types/api'
-import type { AuthResult, LoginRequest, RegisterRequest, UpdateProfileRequest, UserInfo, UserStats } from '@/types/auth'
+import type { AuthResult, LoginRequest, RegisterRequest, ChangePasswordRequest, UpdateProfileRequest, UserInfo, UserStats } from '@/types/auth'
 import {
   MOCK_AUTH_RESULT,
   MOCK_USER,
@@ -37,6 +37,15 @@ export async function refreshToken(refreshToken: string): Promise<ApiResponse<Au
     return { code: 200, message: '刷新成功', data: MOCK_AUTH_RESULT }
   }
   return apiClient.post('/auth/refresh', { refreshToken })
+}
+
+/** 修改密码 */
+export async function changePassword(data: ChangePasswordRequest): Promise<ApiResponse<{ message: string }>> {
+  if (useMock) {
+    await delay(500)
+    return { code: 200, message: '密码修改成功', data: { message: '密码修改成功' } }
+  }
+  return apiClient.patch('/auth/password', data)
 }
 
 /** 获取用户信息 */
@@ -100,4 +109,31 @@ export async function getUserStats(): Promise<ApiResponse<UserStats>> {
       data: { totalInterviews: 0, avgScore: 0, resumeCount: 0, activePlans: 0 },
     }
   }
+}
+
+/** 忘记密码 - 发送重置邮件 */
+export async function forgotPassword(email: string): Promise<ApiResponse<null>> {
+  if (useMock) {
+    await delay(600)
+    return { code: 200, message: '重置链接已发送至邮箱', data: null }
+  }
+  return apiClient.post('/auth/forgot-password', { email }, { __skipAuthRedirect: true })
+}
+
+/** 重置密码 */
+export async function resetPassword(email: string, code: string, newPassword: string): Promise<ApiResponse<null>> {
+  if (useMock) {
+    await delay(600)
+    return { code: 200, message: '密码重置成功', data: null }
+  }
+  return apiClient.post('/auth/reset-password', { email, code, newPassword }, { __skipAuthRedirect: true })
+}
+
+/** 更新模型配置 */
+export async function updateModelConfig(config: {
+  provider?: string
+  model?: string
+  apiKey?: string
+}): Promise<ApiResponse<null>> {
+  return apiClient.patch('/auth/model-config', config)
 }

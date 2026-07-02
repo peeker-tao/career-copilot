@@ -13,11 +13,15 @@ import {
   BuildOutlined,
   ProjectOutlined,
   CodeOutlined,
+  CloseOutlined,
+  EyeOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '@/components/common'
 import { EditModal, SkillRadar } from '@/components/resume'
 import { useResumeStore } from '@/store/useResumeStore'
 import { toast } from '@/store/useToastStore'
+import { getResumeFileBlobUrl } from '@/api/resumes'
 import type { ParsedResumeData } from '@/types/resume'
 import './Resume.css'
 
@@ -46,6 +50,9 @@ const ResumeDetailPage = () => {
   const [showDelete, setShowDelete] = useState(false)
   const [reparsing, setReparsing] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [showPdf, setShowPdf] = useState(false)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [pdfLoading, setPdfLoading] = useState(false)
 
   // 首次加载
   useEffect(() => {
@@ -99,6 +106,33 @@ const ResumeDetailPage = () => {
     setShowDelete(true)
   }
 
+  const handleViewPdf = useCallback(async () => {
+    if (!id) return
+    setPdfLoading(true)
+    const url = await getResumeFileBlobUrl(id)
+    setPdfLoading(false)
+    if (url) {
+      setPdfUrl(url)
+      setShowPdf(true)
+    } else {
+      toast.error('简历文件不可用')
+    }
+  }, [id])
+
+  // 关闭 PDF 时释放 blob URL
+  const handleClosePdf = useCallback(() => {
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl)
+    setPdfUrl(null)
+    setShowPdf(false)
+  }, [pdfUrl])
+
+  // 组件卸载时清理 blob URL
+  const pdfUrlRef = useRef(pdfUrl)
+  pdfUrlRef.current = pdfUrl
+  useEffect(() => {
+    return () => { if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current) }
+  }, [])
+
   const confirmDelete = async () => {
     if (!id) return
     setShowDelete(false)
@@ -109,7 +143,7 @@ const ResumeDetailPage = () => {
   // 首次加载中
   if (loading && !resume) {
     return (
-      <div className="detail-page">
+      <div className="detail-page page-container">
         <Loading skeleton={{ rows: 6 }} className="pad-24-0" />
       </div>
     )
@@ -118,7 +152,7 @@ const ResumeDetailPage = () => {
   // 加载失败
   if ((storeError && !resume) || (!loading && !resume)) {
     return (
-      <div className="detail-page">
+      <div className="detail-page page-container">
         <EmptyState
           icon={<ExclamationCircleOutlined />}
           title="简历不存在或加载失败"
@@ -138,7 +172,7 @@ const ResumeDetailPage = () => {
   // 解析中状态
   if (resume.status === 'parsing') {
     return (
-      <div className="detail-page">
+      <div className="detail-page page-container">
         <div className="parsing-overlay">
           <LoadingOutlined className="parsing-icon" />
           <h3 style={{ margin: 0, color: 'var(--text-h)' }}>简历解析中</h3>
@@ -149,7 +183,7 @@ const ResumeDetailPage = () => {
   }
 
   return (
-    <div className="detail-page">
+    <div className="detail-page page-container">
       <div className="detail-header">
         <div className="detail-header-left">
           <div className="detail-header-icon">
@@ -173,6 +207,12 @@ const ResumeDetailPage = () => {
           </button>
           <button
             className="detail-action-btn"
+            onClick={() => navigate(`/resume/${id}/rewrite`)}
+          >
+            <ThunderboltOutlined /> AI 改写
+          </button>
+          <button
+            className="detail-action-btn"
             onClick={handleReparse}
             disabled={reparsing}
           >
@@ -184,6 +224,14 @@ const ResumeDetailPage = () => {
             onClick={handleDelete}
           >
             <DeleteOutlined /> 删除
+          </button>
+          <button
+            className="detail-action-btn"
+            onClick={handleViewPdf}
+            disabled={pdfLoading}
+          >
+            {pdfLoading ? <LoadingOutlined /> : <EyeOutlined />}
+            {pdfLoading ? '加载中...' : '查看原文'}
           </button>
           <button
             className="detail-action-btn"
@@ -244,7 +292,7 @@ const ResumeDetailPage = () => {
           <h3 className="detail-section-title">
             <BuildOutlined className="section-icon" /> 工作经历
           </h3>
-          {(parsed.experience || []).length === 0 ? (
+          {(!Array.isArray(parsed.experience) || parsed.experience.length === 0) ? (
             <div style={{ fontSize: 13, color: 'var(--text)', padding: '8px 0' }}>暂无工作经历信息</div>
           ) : (
             parsed.experience!.map((exp, i) => (
@@ -261,7 +309,7 @@ const ResumeDetailPage = () => {
           <h3 className="detail-section-title">
             <ProjectOutlined className="section-icon" /> 项目经验
           </h3>
-          {(parsed.projects || []).length === 0 ? (
+          {(!Array.isArray(parsed.projects) || parsed.projects.length === 0) ? (
             <div className="empty-text">暂无项目经验</div>
           ) : (
             parsed.projects!.map((proj, i) => (
@@ -280,7 +328,7 @@ const ResumeDetailPage = () => {
           <h3 className="detail-section-title">
             <CodeOutlined className="section-icon" /> 技能标签
           </h3>
-          {(parsed.skills || []).length === 0 ? (
+          {(!Array.isArray(parsed.skills) || parsed.skills.length === 0) ? (
             <div className="empty-text">暂无技能标签</div>
           ) : (
             <div className="skills-cloud">
@@ -313,6 +361,20 @@ const ResumeDetailPage = () => {
         onConfirm={confirmDelete}
         onCancel={() => setShowDelete(false)}
       />
+
+      {showPdf && pdfUrl && (
+        <div className="pdf-overlay" onClick={handleClosePdf}>
+          <div className="pdf-viewer" onClick={(e) => e.stopPropagation()}>
+            <div className="pdf-viewer-header">
+              <span className="pdf-viewer-title">{resume.title} - 原文</span>
+              <button className="pdf-viewer-close" onClick={handleClosePdf}>
+                <CloseOutlined />
+              </button>
+            </div>
+            <iframe src={pdfUrl} className="pdf-iframe" title="简历原文" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

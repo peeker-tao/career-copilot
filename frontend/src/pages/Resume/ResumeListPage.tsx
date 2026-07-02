@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   FileTextOutlined,
@@ -7,6 +7,10 @@ import {
   SearchOutlined,
   ArrowLeftOutlined,
   RightOutlined,
+  SwapOutlined,
+  CloseOutlined,
+  CheckCircleOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '@/components/common'
 import { ResumeCard } from '@/components/resume'
@@ -18,6 +22,8 @@ const ResumeListPage = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [keyword, setKeyword] = useState('')
+  const [compareMode, setCompareMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const pageSize = 8
 
   const resumes = useResumeStore((s) => s.resumes)
@@ -30,6 +36,38 @@ const ResumeListPage = () => {
   useEffect(() => {
     fetchResumes()
   }, [fetchResumes])
+
+  // 用 ref 存放 selectedIds 避免闭包陈旧问题
+  const selectedRef = useRef(selectedIds)
+  selectedRef.current = selectedIds
+
+  // 进入/退出对比模式时清空选择
+  const toggleCompareMode = useCallback(() => {
+    setCompareMode((prev) => !prev)
+    setSelectedIds(new Set())
+  }, [])
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else if (next.size < 4) {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
+  // 稳定版回调，避免向 ResumeCard 传递内联函数
+  const handleView = useCallback((id: string) => navigate(`/resume/${id}`), [navigate])
+  const handleDelete = useCallback((id: string) => setDeleteTarget(id), [])
+  const handleSetDefault = useCallback((id: string) => setDefaultResume(id), [setDefaultResume])
+
+  const handleCompare = useCallback(() => {
+    if (selectedRef.current.size < 2) return
+    navigate(`/resume/compare?ids=${Array.from(selectedRef.current).join(',')}`)
+  }, [navigate])
 
   // 搜索过滤
   const filteredResumes = useMemo(() => {
@@ -51,10 +89,6 @@ const ResumeListPage = () => {
     isDefault: r.isDefault ?? false,
   }))
 
-  const handleDelete = (id: string) => {
-    setDeleteTarget(id)
-  }
-
   const confirmDelete = async () => {
     if (deleteTarget) {
       await deleteResume(deleteTarget)
@@ -64,10 +98,6 @@ const ResumeListPage = () => {
       }
     }
     setDeleteTarget(null)
-  }
-
-  const handleSetDefault = (id: string) => {
-    setDefaultResume(id)
   }
 
   const handleSearch = (value: string) => {
@@ -104,12 +134,23 @@ const ResumeListPage = () => {
           <h1 className="resume-title">简历管理</h1>
           <p className="resume-subtitle">管理你的简历，支持 PDF / DOCX 格式上传与解析</p>
         </div>
-        <button
-          className="btn-upload-resume"
-          onClick={() => navigate('/resume/upload')}
-        >
-          <PlusOutlined /> 上传简历
-        </button>
+        <div className="resume-header-actions">
+          <button
+            className={`btn-compare ${compareMode ? 'active' : ''}`}
+            onClick={toggleCompareMode}
+          >
+            <SwapOutlined /> {compareMode ? '退出对比' : '对比'}
+          </button>
+          <button className="btn-compare" onClick={() => navigate('/resume/screening')}>
+            <BarChartOutlined /> 筛选测试
+          </button>
+          <button
+            className="btn-upload-resume"
+            onClick={() => navigate('/resume/upload')}
+          >
+            <PlusOutlined /> 上传简历
+          </button>
+        </div>
       </div>
 
       {resumes.length > 0 && (
@@ -157,7 +198,9 @@ const ResumeListPage = () => {
               <ResumeCard
                 key={resume.id}
                 resume={resume}
-                onView={(id) => navigate(`/resume/${id}`)}
+                selected={compareMode ? selectedIds.has(resume.id) : undefined}
+                onToggleSelect={compareMode ? toggleSelect : undefined}
+                onView={handleView}
                 onDelete={handleDelete}
                 onSetDefault={handleSetDefault}
               />
@@ -165,7 +208,7 @@ const ResumeListPage = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="history-pagination">
+            <div className="history-pagination" style={compareMode ? { marginBottom: 70 } : undefined}>
               <button
                 className="pagination-btn"
                 disabled={safePage <= 1}
@@ -175,6 +218,7 @@ const ResumeListPage = () => {
               </button>
               <span className="pagination-info">
                 第 {safePage} / {totalPages} 页
+                {compareMode && <span className="pagination-hint">（可选跨页简历）</span>}
               </span>
               <button
                 className="pagination-btn"
@@ -182,6 +226,27 @@ const ResumeListPage = () => {
                 onClick={() => setPage(safePage + 1)}
               >
                 下一页 <RightOutlined />
+              </button>
+            </div>
+          )}
+
+          {/* 对比模式底部操作栏 */}
+          {compareMode && (
+            <div className="compare-bar">
+              <button className="compare-bar-close" onClick={toggleCompareMode}>
+                <CloseOutlined /> 退出
+              </button>
+              <span className="compare-bar-info">
+                {selectedIds.size === 0
+                  ? '请选择至少 2 份简历进行对比'
+                  : `已选 ${selectedIds.size} 份简历（最多 4 份）`}
+              </span>
+              <button
+                className="btn-compare-start"
+                disabled={selectedIds.size < 2}
+                onClick={handleCompare}
+              >
+                <CheckCircleOutlined /> 开始对比
               </button>
             </div>
           )}

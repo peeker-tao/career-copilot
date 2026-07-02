@@ -6,6 +6,7 @@ export interface ToastItem {
   id: string
   type: ToastType
   message: string
+  timeout: boolean // 是否已超时，超时后会自动移除
   duration?: number // ms，默认 4500
 }
 
@@ -22,12 +23,12 @@ export const useToastStore = create<ToastState>((set) => ({
 
   addToast: (type, message, duration = 4500) => {
     const id = String(_nextId++)
-    const toast: ToastItem = { id, type, message, duration }
+    const toast: ToastItem = { id, type, message, timeout: false, duration }
     set((s) => ({ toasts: [...s.toasts, toast] }))
 
     if (duration > 0) {
       setTimeout(() => {
-        set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
+        set((s) => ({ toasts: s.toasts.map((t) => (t.id === id ? { ...t, timeout: true } : t)) }))
       }, duration)
     }
   },

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import {
   FileTextOutlined,
   StarOutlined,
@@ -7,6 +8,8 @@ import {
   PhoneOutlined,
   MailOutlined,
   UserOutlined,
+  CheckSquareOutlined,
+  BorderOutlined,
 } from '@ant-design/icons'
 
 export interface ResumeCardProps {
@@ -24,6 +27,9 @@ export interface ResumeCardProps {
   onView: (id: string) => void
   onDelete: (id: string) => void
   onSetDefault: (id: string) => void
+  /** 对比模式 */
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
 }
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
@@ -32,16 +38,30 @@ const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
   failed: { label: '解析失败', cls: 'failed' },
 }
 
-const ResumeCard = ({ resume, onView, onDelete, onSetDefault }: ResumeCardProps) => {
+const ResumeCard = memo(({ resume, onView, onDelete, onSetDefault, selected, onToggleSelect }: ResumeCardProps) => {
   const statusInfo = STATUS_CONFIG[resume.status] || { label: '未知', cls: '' }
   const displaySkills = resume.skills.slice(0, 5)
   const moreCount = resume.skills.length - 5
 
+  const handleClick = () => {
+    if (onToggleSelect) {
+      onToggleSelect(resume.id)
+    } else {
+      onView(resume.id)
+    }
+  }
+
   return (
     <div
-      className={`resume-card ${resume.isDefault ? 'resume-card-default' : ''}`}
-      onClick={() => onView(resume.id)}
+      className={`resume-card ${resume.isDefault ? 'resume-card-default' : ''} ${selected ? 'resume-card-selected' : ''}`}
+      onClick={handleClick}
     >
+      {/* 对比模式勾选框 */}
+      {onToggleSelect && (
+        <div className="resume-card-check" onClick={(e) => { e.stopPropagation(); onToggleSelect(resume.id) }}>
+          {selected ? <CheckSquareOutlined /> : <BorderOutlined />}
+        </div>
+      )}
       <div className="resume-card-top">
         <div className="resume-card-icon">
           <FileTextOutlined />
@@ -118,6 +138,7 @@ const ResumeCard = ({ resume, onView, onDelete, onSetDefault }: ResumeCardProps)
       </div>
     </div>
   )
-}
+})
 
 export default ResumeCard
+ResumeCard.displayName = 'ResumeCard'

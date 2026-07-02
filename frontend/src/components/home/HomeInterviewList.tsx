@@ -1,12 +1,12 @@
 import { MessageOutlined, CodeOutlined } from '@ant-design/icons'
-
-export interface Interview {
-  id: number
-  position: string
-  difficulty: string
-  score: number
-  date: string
-}
+import { Interview } from '@/types/interview'
+// export interface Interview {
+//   id: number
+//   position: string
+//   difficulty: string
+//   score: number
+//   date: string
+// }
 
 export interface HomeInterviewListProps {
   interviews: Interview[]
@@ -51,13 +51,13 @@ const HomeInterviewList: React.FC<HomeInterviewListProps> = ({ interviews, loadi
               <CodeOutlined />
             </div>
             <div className="item-info">
-              <div className="item-title">{item.position}</div>
+              <div className="item-title">{item.targetPosition}</div>
               <div className="item-meta">
                 <span className={`difficulty-tag ${diff.cls}`}>{diff.label}</span>
-                <span>{item.date}</span>
+                <span>{item.startedAt?.split('T')[0] || '未知日期'}</span>
               </div>
             </div>
-            <div className="item-score">{item.score}</div>
+            <div className="item-score">{item.score ?? '未完成'}</div>
           </li>
         )
       })}

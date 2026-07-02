@@ -19,10 +19,10 @@ const emptyProject: Project = { name: '', role: '', techStack: [], description: 
 const EditModal = ({ parsedData, onSave, onClose }: EditModalProps) => {
   const [form, setForm] = useState<ParsedResumeData>({
     basicInfo: { ...parsedData.basicInfo },
-    education: [...(parsedData.education || [])],
-    experience: [...(parsedData.experience || [])],
-    projects: [...(parsedData.projects || [])],
-    skills: [...(parsedData.skills || [])],
+    education: Array.isArray(parsedData.education) ? [...parsedData.education] : [],
+    experience: Array.isArray(parsedData.experience) ? [...parsedData.experience] : [],
+    projects: Array.isArray(parsedData.projects) ? [...parsedData.projects] : [],
+    skills: Array.isArray(parsedData.skills) ? [...parsedData.skills] : [],
   })
   const [saving, setSaving] = useState(false)
   const [skillInput, setSkillInput] = useState('')

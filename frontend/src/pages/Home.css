@@ -1,28 +1,48 @@
 /* 仪表盘容器 */
 .dashboard {
-  padding: 24px 32px;
+  padding: 28px 32px;
   max-width: 1200px;
   margin: 0 auto;
   text-align: left;
+  animation: fade-in-up 0.4s ease-out;
 }
 
 /* 问候区域 */
 .greeting-section {
   margin-bottom: 28px;
+  position: relative;
+}
+
+.greeting-section::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .greeting-section h1 {
   font-size: 28px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-h);
   margin: 0 0 4px 0;
   letter-spacing: -0.5px;
+  position: relative;
+  z-index: 1;
 }
 
 .greeting-section .greeting-sub {
   font-size: 15px;
-  color: var(--text);
+  color: var(--text-muted);
   margin: 0;
+  position: relative;
+  z-index: 1;
 }
 
 /* 统计卡片网格 */
@@ -30,54 +50,61 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .stat-card {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
   padding: 20px 24px;
   display: flex;
   align-items: center;
   gap: 16px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.25s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent-border);
 }
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
   flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.stat-card:hover .stat-icon {
+  transform: scale(1.05);
 }
 
 .stat-icon.blue {
-  background: #e8f4fd;
-  color: #1890ff;
+  background: var(--info-bg);
+  color: var(--info);
 }
 
 .stat-icon.green {
-  background: #e8f8e8;
-  color: #52c41a;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .stat-icon.purple {
-  background: #f0e8ff;
-  color: #7c3aed;
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .stat-icon.orange {
-  background: #fff3e0;
-  color: #fa8c16;
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 
 .stat-info {
@@ -94,7 +121,7 @@
 
 .stat-label {
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
@@ -107,20 +134,39 @@
 }
 
 .quick-action-card {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 28px 24px;
   text-align: center;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  transition: all 0.25s ease;
   text-decoration: none;
   display: block;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-action-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent-gradient);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.quick-action-card:hover::before {
+  opacity: 1;
 }
 
 .quick-action-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
   border-color: var(--accent-border);
 }
 
@@ -132,7 +178,12 @@
   align-items: center;
   justify-content: center;
   font-size: 26px;
-  margin: 0 auto 12px;
+  margin: 0 auto 14px;
+  transition: transform 0.25s ease;
+}
+
+.quick-action-card:hover .qa-icon {
+  transform: scale(1.1) rotate(-5deg);
 }
 
 .quick-action-card .qa-icon.purple {
@@ -141,13 +192,13 @@
 }
 
 .quick-action-card .qa-icon.blue {
-  background: #e8f4fd;
-  color: #1890ff;
+  background: var(--info-bg);
+  color: var(--info);
 }
 
 .quick-action-card .qa-icon.green {
-  background: #e8f8e8;
-  color: #52c41a;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .quick-action-card h3 {
@@ -159,7 +210,7 @@
 
 .quick-action-card p {
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -171,10 +222,16 @@
 }
 
 .section-card {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
   padding: 20px 24px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.25s ease;
+}
+
+.section-card:hover {
+  box-shadow: var(--shadow);
 }
 
 .section-header {
@@ -198,11 +255,14 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
+  padding: 4px 10px;
+  border-radius: 6px;
 }
 
 .section-link:hover {
-  opacity: 0.8;
+  background: var(--accent-bg);
+  opacity: 1;
 }
 
 /* 图表容器 */
@@ -222,8 +282,16 @@
   display: flex;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-light);
   gap: 12px;
+  transition: background 0.2s;
+  border-radius: 8px;
+  padding: 10px 8px;
+  margin: 0 -8px;
+}
+
+.interview-item:hover {
+  background: var(--bg-soft);
 }
 
 .interview-item:last-child {
@@ -256,7 +324,7 @@
 
 .interview-item .item-meta {
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-muted);
   margin-top: 2px;
   display: flex;
   align-items: center;
@@ -265,25 +333,25 @@
 
 .difficulty-tag {
   display: inline-block;
-  padding: 1px 8px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
   font-size: 11px;
   font-weight: 500;
 }
 
 .difficulty-tag.easy {
-  background: #e8f8e8;
-  color: #52c41a;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .difficulty-tag.medium {
-  background: #fff3e0;
-  color: #fa8c16;
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 
 .difficulty-tag.hard {
-  background: #ffe8e8;
-  color: #ff4d4f;
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
 .interview-item .item-score {

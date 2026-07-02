@@ -16,6 +16,7 @@ export interface InterviewWSCallbacks {
     nextAction: string
     followUpContent: string | null
     nextQuestion: string | null
+    nextQuestionReferenceAnswer?: string | null
   }) => void
   onError: (code: number, message: string) => void
 }
@@ -51,11 +52,12 @@ export function useInterviewWebSocket({
     })
 
     socket.on('connect', () => {
-      console.log('🔌 WebSocket 已连接:', socket.id)
+      console.log('WebSocket 已连接:', socket.id)
       setConnected(true)
     })
 
     socket.on('ai_message_chunk', (data: { messageId: string; chunk: string }) => {
+      console.log(`[对话] WS chunk 事件:`, data.messageId, (data.chunk || '').slice(0, 60))
       onChunk(data.messageId, data.chunk)
     })
 
@@ -70,6 +72,7 @@ export function useInterviewWebSocket({
       nextAction: string
       followUpContent: string | null
       nextQuestion: string | null
+      nextQuestionReferenceAnswer?: string | null
     }) => {
       onDone(data)
     })
@@ -79,12 +82,12 @@ export function useInterviewWebSocket({
     })
 
     socket.on('disconnect', (reason) => {
-      console.log('🔌 WebSocket 已断开:', reason)
+      console.log('WebSocket 已断开:', reason)
       setConnected(false)
     })
 
     socket.on('connect_error', (err) => {
-      console.error('❌ WebSocket 连接失败:', err.message)
+      console.error('WebSocket 连接失败:', err.message)
       toast.error('面试服务连接失败，请检查后端是否启动')
       setConnected(false)
     })
@@ -92,7 +95,7 @@ export function useInterviewWebSocket({
     socketRef.current = socket
 
     return () => {
-      console.log('🧹 清理 WebSocket 连接')
+      console.log('清理 WebSocket 连接')
       socket.disconnect()
       socketRef.current = null
       setConnected(false)
@@ -102,9 +105,15 @@ export function useInterviewWebSocket({
 
   const sendAnswer = useCallback(
     (content: string) => {
+      console.groupCollapsed(`[对话] WS 发送回答 (${interviewId})`)
+      console.log('发送内容:', content)
       if (socketRef.current?.connected && interviewId) {
         socketRef.current.emit('user_answer', { interviewId, content })
+        console.log('已发送 user_answer 事件')
+        console.groupEnd()
       } else {
+        console.error('WebSocket 未连接，无法发送')
+        console.groupEnd()
         toast.error('面试连接已断开，请刷新页面重试')
       }
     },

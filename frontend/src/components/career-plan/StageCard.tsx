@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CheckOutlined, BookOutlined, RightOutlined } from '@ant-design/icons'
 
 const RESOURCE_TYPE_COLORS: Record<string, string> = {
@@ -29,8 +30,8 @@ export interface StageCardProps {
 }
 
 export default function StageCard({ stage, index, onToggleLearn }: StageCardProps) {
+  const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
-
   return (
     <div className={`stage-card ${stage.learned ? 'learned' : ''}`}>
       <div className="stage-header" onClick={() => setExpanded(!expanded)}>
@@ -83,9 +84,9 @@ export default function StageCard({ stage, index, onToggleLearn }: StageCardProp
                     {res.type}
                   </span>
                 </div>
-                <a href={res.url} className="resource-link" target="_blank" rel="noopener noreferrer">
+                <button className="resource-link" onClick={() => navigate(`/resources?search=${encodeURIComponent(res.name)}`)}>
                   查看
-                </a>
+                </button>
               </li>
             ))}
           </ul>

@@ -87,3 +87,4 @@ tsconfig.tsbuildinfo
 **/.yarn/install-state.gz
 
 backend/
+.VSCodeCounter/

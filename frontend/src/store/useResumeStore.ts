@@ -16,6 +16,7 @@ interface ResumeState {
   batchItems: BatchFileItem[]
   batchUploading: boolean
   batchCancelled: boolean
+  batchAbortController: AbortController | null
 
   // Actions
   fetchResumes: () => Promise<void>
@@ -47,6 +48,7 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
   batchItems: [],
   batchUploading: false,
   batchCancelled: false,
+  batchAbortController: null,
 
   fetchResumes: async () => {
     set({ loading: true, error: null })
@@ -144,11 +146,14 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
     const pendings = state.batchItems.filter((i) => i.status === 'pending')
     if (pendings.length === 0) return
 
-    set({ batchUploading: true, batchCancelled: false })
+    const abortController = new AbortController()
+    set({ batchUploading: true, batchCancelled: false, batchAbortController: abortController })
 
     const updateItem = (idx: number, patch: Partial<BatchFileItem>) => {
       set((s) => {
         const items = [...s.batchItems]
+        // 取消/清空后上传回调仍可能以旧 idx 写回，越界则丢弃
+        if (idx < 0 || idx >= items.length) return { batchItems: items }
         items[idx] = { ...items[idx], ...patch }
         return { batchItems: items }
       })
@@ -163,26 +168,35 @@ export const useResumeStore = create<ResumeState>((set, get) => ({
 
       try {
         const res = await resumeApi.uploadResume(item.file, (percent) => {
+          if (abortController.signal.aborted) return
           updateItem(idx, { progress: percent })
-        })
+        }, abortController.signal)
         updateItem(idx, { status: 'success', progress: 100, resultId: res.data.id })
       } catch (err) {
+        // 用户主动取消不上报错误
+        if (abortController.signal.aborted) return
         updateItem(idx, { status: 'error', error: (err as Error).message })
       }
     })
 
     await Promise.allSettled(tasks)
 
-    set({ batchUploading: false })
+    set({ batchUploading: false, batchAbortController: null })
     // 刷新列表
     get().fetchResumes()
   },
 
   cancelBatchUpload: () => {
-    set({ batchCancelled: true, batchUploading: false })
+    const ctrl = get().batchAbortController
+    ctrl?.abort()
+    set({ batchCancelled: true, batchUploading: false, batchAbortController: null })
   },
 
-  resetBatch: () => set({ batchItems: [], batchCancelled: false, batchUploading: false }),
+  resetBatch: () => {
+    const ctrl = get().batchAbortController
+    ctrl?.abort()
+    set({ batchItems: [], batchCancelled: false, batchUploading: false, batchAbortController: null })
+  },
 
   retryBatchItem: (index) => {
     set((s) => {

@@ -1,38 +1,48 @@
-/* 导航栏 */
+/* ========================================
+   导航栏
+   ======================================== */
 .app-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 32px;
-  height: 56px;
+  height: 60px;
   border-bottom: 1px solid var(--border);
   background: var(--bg);
   position: sticky;
   top: 0;
   z-index: 100;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .nav-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  text-decoration: none;
 }
 
 .nav-logo {
-  font-size: 22px;
+  font-size: 24px;
+  line-height: 1;
 }
 
 .nav-name {
   font-weight: 700;
-  font-size: 16px;
+  font-size: 17px;
   color: var(--text-h);
   letter-spacing: -0.3px;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .nav-link {
@@ -40,12 +50,13 @@
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 500;
   color: var(--text);
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
 .nav-link:hover {
@@ -56,6 +67,19 @@
 .nav-link.active {
   background: var(--accent-bg);
   color: var(--accent);
+  font-weight: 600;
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  border-radius: 1.5px;
+  background: var(--accent-gradient);
 }
 
 /* 响应式导航栏 */
@@ -88,6 +112,10 @@
   }
   .nav-link .anticon {
     font-size: 16px;
+  }
+  .nav-link.active::after {
+    width: 16px;
+    height: 2px;
   }
 }
 
@@ -138,9 +166,14 @@
   .nav-link.active .nav-label {
     display: none;
   }
+
+  .nav-link.active::after {
+    display: none;
+  }
 }
 
 /* 主内容区 */
 .app-main {
   flex: 1;
+  animation: fade-in-up 0.3s ease-out;
 }

@@ -32,6 +32,12 @@ export interface LoginRequest {
   password: string
 }
 
+/** 修改密码请求 */
+export interface ChangePasswordRequest {
+  oldPassword: string
+  newPassword: string
+}
+
 /** 更新资料请求 */
 export interface UpdateProfileRequest {
   name?: string

@@ -5,7 +5,7 @@ import path from 'path'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const apiTarget = env.VITE_API_TARGET || 'http://127.0.0.1:3002'
+  const apiTarget = env.VITE_BACKEND_API_BASE_URL || 'http://127.0.0.1:3002'
   const baseName = env.VITE_BASE_URL_NAME ? (env.VITE_BASE_URL_NAME.endsWith('/') ? env.VITE_BASE_URL_NAME : env.VITE_BASE_URL_NAME + '/') : '/'
 
   return {

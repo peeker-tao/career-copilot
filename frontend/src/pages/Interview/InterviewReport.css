@@ -1,6 +1,7 @@
 /* 面试报告页 */
 .report-page {
   max-width: 720px;
+  text-align: left;
   margin: 0 auto;
   padding: 24px;
 }
@@ -69,7 +70,52 @@
 .report-desc {
   font-size: 14px;
   color: var(--text);
-  margin: 0;
+  margin: 0 0 8px;
+}
+
+.report-tts-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.report-tts-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+  flex-shrink: 0;
+}
+.report-tts-btn:hover {
+  transform: scale(1.15);
+  opacity: 0.9;
+}
+.report-tts-btn.playing {
+  background: #7c3aed;
+}
+
+.report-tts-label {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.report-tts-label.playing {
+  color: #7c3aed;
+}
+
+.report-tts-timer {
+  font-size: 12px;
+  color: #7c3aed;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
 
 /* 报告章节 */

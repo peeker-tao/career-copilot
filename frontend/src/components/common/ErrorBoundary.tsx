@@ -7,6 +7,7 @@ interface ErrorBoundaryProps {
   children: ReactNode
   fallback?: (args: { error: Error | null; resetError: () => void }) => ReactNode
   onError?: (error: Error, errorInfo: ErrorInfo) => void
+  reset?: () => boolean
 }
 
 interface ErrorBoundaryState {
@@ -22,7 +23,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     super(props)
     this.state = { hasError: false, error: null }
   }
-
+  
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error }
   }
@@ -37,6 +38,10 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   }
 
   render() {
+    if (this.props.reset && this.props.reset()) {
+      this.resetError()
+    }
+
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback({

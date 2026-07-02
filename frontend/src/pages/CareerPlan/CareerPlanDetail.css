@@ -1,9 +1,8 @@
 /* 规划详情页 */
 .detail-page {
-  padding: 24px 32px;
   max-width: 1200px;
-  margin: 0 auto;
   text-align: left;
+  padding: 24px;
 }
 
 /* 顶部栏 */

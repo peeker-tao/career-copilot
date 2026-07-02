@@ -5,6 +5,8 @@ import {
   AimOutlined,
   EditOutlined,
   DeleteOutlined,
+  BookOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons'
 import { Loading, EmptyState, ConfirmModal } from '../../components/common'
 import { StageCard, SkillGapPanel } from '../../components/career-plan'
@@ -34,7 +36,13 @@ const CareerPlanDetailPage = () => {
           throw new Error(response.message || 'Failed to fetch career plan')
         }
         const careerPlan = response.data
-        setPlan(careerPlan)
+        setPlan({
+          ...careerPlan,
+          stages: careerPlan.stages.map((stage: any) => ({
+            ...stage,
+            learned: stage.progress >= 100,
+          }))
+        })
         setError(null)
         setProgress(careerPlan.progress)
       } catch (err) {
@@ -53,11 +61,16 @@ const CareerPlanDetailPage = () => {
   const handleToggleLearn = (stageId: string) => {
     setPlan((prev) => {
       if (!prev) return prev
+      let learned = false
       const updated = {
         ...prev,
-        stages: prev.stages.map((s) =>
-          s.id === stageId ? { ...s, learned: !s.learned } : s
-        ),
+        stages: prev.stages.map((s) => {
+          if (s.id === stageId) {
+            learned = !s.learned
+            return { ...s, learned }
+          }
+          return s
+        }),
       }
       // 计算进度并调用 API 持久化
       const learnedCount = updated.stages.filter((s) => s.learned).length
@@ -65,7 +78,8 @@ const CareerPlanDetailPage = () => {
         ? Math.round((learnedCount / updated.stages.length) * 100)
         : 0
       setProgress(newProgress)
-      updatePlanProgress(id, newProgress).catch((err) =>
+      console.log(`Updating plan progress for stage ${stageId}`)
+      updatePlanProgress(id, learned ? 100 : 0, Number(stageId)).catch((err) =>
         console.error('更新进度失败:', err)
       )
       return updated
@@ -80,7 +94,7 @@ const CareerPlanDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="detail-page">
+      <div className="detail-page page-container">
         <Loading skeleton className="pad-24-0" />
       </div>
     )
@@ -88,7 +102,7 @@ const CareerPlanDetailPage = () => {
 
   if (error) {
     return (
-      <div className="detail-page">
+      <div className="detail-page page-container">
         <EmptyState
           title="加载失败"
           description={error}
@@ -162,7 +176,7 @@ const CareerPlanDetailPage = () => {
 
       <div className="detail-layout">
         <div className="stages-column">
-          <h2 className="section-title">📚 分阶段学习路线</h2>
+          <h2 className="section-title"><BookOutlined /> 分阶段学习路线</h2>
           <div className="stages-list">
             {plan.stages.map((stage: StudyStage, i: number) => (
               <StageCard
@@ -176,7 +190,7 @@ const CareerPlanDetailPage = () => {
         </div>
 
         <div className="skills-column">
-          <h2 className="section-title">📊 技能差距分析</h2>
+          <h2 className="section-title"><BarChartOutlined /> 技能差距分析</h2>
           <SkillGapPanel
             possessedSkills={plan.possessedSkills}
             targetSkills={plan.targetSkills}
@@ -194,12 +208,13 @@ const CareerPlanDetailPage = () => {
           setDeleting(true)
           try {
             await deleteCareerPlan(id)
+            setShowDeleteConfirm(false)
+            navigate('/career-plan')
           } catch (err) {
             toast.error('删除规划失败: ' + (err as Error).message)
+            setDeleting(false)
+            setShowDeleteConfirm(false)
           }
-          setDeleting(false)
-          setShowDeleteConfirm(false)
-          navigate('/career-plan')
         }}
         loading={deleting}
         onCancel={() => setShowDeleteConfirm(false)}
