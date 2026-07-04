@@ -1,0 +1,460 @@
+/* 仪表盘容器 */
+.dashboard {
+  padding: 28px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: left;
+  animation: fade-in-up 0.4s ease-out;
+}
+
+/* 问候区域 */
+.greeting-section {
+  margin-bottom: 28px;
+  position: relative;
+}
+
+.greeting-section::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.greeting-section h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.5px;
+  position: relative;
+  z-index: 1;
+}
+
+.greeting-section .greeting-sub {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* 统计卡片网格 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.25s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent-border);
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.stat-card:hover .stat-icon {
+  transform: scale(1.05);
+}
+
+.stat-icon.blue {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.stat-icon.green {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.stat-icon.purple {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.stat-icon.orange {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.stat-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-h);
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* 快速入口 */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.quick-action-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+  display: block;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-action-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent-gradient);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.quick-action-card:hover::before {
+  opacity: 1;
+}
+
+.quick-action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent-border);
+}
+
+.quick-action-card .qa-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin: 0 auto 14px;
+  transition: transform 0.25s ease;
+}
+
+.quick-action-card:hover .qa-icon {
+  transform: scale(1.1) rotate(-5deg);
+}
+
+.quick-action-card .qa-icon.purple {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.quick-action-card .qa-icon.blue {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.quick-action-card .qa-icon.green {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.quick-action-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 4px 0;
+}
+
+.quick-action-card p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* 内容双栏布局 */
+.content-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 20px;
+}
+
+.section-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.25s ease;
+}
+
+.section-card:hover {
+  box-shadow: var(--shadow);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.section-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.section-link {
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.section-link:hover {
+  background: var(--accent-bg);
+  opacity: 1;
+}
+
+/* 图表容器 */
+.chart-wrapper {
+  width: 100%;
+  height: 240px;
+}
+
+/* 面试记录列表 */
+.interview-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.interview-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+  gap: 12px;
+  transition: background 0.2s;
+  border-radius: 8px;
+  padding: 10px 8px;
+  margin: 0 -8px;
+}
+
+.interview-item:hover {
+  background: var(--bg-soft);
+}
+
+.interview-item:last-child {
+  border-bottom: none;
+}
+
+.interview-item .position-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.interview-item .item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.interview-item .item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.interview-item .item-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.difficulty-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.difficulty-tag.easy {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.difficulty-tag.medium {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.difficulty-tag.hard {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.interview-item .item-score {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-h);
+  flex-shrink: 0;
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text);
+}
+
+.empty-state .empty-icon {
+  font-size: 40px;
+  color: var(--border);
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* 加载状态 */
+.loading-skeleton {
+  padding: 20px;
+}
+
+.skeleton-item {
+  height: 16px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--code-bg) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.skeleton-item:last-child {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .stat-icon.blue {
+    background: rgba(24, 144, 255, 0.15);
+  }
+  .stat-icon.green {
+    background: rgba(82, 196, 26, 0.15);
+  }
+  .stat-icon.purple {
+    background: rgba(124, 58, 237, 0.15);
+  }
+  .stat-icon.orange {
+    background: rgba(250, 140, 22, 0.15);
+  }
+  .quick-action-card .qa-icon.blue {
+    background: rgba(24, 144, 255, 0.15);
+  }
+  .quick-action-card .qa-icon.green {
+    background: rgba(82, 196, 26, 0.15);
+  }
+  .difficulty-tag.easy {
+    background: rgba(82, 196, 26, 0.15);
+  }
+  .difficulty-tag.medium {
+    background: rgba(250, 140, 22, 0.15);
+  }
+  .difficulty-tag.hard {
+    background: rgba(255, 77, 79, 0.15);
+  }
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .dashboard {
+    padding: 16px;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .quick-actions {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,3 @@
+{
+  "custom_instructions": "请严格遵循 Google JavaScript代码风格，所有函数必须添加JSDoc注释，注释请根据行业规范，注释不要总是在中英文之间添加空格。These should not be decorative separator comments."
+}

@@ -1,0 +1,213 @@
+/* 遮罩层 */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  animation: confirm-fade-in 0.2s ease-out;
+  padding: 20px;
+}
+
+/* 弹窗主体 */
+.confirm-modal {
+  position: relative;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: 32px 28px 24px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-light);
+  animation: confirm-scale-in 0.25s ease-out;
+}
+
+/* 关闭按钮 */
+.confirm-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.confirm-close:hover {
+  background: var(--bg-soft);
+  color: var(--text-h);
+}
+
+.confirm-close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 图标 */
+.confirm-icon {
+  font-size: 40px;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+
+.confirm-icon--danger {
+  color: var(--danger);
+}
+
+.confirm-icon--warning {
+  color: var(--warning);
+}
+
+.confirm-icon--info {
+  color: var(--info);
+}
+
+/* 标题 */
+.confirm-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+/* 内容 */
+.confirm-message {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+/* 操作按钮 */
+.confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 11px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confirm-btn:active {
+  transform: scale(0.98);
+}
+
+.confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 确认按钮 - 危险 */
+.confirm-btn--danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.confirm-btn--danger:hover:not(:disabled) {
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+  transform: translateY(-1px);
+}
+
+/* 确认按钮 - 警告 */
+.confirm-btn--warning {
+  background: var(--accent-gradient-strong);
+  color: #fff;
+}
+
+.confirm-btn--warning:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+  transform: translateY(-1px);
+}
+
+/* 确认按钮 - 信息 */
+.confirm-btn--info {
+  background: var(--info);
+  color: #fff;
+}
+
+.confirm-btn--info:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+  transform: translateY(-1px);
+}
+
+/* 取消按钮 */
+.confirm-btn--cancel {
+  background: var(--bg-soft);
+  color: var(--text-h);
+  border: 1.5px solid var(--border-light);
+}
+
+.confirm-btn--cancel:hover:not(:disabled) {
+  background: var(--bg-card);
+  border-color: var(--accent-border);
+}
+
+/* 按钮加载动画 */
+.confirm-btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: confirm-spin 0.6s linear infinite;
+}
+
+/* 动画 */
+@keyframes confirm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes confirm-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes confirm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 暗色适配 */
+@media (prefers-color-scheme: dark) {
+  .confirm-overlay {
+    background: rgba(0, 0, 0, 0.6);
+  }
+}

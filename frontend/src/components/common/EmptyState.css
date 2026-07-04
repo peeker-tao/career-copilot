@@ -1,0 +1,70 @@
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  -webkit-user-select: none;
+  user-select: none;
+  animation: fade-in 0.3s ease-out;
+}
+
+.empty-state-icon {
+  color: var(--border-light);
+  line-height: 1;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+}
+
+.empty-state-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: var(--text-h);
+  line-height: 1.4;
+  font-size: 18px;
+}
+
+.empty-state-desc {
+  margin: 0 0 20px;
+  max-width: 360px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* 操作按钮 */
+.empty-state-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--accent-gradient-strong);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+}
+
+.empty-state-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.35);
+}
+
+.empty-state-action:active {
+  transform: translateY(0);
+}
+
+/* 暗色适配 */
+@media (prefers-color-scheme: dark) {
+  .empty-state-icon {
+    opacity: 0.6;
+  }
+}
