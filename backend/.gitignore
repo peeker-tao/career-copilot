@@ -1,0 +1,15 @@
+**/.yarn/*
+
+
+/uploads/
+/datasets/
+/public/
+
+/dist
+/node_modules/
+
+
+*.env
+*.env.development
+*.env.production
+

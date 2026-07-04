@@ -1,0 +1,589 @@
+import { useState, useEffect, useCallback } from 'react'
+import { toast } from '@/store/useToastStore'
+import {
+  QuestionCircleOutlined,
+  ThunderboltOutlined,
+  CodeOutlined,
+  EditOutlined,
+  CheckSquareOutlined,
+  BulbOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  ArrowLeftOutlined,
+  RightOutlined,
+  CloseOutlined,
+  CheckOutlined,
+  CloseCircleOutlined,
+  SaveOutlined,
+} from '@ant-design/icons'
+import type { QuestionBankItem, QuestionCategory, QuestionType, QuestionOption } from '@/types/question-bank'
+import * as questionBankApi from '@/api/question-bank'
+import Loading from '@/components/common/Loading'
+import EmptyState from '@/components/common/EmptyState'
+import './QuestionBank.css'
+
+const TYPE_ICONS: Record<string, React.ReactNode> = {
+  choice: <CheckSquareOutlined />,
+  short_answer: <EditOutlined />,
+  coding: <CodeOutlined />,
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  choice: '选择题',
+  short_answer: '简答题',
+  coding: '编程题',
+}
+
+const DIFFICULTY_LABELS: Record<string, string> = {
+  easy: '简单',
+  medium: '中等',
+  hard: '困难',
+}
+
+export default function QuestionBankPage() {
+  const [questions, setQuestions] = useState<QuestionBankItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const pageSize = 15
+
+  const [categories, setCategories] = useState<QuestionCategory[]>([])
+  const [category, setCategory] = useState<string | undefined>()
+  const [difficulty, setDifficulty] = useState<string | undefined>()
+  const [type, setType] = useState<string | undefined>()
+
+  // 答题交互
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, QuestionOption>>({})
+  const [answerResults, setAnswerResults] = useState<Record<string, 'correct' | 'wrong'>>({})
+  const [revealedAnswers, setRevealedAnswers] = useState<Record<string, boolean>>({})
+
+  // AI生成
+  const [genPosition, setGenPosition] = useState('')
+  const [genSkills, setGenSkills] = useState<string[]>([])
+  const [genSkillInput, setGenSkillInput] = useState('')
+  const [genDifficulty, setGenDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
+  const [genCount, setGenCount] = useState(5)
+  const [genTypes, setGenTypes] = useState<QuestionType[]>(['short_answer'])
+  const [genLoading, setGenLoading] = useState(false)
+  const [generatedQuestions, setGeneratedQuestions] = useState<QuestionBankItem[]>([])
+  const [collapsedGenAnswers, setCollapsedGenAnswers] = useState<Set<number>>(new Set())
+  const [savingIds, setSavingIds] = useState<Record<string, boolean>>({})
+
+  // 收藏（localStorage 持久化）
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('qb_favorites')
+      return new Set<string>(stored ? JSON.parse(stored) : [])
+    } catch {
+      return new Set<string>()
+    }
+  })
+
+  const toggleFavorite = useCallback((qId: string, label?: string) => {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(qId)) {
+        next.delete(qId)
+        toast.warning(`已取消收藏${label ? `「${label}」` : ''}`)
+      } else {
+        next.add(qId)
+        toast.success(`✅ 已收藏${label ? `「${label}」` : ''}`)
+      }
+      localStorage.setItem('qb_favorites', JSON.stringify([...next]))
+      return next
+    })
+  }, [])
+
+  // 详情
+  const [detail, setDetail] = useState<QuestionBankItem | null>(null)
+  const [detailRevealAnswer, setDetailRevealAnswer] = useState(false)
+  const [detailSelectedOption, setDetailSelectedOption] = useState<QuestionOption | null>(null)
+  const [detailAnswerResult, setDetailAnswerResult] = useState<'correct' | 'wrong' | null>(null)
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const res = await questionBankApi.getCategories()
+      setCategories(res.data ?? [])
+    } catch { setCategories([]) }
+  }, [])
+
+  const loadQuestions = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await questionBankApi.getQuestions({ page, limit: pageSize, category, difficulty, type })
+      setQuestions(res.data?.list ?? [])
+      setTotal(res.data?.total ?? 0)
+    } catch {
+      setQuestions([])
+    } finally {
+      setLoading(false)
+    }
+  }, [page, category, difficulty, type])
+
+  useEffect(() => { loadCategories() }, [loadCategories])
+  useEffect(() => { loadQuestions() }, [loadQuestions])
+
+  const handleGenerate = async () => {
+    if (!genPosition.trim()) return
+    setGenLoading(true)
+    setCollapsedGenAnswers(new Set())
+    try {
+      const res = await questionBankApi.generateQuestions({
+        position: genPosition.trim(),
+        skills: genSkills,
+        difficulty: genDifficulty,
+        count: genCount,
+        types: genTypes,
+      })
+      if (res.code !== 200 && res.code !== 201) {
+        toast.error(res.message || '生成失败，请重试')
+      } else {
+        setGeneratedQuestions(res.data?.questions ?? [])
+      }
+    } catch (err) {
+      console.error('AI 生成题目失败:', err)
+      toast.error(err instanceof Error ? err.message : '网络错误，请检查连接后重试')
+    } finally {
+      setGenLoading(false)
+    }
+  }
+
+  const addSkill = (val: string) => {
+    if (val && !genSkills.includes(val)) setGenSkills([...genSkills, val])
+    setGenSkillInput('')
+  }
+  const removeSkill = (val: string) => setGenSkills(genSkills.filter((s) => s !== val))
+  const handleSkillKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') { e.preventDefault(); addSkill(genSkillInput.trim()) }
+  }
+  const toggleGenType = (t: QuestionType) => {
+    setGenTypes((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])
+  }
+
+  const hasFilters = category || difficulty || type
+
+  const clearFilters = () => {
+    setCategory(undefined)
+    setDifficulty(undefined)
+    setType(undefined)
+    setPage(1)
+  }
+
+  // 选择题交互
+  const handleSelectOption = (qId: string, opt: QuestionOption, q: QuestionBankItem) => {
+    if (answerResults[qId]) return // 已经作答
+    setSelectedOptions((prev) => ({ ...prev, [qId]: opt }))
+    const isCorrect = opt.label === q.answer
+    setAnswerResults((prev) => ({ ...prev, [qId]: isCorrect ? 'correct' : 'wrong' }))
+  }
+
+  const toggleRevealAnswer = (qId: string) => {
+    setRevealedAnswers((prev) => ({ ...prev, [qId]: !prev[qId] }))
+  }
+
+  // 弹窗答题
+  const handleDetailOptionSelect = (opt: QuestionOption) => {
+    if (detailAnswerResult) return
+    setDetailSelectedOption(opt)
+    const isCorrect = opt.label === detail?.answer
+    setDetailAnswerResult(isCorrect ? 'correct' : 'wrong')
+  }
+
+  const handleSaveGenerated = (q: QuestionBankItem) => {
+    if (savingIds[q.id]) return
+    setSavingIds((prev) => ({ ...prev, [q.id]: true }))
+    // 使用 localStorage 持久化收藏
+    toggleFavorite(q.id, q.question.slice(0, 30))
+    setTimeout(() => {
+      setSavingIds((prev) => ({ ...prev, [q.id]: false }))
+    }, 300)
+  }
+
+  const renderChoiceOptions = (q: QuestionBankItem, customSelected?: QuestionOption, customResult?: 'correct' | 'wrong' | null, onSelect?: (opt: QuestionOption) => void) => {
+    if (!q.options || q.options.length === 0) return null
+    const selOpt = customSelected !== undefined ? customSelected : selectedOptions[q.id]
+    const res = customResult !== undefined ? customResult : answerResults[q.id]
+    const handleSelect = onSelect || ((opt: QuestionOption) => handleSelectOption(q.id, opt, q))
+
+    return (
+      <div className="qb-options">
+        {q.options.map((opt) => {
+          let cls = 'qb-option'
+          if (res) {
+            if (selOpt?.label === opt.label) {
+              cls += res === 'correct' ? ' qb-option-correct' : ' qb-option-wrong'
+            } else if (revealedAnswers[q.id] && opt.label === q.answer) {
+              cls += ' qb-option-correct'
+            }
+          } else if (selOpt?.label === opt.label) {
+            cls += ' qb-option-selected'
+          }
+          return (
+            <div
+              key={opt.label}
+              className={cls}
+              onClick={() => !res && handleSelect(opt)}
+            >
+              <span className="qb-option-label">{opt.label}</span>
+              <span className="qb-option-text">{opt.text}</span>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  const totalPages_ = Math.ceil(total / pageSize)
+
+  return (
+    <div className="question-bank-page">
+      <h1 className="page-title">面试题库</h1>
+      <p className="page-desc">AI 驱动的面试题目生成与管理</p>
+
+      {/* AI 生成区 */}
+      <div className="qb-generate-section">
+        <h3><ThunderboltOutlined /> AI 智能出题</h3>
+        <div className="qb-gen-form">
+          {/* 第1行：岗位 + 难度 + 数量 */}
+          <div className="qb-gen-row">
+            <div className="qb-gen-field">
+              <label className="qb-gen-label">目标岗位</label>
+              <input className="qb-gen-input" placeholder="例如：后端开发工程师" value={genPosition} onChange={(e) => setGenPosition(e.target.value)} />
+            </div>
+            <div className="qb-gen-field field-sm">
+              <label className="qb-gen-label">难度</label>
+              <select className="qb-gen-select" value={genDifficulty} onChange={(e) => setGenDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}>
+                <option value="easy">简单</option>
+                <option value="medium">中等</option>
+                <option value="hard">困难</option>
+              </select>
+            </div>
+            <div className="qb-gen-field field-sm">
+              <label className="qb-gen-label">数量</label>
+              <div className="qb-gen-count-group">
+                <button className="qb-gen-count-btn" onClick={() => setGenCount(Math.max(1, genCount - 1))}>−</button>
+                <input
+                  className="qb-gen-input short"
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={genCount}
+                  onChange={(e) => setGenCount(Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
+                />
+                <button className="qb-gen-count-btn" onClick={() => setGenCount(Math.min(20, genCount + 1))}>+</button>
+              </div>
+            </div>
+          </div>
+
+          {/* 第2行：技能标签（独占一行） */}
+          <div className="qb-gen-row">
+            <div className="qb-gen-field">
+              <label className="qb-gen-label">技能标签</label>
+              <div className="qb-gen-tags-input" onClick={() => document.getElementById('gen-skill-input')?.focus()}>
+                {genSkills.map((s) => (
+                  <span key={s} className="qb-gen-tag">
+                    {s}<span className="qb-gen-tag-remove"><CloseOutlined onClick={() => removeSkill(s)} /></span>
+                  </span>
+                ))}
+                <input
+                  id="gen-skill-input"
+                  className="qb-gen-tag-input-inner"
+                  placeholder={genSkills.length === 0 ? '输入技能关键词后回车' : ''}
+                  value={genSkillInput}
+                  onChange={(e) => setGenSkillInput(e.target.value)}
+                  onKeyDown={handleSkillKeyDown}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 第3行：题型 + 生成按钮 */}
+          <div className="qb-gen-row">
+            <div className="qb-gen-field">
+              <label className="qb-gen-label">题型</label>
+              <div className="qb-gen-type-group">
+                {(['short_answer', 'choice', 'coding'] as QuestionType[]).map((t) => (
+                  <button
+                    key={t}
+                    className={`qb-gen-type-btn ${genTypes.includes(t) ? 'active' : ''}`}
+                    onClick={() => toggleGenType(t)}
+                  >
+                    {TYPE_ICONS[t]} {TYPE_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="qb-gen-submit">
+              <button className="qb-btn qb-btn-primary" disabled={!genPosition.trim() || genLoading} onClick={handleGenerate}>
+                <ThunderboltOutlined /> {genLoading ? '生成中...' : '生成题目'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {generatedQuestions.length > 0 && (
+          <div className="qb-generated-list">
+            <div className="qb-gen-result-header">
+              <span>生成结果 ({generatedQuestions.length}题)</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  className="qb-btn qb-gen-action-btn"
+                  onClick={() => {
+                    if (collapsedGenAnswers.size === generatedQuestions.length) {
+                      setCollapsedGenAnswers(new Set())
+                    } else {
+                      setCollapsedGenAnswers(new Set(generatedQuestions.map((_, idx) => idx)))
+                    }
+                  }}
+                >
+                  {collapsedGenAnswers.size === generatedQuestions.length ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                  {collapsedGenAnswers.size === generatedQuestions.length ? '全部展开' : '全部收起'}
+                </button>
+                <button
+                  className="qb-btn qb-gen-close-btn"
+                  onClick={() => { setGeneratedQuestions([]); setCollapsedGenAnswers(new Set()) }}
+                >
+                  收起
+                </button>
+              </div>
+            </div>
+            {generatedQuestions.map((q, i) => (
+              <div key={i} className="qb-gen-item">
+                <div className="qb-gen-item-header">
+                  <div className="qb-gen-item-q">{i + 1}. {q.question}</div>
+                  <button
+                    className={`qb-save-btn ${favoriteIds.has(q.id) ? 'saved' : ''}`}
+                    disabled={savingIds[q.id]}
+                    onClick={() => handleSaveGenerated(q)}
+                  >
+                    <SaveOutlined /> {favoriteIds.has(q.id) ? '已收藏' : '收藏'}
+                  </button>
+                </div>
+                <div className="qb-card-tags">
+                  <span className={`qb-tag ${q.difficulty}`}>{DIFFICULTY_LABELS[q.difficulty] || q.difficulty}</span>
+                  <span className="qb-tag">{TYPE_ICONS[q.type]} {TYPE_LABELS[q.type] || q.type}</span>
+                  <span className="qb-tag">{q.category}</span>
+                </div>
+                {q.type === 'choice' && q.options && renderChoiceOptions(q, undefined, undefined, undefined)}
+                {!collapsedGenAnswers.has(i) && (
+                  <div className="qb-answer-section">
+                    <div className="qb-answer-content">
+                      <strong>参考答案：</strong>{q.answer || '暂无'}
+                    </div>
+                  </div>
+                )}
+                  <div style={{ marginTop: 4 }}>
+                    <button
+                      className="qb-card-action-btn"
+                      onClick={() => setCollapsedGenAnswers((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(i)) next.delete(i); else next.add(i)
+                        return next
+                      })}
+                    >
+                      {collapsedGenAnswers.has(i) ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                      {collapsedGenAnswers.has(i) ? '显示答案' : '收起答案'}
+                    </button>
+                  </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 筛选 */}
+      <div className="qb-toolbar">
+        <select className="qb-filter-select" value={category ?? ''} onChange={(e) => { setCategory(e.target.value || undefined); setPage(1) }}>
+          <option value="">全部分类</option>
+          {categories.map((c) => (<option key={c.name} value={c.name}>{c.name} ({c.count})</option>))}
+        </select>
+        <select className="qb-filter-select" value={difficulty ?? ''} onChange={(e) => { setDifficulty(e.target.value || undefined); setPage(1) }}>
+          <option value="">全部难度</option>
+          <option value="easy">简单</option><option value="medium">中等</option><option value="hard">困难</option>
+        </select>
+        <select className="qb-filter-select" value={type ?? ''} onChange={(e) => { setType(e.target.value || undefined); setPage(1) }}>
+          <option value="">全部题型</option>
+          <option value="short_answer">简答题</option><option value="choice">选择题</option><option value="coding">编程题</option>
+        </select>
+        {hasFilters && (
+          <button className="qb-clear-filters" onClick={clearFilters}>
+            <CloseOutlined /> 清除筛选
+          </button>
+        )}
+      </div>
+
+      {/* 统计 & 题目列表 */}
+      {loading ? (
+        <Loading skeleton={{ rows: 6 }} className="pad-24-0" />
+      ) : questions.length === 0 ? (
+        <EmptyState
+          icon={<QuestionCircleOutlined />}
+          title="暂无题目"
+          description="尝试调整筛选条件或使用AI智能出题"
+        />
+      ) : (
+        <>
+          <div className="qb-stats-header">
+            <span className="qb-stats-count">
+              共 <strong>{total}</strong> 道题目
+              {hasFilters && <span style={{ color: 'var(--text-muted)', fontSize: 12, marginLeft: 6 }}>（已筛选）</span>}
+            </span>
+          </div>
+          <div className="qb-list">
+            {questions.map((item) => (
+              <div key={item.id} className="qb-card" onClick={() => { setDetail(item); setDetailRevealAnswer(false); setDetailSelectedOption(null); setDetailAnswerResult(null) }}>
+                <div className="qb-card-question">{item.question}</div>
+                <div className="qb-card-tags">
+                  <span className={`qb-tag ${item.difficulty}`}>{DIFFICULTY_LABELS[item.difficulty] || item.difficulty}</span>
+                  <span className="qb-tag">{TYPE_ICONS[item.type]} {TYPE_LABELS[item.type] || item.type}</span>
+                  <span className="qb-tag">{item.category}</span>
+                  {item.tags?.map((t: string) => (
+                    <span key={t} className="qb-tag">{t}</span>
+                  ))}
+                </div>
+                {item.type === 'choice' && item.options && renderChoiceOptions(item)}
+                {item.type === 'choice' && answerResults[item.id] && (
+                  <div className="qb-card-actions">
+                    <span className={`qb-card-action-btn ${answerResults[item.id] === 'correct' ? 'qb-action-correct' : 'qb-action-wrong'}`}>
+                      {answerResults[item.id] === 'correct' ? <><CheckOutlined /> 回答正确</> : <><CloseCircleOutlined /> 回答错误</>}
+                    </span>
+                    <button className="qb-card-action-btn" onClick={(e) => { e.stopPropagation(); toggleRevealAnswer(item.id) }}>
+                      {revealedAnswers[item.id] ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                      {revealedAnswers[item.id] ? '隐藏答案' : '正确答案'}
+                    </button>
+                  </div>
+                )}
+                {item.type === 'choice' && revealedAnswers[item.id] && item.answer && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: 'var(--success)' }}>
+                    正确答案：{item.answer}
+                  </div>
+                )}
+                {item.type !== 'choice' && !revealedAnswers[item.id] && (
+                  <div className="qb-card-actions">
+                    <button className="qb-card-action-btn" onClick={(e) => { e.stopPropagation(); toggleRevealAnswer(item.id) }}>
+                      <EyeOutlined /> 查看答案
+                    </button>
+                  </div>
+                )}
+                {item.type !== 'choice' && revealedAnswers[item.id] && item.answer && (
+                  <div className="qb-answer-section">
+                    <div className="qb-answer-content">
+                      <strong>参考答案：</strong>{item.answer}
+                    </div>
+                    <div className="qb-card-actions" style={{ marginTop: 8 }}>
+                      <button className="qb-card-action-btn" onClick={(e) => { e.stopPropagation(); toggleRevealAnswer(item.id) }}>
+                        <EyeInvisibleOutlined /> 隐藏答案
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <div className="qb-card-actions" style={{ marginTop: 8 }}>
+                  <button
+                    className={`qb-card-action-btn ${favoriteIds.has(item.id) ? 'qb-action-saved' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id, item.question.slice(0, 30)) }}
+                  >
+                    <SaveOutlined /> {favoriteIds.has(item.id) ? '已收藏' : '收藏'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {totalPages_ > 1 && (
+            <div className="qb-pagination">
+              <button
+                className="qb-pagination-btn"
+                disabled={page <= 1}
+                onClick={() => setPage(page - 1)}
+              >
+                <ArrowLeftOutlined /> 上一页
+              </button>
+              <span className="qb-pagination-info">{page} / {totalPages_}</span>
+              <button
+                className="qb-pagination-btn"
+                disabled={page >= totalPages_}
+                onClick={() => setPage(page + 1)}
+              >
+                下一页 <RightOutlined />
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 答题弹窗 */}
+      {detail && (
+        <div className="qb-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setDetail(null) }}>
+          <div className="qb-modal qb-answer-modal">
+            <h3>
+              {TYPE_LABELS[detail.type] || '题目'}
+              <span className={`qb-tag ${detail.difficulty}`} style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+                {DIFFICULTY_LABELS[detail.difficulty] || detail.difficulty}
+              </span>
+            </h3>
+
+            <div className="qb-modal-body">{detail.question}</div>
+
+            {/* 选择题选项 */}
+            {detail.type === 'choice' && detail.options && (
+              <div className="qb-modal-section">
+                <div className="qb-modal-section-title">选择答案</div>
+                {renderChoiceOptions(detail, detailSelectedOption ?? undefined, detailAnswerResult, (opt) => handleDetailOptionSelect(opt))}
+                {detailAnswerResult && (
+                  <div style={{ marginTop: 8, fontSize: 13, fontWeight: 500, color: detailAnswerResult === 'correct' ? 'var(--success)' : 'var(--danger)' }}>
+                    {detailAnswerResult === 'correct' ? <><CheckOutlined /> 回答正确！</> : <><CloseCircleOutlined /> 回答错误</>}
+                    {detailAnswerResult === 'wrong' && <> 正确答案：{detail.answer}</>}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 提示 */}
+            {detail.hint && (
+              <div className="qb-modal-section">
+                <div className="qb-modal-section-title">提示</div>
+                <div className="qb-modal-hint" style={{ marginBottom: 0 }}>
+                  <BulbOutlined style={{ marginRight: 4 }} />
+                  {detail.hint}
+                </div>
+              </div>
+            )}
+
+            {/* 答案 */}
+            {detail.answer && (
+              <div className="qb-modal-section">
+                <button
+                  className="qb-answer-toggle"
+                  onClick={() => setDetailRevealAnswer(!detailRevealAnswer)}
+                >
+                  {detailRevealAnswer ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                  {detailRevealAnswer ? '隐藏答案' : '查看答案'}
+                </button>
+                {detailRevealAnswer && (
+                  <div className="qb-modal-answer-reveal" style={{ marginTop: 8 }}>
+                    <strong>参考答案：</strong><br />{detail.answer}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 标签 */}
+            {detail.tags && detail.tags.length > 0 && (
+              <div className="qb-modal-section">
+                <div className="qb-modal-section-title">标签</div>
+                <div>
+                  {detail.tags.map((t: string) => (
+                    <span key={t} className="qb-tag" style={{ marginRight: 4 }}>{t}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="qb-modal-close">
+              <button className="qb-btn" onClick={() => setDetail(null)}>关闭</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

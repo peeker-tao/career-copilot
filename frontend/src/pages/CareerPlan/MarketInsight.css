@@ -1,0 +1,129 @@
+/* 市场洞察页 */
+.market-page {
+  max-width: 1200px;
+  text-align: left;
+  padding: 24px;
+}
+
+.market-topbar {
+  margin-bottom: 16px;
+}
+
+.market-header {
+  margin-bottom: 24px;
+}
+
+/* 搜索栏 */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 24px;
+  transition: border-color 0.2s;
+}
+
+.search-bar:focus-within {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: var(--text-h);
+  background: transparent;
+  font-family: inherit;
+}
+
+.search-input::placeholder {
+  color: var(--text);
+  opacity: 0.6;
+}
+
+/* 图表网格 */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* 薪资范围 — 最重要数据，占满宽 */
+.charts-grid .full {
+  grid-column: 1 / -1;
+}
+
+/* 需求趋势放在右侧，经验分布放在左侧，高度保持一致 */
+.charts-grid .half {
+  min-height: 280px;
+}
+
+.chart-card,
+.salary-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 数字展示型薪资范围 */
+.charts-grid .salary-card.full {
+  grid-column: 1 / -1;
+}
+
+.salary-display {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 0;
+}
+
+.salary-value {
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.salary-separator {
+  font-size: 28px;
+  color: var(--text);
+  opacity: 0.4;
+}
+
+.salary-unit {
+  font-size: 16px;
+  color: var(--text);
+  margin-left: 4px;
+}
+
+.chart-card .echarts-for-react {
+  flex: 1;
+  min-height: 0;
+}
+
+.chart-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 16px 0;
+  flex-shrink: 0;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .market-page {
+    padding: 16px;
+  }
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}

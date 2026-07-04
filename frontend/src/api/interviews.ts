@@ -1,0 +1,331 @@
+import apiClient from './client'
+import type { ApiResponse } from '@/types/api'
+import type { Interview, InterviewMessage, CreateInterviewRequest, InterviewReport, SubmitAnswerResult } from '@/types/interview'
+import { MOCK_INTERVIEWS, MOCK_INITIAL_MESSAGES, AI_FEEDBACKS, AI_NEXT_QUESTIONS } from '@/mock'
+
+const useMock = import.meta.env.VITE_USE_MOCK === 'true'
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+let mockResponseIndex = 0
+
+/** 面试列表分页结果 */
+export interface InterviewListResult {
+  items: Interview[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+/** 获取面试历史 */
+export async function getInterviews(params?: {
+  page?: number
+  limit?: number
+}): Promise<ApiResponse<InterviewListResult>> {
+  if (useMock) {
+    await delay(400)
+    const page = params?.page ?? 1
+    const limit = params?.limit ?? 10
+    const start = (page - 1) * limit
+    const pagedItems = MOCK_INTERVIEWS.slice(start, start + limit)
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        items: pagedItems,
+        total: MOCK_INTERVIEWS.length,
+        page,
+        limit,
+        totalPages: Math.ceil(MOCK_INTERVIEWS.length / limit),
+      },
+    }
+  }
+  const response: any = await apiClient.get('/interviews', { params })
+  // 后端 ResponseInterceptor 全局包装为 { code, message, data }
+  // axios 拦截器 (response) => response.data → response = { code, message, data: { items, ... } }
+  const data = response.data
+  return {
+    code: response.code,
+    message: response.message,
+    data: {
+      items: Array.isArray(data?.items) ? data.items : [],
+      total: data?.total ?? 0,
+      page: data?.page ?? 1,
+      limit: data?.limit ?? 10,
+      totalPages: data?.totalPages ?? 1,
+    },
+  }
+}
+
+/** 获取面试详情 */
+export async function getInterviewById(id: string): Promise<ApiResponse<Interview>> {
+  if (useMock) {
+    await delay(300)
+    return {
+      code: 200,
+      message: 'success',
+      data: MOCK_INTERVIEWS.find((i) => i.id === id) || MOCK_INTERVIEWS[0],
+    }
+  }
+  return apiClient.get(`/interviews/${id}`)
+}
+
+/** 获取面试消息 */
+export async function getInterviewMessages(id: string): Promise<ApiResponse<InterviewMessage[]>> {
+  console.log(`[API] getInterviewMessages(${id}) calling...`)
+  if (useMock) {
+    await delay(300)
+    return { code: 200, message: 'success', data: MOCK_INITIAL_MESSAGES }
+  }
+  const res: any = await apiClient.get(`/interviews/${id}/messages`)
+  // 后端 ResponseInterceptor 包装为 { code, message, data: { interview, messages } }
+  // 展开为标准格式 { code, message, data: messages[] }
+  return { code: 200, message: 'success', data: res.data?.messages || [] }
+}
+
+/** 创建面试会话 */
+export async function createInterview(data: CreateInterviewRequest): Promise<ApiResponse<Interview>> {
+  console.log(`[API] createInterview calling...`, data)
+  if (useMock) {
+    await delay(500)
+    const mockInterview: Interview = {
+      id: Date.now().toString(),
+      targetPosition: data.targetPosition,
+      difficulty: data.difficulty,
+      status: 'in_progress',
+      score: null,
+      rounds: 0,
+      duration: '-',
+      startedAt: new Date().toISOString(),
+    }
+    const res = { code: 200, message: '创建成功', data: mockInterview }
+    console.log(`[API] createInterview response(mock):`, res)
+    return res
+  }
+  const raw = await apiClient.post('/interviews', data)
+  console.log(`[API] createInterview response:`, raw)
+  return { code: raw.data?.code ?? 200, message: raw.data?.message ?? '成功', data: raw.data?.data ?? raw.data }
+}
+
+/** 提交回答（模拟 AI 回复） */
+export async function submitAnswer(
+  interviewId: string,
+  content: string
+): Promise<ApiResponse<SubmitAnswerResult>> {
+  console.log(`[API] submitAnswer(${interviewId}) calling... content:`, content)
+  if (useMock) {
+    await delay(1000)
+    const feedback = AI_FEEDBACKS[mockResponseIndex % AI_FEEDBACKS.length]
+    const nextQuestion = AI_NEXT_QUESTIONS[mockResponseIndex % AI_NEXT_QUESTIONS.length]
+    mockResponseIndex++
+    const res: ApiResponse<SubmitAnswerResult> = {
+      code: 200,
+      message: 'success',
+      data: {
+        evaluation: {
+          score: Math.floor(Math.random() * 3) + 3,
+          feedback,
+          strengths: ['基础知识扎实', '表达清晰'],
+          weaknesses: ['可以结合更多实际案例'],
+        },
+        nextQuestion: {
+          content: nextQuestion,
+          questionType: 'technical',
+          referenceAnswer: [
+            '这是参考答案要点一，请围绕此展开',
+            '要点二：结合实际项目经验说明',
+            '要点三：注意条理清晰、逻辑严谨',
+          ],
+        },
+        isComplete: mockResponseIndex >= 5,
+      },
+    }
+    console.log(`[API] submitAnswer(${interviewId}) response(mock):`, JSON.stringify(res, null, 2))
+    return res
+  }
+  const raw = await apiClient.post(`/interviews/${interviewId}/answer`, { content })
+  console.log(`[API] submitAnswer(${interviewId}) response:`, JSON.stringify(raw, null, 2))
+  return { code: raw.data?.code ?? 200, message: raw.data?.message ?? '成功', data: raw.data?.data ?? raw.data }
+}
+
+/** 语音提交回答：上传音频，后端 ASR + 评估一步完成 */
+// export async function submitVoiceAnswer(
+//   interviewId: string,
+//   audioBlob: Blob,
+// ): Promise<ApiResponse<VoiceAnswerResult>> {
+//   if (useMock) {
+//     await delay(1500)
+//     const feedback = AI_FEEDBACKS[mockResponseIndex % AI_FEEDBACKS.length]
+//     const nextQuestion = AI_NEXT_QUESTIONS[mockResponseIndex % AI_NEXT_QUESTIONS.length]
+//     mockResponseIndex++
+//     return {
+//       code: 200,
+//       message: 'success',
+//       data: {
+//         recognizedText: '这是一个模拟语音识别的回答文本',
+//         evaluation: {
+//           score: Math.floor(Math.random() * 3) + 3,
+//           feedback,
+//           strengths: ['基础知识扎实', '表达清晰'],
+//           weaknesses: ['可以结合更多实际案例'],
+//         },
+//         nextQuestion: {
+//           content: nextQuestion,
+//           questionType: 'technical',
+//         },
+//         isComplete: mockResponseIndex >= 5,
+//       },
+//     }
+//   }
+//   const formData = new FormData()
+//   formData.append('file', audioBlob, 'recording.webm')
+//   return await apiClient.post(`/interviews/${interviewId}/voice-answer`, formData, {
+//     headers: { 'Content-Type': 'multipart/form-data' },
+//   })
+// }
+
+// 后端 FeedbackReport 原始结构（来自 AI prompt 输出 + interview-report.service）
+
+interface BackendFeedbackReport {
+  overallScore: number
+  overallRating: string
+  summary: string
+  questionScores: Array<{ questionIndex: number; score: number; comment: string; strength: string; weakness: string }>
+  dimensions: Array<{ name: string; score: number; comment: string; suggestions: string }>
+  strengths: string[]
+  weaknesses: string[]
+  learningSuggestions: Array<{ area: string; priority: string; reason: string; resources: string[] }>
+}
+
+// 异步反馈任务响应
+interface FeedbackAsyncResponse {
+  type: 'cached' | 'queued'
+  data?: BackendFeedbackReport
+  jobId?: string
+  message?: string
+}
+
+// 轮询状态响应
+interface FeedbackStatusResponse {
+  status: string
+  data?: BackendFeedbackReport
+}
+
+/** 轮询等待报告生成完成 */
+async function pollUntilReady(interviewId: string, jobId: string, maxRetries = 30): Promise<BackendFeedbackReport> {
+  console.log(`[API] pollUntilReady(${interviewId}, ${jobId}) 开始轮询...`)
+  for (let i = 0; i < maxRetries; i++) {
+    const pollRes: ApiResponse<FeedbackStatusResponse> = await apiClient.get(
+      `/interviews/${interviewId}/feedback/status`,
+      { params: { jobId } },
+    )
+    if (pollRes.data?.status === 'completed' && pollRes.data?.data) {
+      return pollRes.data.data
+    }
+    if (pollRes.data?.status === 'failed') {
+      throw new Error('报告生成失败')
+    }
+    // 等待 2 秒再试
+    await delay(2000)
+  }
+  throw new Error('报告生成超时，请稍后重试')
+}
+
+/** 将后端 FeedbackReport 映射为前端 InterviewReport */
+function mapToInterviewReport(fb: BackendFeedbackReport): InterviewReport {
+  return {
+    overallRating: fb.overallRating || '',
+    overallScore: fb.overallScore ?? 0,
+    summary: fb.summary || '',
+    strengths: fb.strengths || [],
+    weaknesses: fb.weaknesses || [],
+    suggestions: (fb.learningSuggestions || []).map((s) => s.area),
+    skillScores: fb.dimensions || [],
+  }
+}
+
+/** 获取面试报告（支持异步生成+轮询） */
+export async function getInterviewReport(id: string): Promise<ApiResponse<InterviewReport | null>> {
+  console.log(`[API] getInterviewReport(${id}) calling...`)
+  if (useMock) {
+    await delay(600)
+    const res = {
+      code: 200,
+      message: 'success',
+      data: {
+        overallRating: 'B',
+        overallScore: 85,
+        strengths: ['技术基础扎实', '表达清晰', '逻辑思维强'],
+        weaknesses: ['系统设计经验不足', '部分细节理解不够深入'],
+        suggestions: ['加强系统设计方面的练习', '多了解分布式系统的实际案例'],
+        skillScores: [
+          { name: 'Java', score: 85, comment: '基础知识扎实', suggestions: '可以进一步深入学习高级特性' },
+          { name: 'Spring Boot', score: 80, comment: '能够熟练使用', suggestions: '建议多关注最新版本的特性和最佳实践' },
+          { name: 'MySQL', score: 75, comment: '基本操作熟练', suggestions: '需要加强索引优化和性能调优方面的知识' },
+          { name: 'Redis', score: 70, comment: '了解基本用法', suggestions: '建议深入学习数据结构和应用场景' },
+          { name: '系统设计', score: 60, comment: '基础概念掌握', suggestions: '需要积累更多实际项目经验' },
+        ],
+        summary: '整体表现良好，但在系统设计方面有待加强。',
+      },
+    }
+    console.log(`[API] getInterviewReport(${id}) response(mock):`, res)
+    return res
+  }
+
+  // Step 1: POST /interviews/:id/feedback → 返回 202 { type: 'cached' | 'queued', data?, jobId? }
+  const response: ApiResponse<FeedbackAsyncResponse> = await apiClient.post(`/interviews/${id}/feedback`)
+  const payload = response.data
+
+  if (response.code !== 200 && response.code !== 201 && response.code !== 202) {
+    throw new Error(response.message || '获取报告失败')
+  }
+
+  if (!payload) {
+    return { code: response.code, message: response.message, data: null }
+  }
+
+  let fb: BackendFeedbackReport
+
+  if (payload.type === 'cached') {
+    // 已有缓存，直接使用
+    fb = payload.data as BackendFeedbackReport
+  } else if (payload.type === 'queued' && payload.jobId) {
+    // 异步生成中，轮询等待
+    fb = await pollUntilReady(id, payload.jobId)
+  } else {
+    // 兼容旧版同步返回
+    fb = payload as unknown as BackendFeedbackReport
+  }
+
+  const finalRes = {
+    code: response.code,
+    message: response.message,
+    data: mapToInterviewReport(fb),
+  }
+  console.log(`[API] getInterviewReport(${id}) response:`, finalRes)
+  return finalRes
+}
+
+/** 结束面试（标记为 completed） */
+export async function completeInterview(id: string): Promise<ApiResponse<Interview>> {
+  console.log(`[API] completeInterview(${id}) calling...`)
+  if (useMock) {
+    await delay(300)
+    const interview = MOCK_INTERVIEWS.find((i) => i.id === id) || MOCK_INTERVIEWS[0]
+    const res = { code: 200, message: '面试已结束', data: { ...interview, status: 'completed' as const } }
+    console.log(`[API] completeInterview(${id}) response(mock):`, res)
+    return res
+  }
+  const raw = await apiClient.post(`/interviews/${id}/complete`)
+  console.log(`[API] completeInterview(${id}) response:`, raw)
+  return { code: raw.data?.code ?? 200, message: raw.data?.message ?? '成功', data: raw.data?.data ?? raw.data }
+}
+
+/** 删除面试记录 */
+export async function deleteInterview(id: string): Promise<ApiResponse<null>> {
+  if (useMock) {
+    await delay(300)
+    return { code: 200, message: '删除成功', data: null }
+  }
+  return apiClient.delete(`/interviews/${id}`)
+}
